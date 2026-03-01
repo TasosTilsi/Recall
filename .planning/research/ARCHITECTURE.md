@@ -1,929 +1,668 @@
 # Architecture Research
 
-**Domain:** Multi-interface knowledge graph systems
-**Researched:** 2026-02-02
+**Domain:** v1.1 Advanced Features integration into existing graphiti-knowledge-graph
+**Researched:** 2026-03-01
 **Confidence:** HIGH
 
-## Standard Architecture
+---
 
-### System Overview
+## Context
 
-Multi-interface knowledge graph systems with CLI-first architecture follow a layered pattern where a core engine provides the single source of truth, with multiple interface wrappers exposing functionality through different channels.
+This document answers four concrete integration questions for v1.1:
+1. Smart retention — where does TTL/scoring live?
+2. Configurable capture modes — how does decisions-only vs decisions-and-patterns hook in?
+3. Localhost UI — where does `graphiti ui` live, what serves it?
+4. Multi-provider LLM — how does the provider abstraction fit the existing client and config?
 
+All analysis is grounded in the actual source code of the v1.0 codebase.
+
+---
+
+## 1. Smart Retention
+
+### The Core Constraint
+
+`EntityNode` in graphiti-core 0.26.3/0.28.1 has exactly these fields:
+`uuid`, `name`, `group_id`, `labels`, `created_at`, `summary`, `attributes`, `name_embedding`.
+
+There is **no** `last_accessed_at`, `score`, `ttl`, or `expired_at` field on `EntityNode`.
+The `EdgeNode` (stored as `RelatesToNode_` in Kuzu) does have `expired_at`, `valid_at`, and `invalid_at`
+fields — these are part of graphiti-core's temporal edge model. Entities have none of these.
+
+This means: **retention metadata cannot be stored inside graphiti-core-managed node rows without
+forking graphiti-core**. The `attributes` dict field on `EntityNode` is a valid escape hatch —
+it is serialized to JSON in Kuzu and is opaque to graphiti-core's own logic.
+
+### Recommended Approach: SQLite Retention Sidecar
+
+Store retention metadata in a dedicated SQLite table alongside the Kuzu databases, not inside Kuzu.
+
+**Why not Kuzu node properties:**
+- Adding properties to the `Entity` table in Kuzu without graphiti-core awareness requires raw DDL
+  (`ALTER TABLE Entity ADD ...`) and breaks if graphiti-core ever recreates the schema.
+- The `attributes` JSON field is an option but requires custom Kuzu queries on every read;
+  it is not indexed and makes bulk TTL queries slow.
+
+**Why not graphiti-core episode metadata:**
+- `EpisodicNode` stores source content, not entity-level access tracking.
+- There is no hook in graphiti-core to intercept reads for access-time stamping.
+
+**Why SQLite sidecar is correct:**
+- The queue module already uses `SQLiteAckQueue` (persistqueue under the hood) at
+  `~/.graphiti/` — a SQLite retention DB fits this pattern naturally.
+- Retention is an application-level concern (this codebase's logic), not a graph-schema concern.
+- The sidecar is fast for bulk TTL queries: `SELECT uuid FROM retention WHERE last_accessed < X`.
+- It does not require any changes to graphiti-core or Kuzu schema.
+- It survives graphiti-core upgrades cleanly.
+
+**Where the sidecar lives:**
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    INTERFACE LAYER                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │   CLI    │  │  Hooks   │  │   MCP    │  │   HTTP   │        │
-│  │ (typer)  │  │ (git +   │  │ (stdio + │  │  API     │        │
-│  │          │  │ session) │  │  HTTP)   │  │          │        │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘        │
-│       │             │             │             │               │
-│       └─────────────┴─────────────┴─────────────┘               │
-│                          ↓                                       │
-├─────────────────────────────────────────────────────────────────┤
-│                      CORE ENGINE                                 │
-│  ┌────────────────────────────────────────────────────────┐     │
-│  │  Knowledge Graph Operations (Single Source of Truth)   │     │
-│  │  - Add entities/relationships  - Search knowledge      │     │
-│  │  - Delete/update operations    - Summarize graph       │     │
-│  └────────────────────────────────────────────────────────┘     │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐    │
-│  │ Security       │  │ Background     │  │ Graph          │    │
-│  │ Filter         │  │ Queue          │  │ Selector       │    │
-│  │ (pre-capture)  │  │ (async proc)   │  │ (global/proj)  │    │
-│  └────────────────┘  └────────────────┘  └────────────────┘    │
-├─────────────────────────────────────────────────────────────────┤
-│                    PROCESSING LAYER                              │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                  LLM Processing                          │    │
-│  │  Cloud Ollama (primary) → Local Ollama (fallback)       │    │
-│  └─────────────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────────────┤
-│                     STORAGE LAYER                                │
-│  ┌──────────────────────┐  ┌──────────────────────────────┐     │
-│  │  Global Graph        │  │  Per-Project Graphs          │     │
-│  │  ~/.graphiti/global/ │  │  .graphiti/ (git-safe)       │     │
-│  │  (Kuzu embedded DB)  │  │  (Kuzu embedded DB)          │     │
-│  └──────────────────────┘  └──────────────────────────────┘     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| **CLI** | Primary interface; single source of truth for operations | Python Typer with subcommands (add, search, delete, summarize) |
-| **Hooks** | Git integration (post-commit) and session management | Shell scripts calling CLI commands |
-| **MCP Server** | Model Context Protocol interface for AI assistants | Python MCP SDK wrapping CLI operations via subprocess/API |
-| **Core Engine** | Business logic for knowledge operations | Python library with graph operations and orchestration |
-| **Security Filter** | Pre-capture filtering (files, secrets, PII) | Pattern matching + entropy detection + entity sanitization |
-| **Background Queue** | Non-blocking async processing | Python asyncio queue or RQ (Redis Queue) for job processing |
-| **Graph Selector** | Route operations to global or project graph | Path-based detection with fallback to global |
-| **LLM Processing** | Entity extraction and knowledge graph generation | Cloud Ollama API (primary) with local fallback |
-| **Storage Layer** | Persistent graph storage with ACID transactions | Kuzu embedded graph database (per instance) |
-
-## Recommended Project Structure
-
-```
-graphiti/
-├── cli/                   # CLI interface (primary entry point)
-│   ├── __init__.py
-│   ├── main.py           # Typer app with commands
-│   ├── commands/         # Subcommand implementations
-│   │   ├── add.py
-│   │   ├── search.py
-│   │   ├── delete.py
-│   │   └── summarize.py
-│   └── output.py         # Output formatting (JSON, table, text)
-├── core/                  # Core engine (business logic)
-│   ├── __init__.py
-│   ├── graph.py          # Graph operations interface
-│   ├── selector.py       # Global vs project graph routing
-│   ├── security/         # Security filtering
-│   │   ├── file_filter.py    # File-level exclusions
-│   │   ├── entity_filter.py  # Entity-level sanitization
-│   │   └── patterns.py       # Secret detection patterns
-│   ├── queue/            # Background processing
-│   │   ├── manager.py    # Queue orchestration
-│   │   ├── jobs.py       # Job definitions
-│   │   └── worker.py     # Background worker
-│   └── llm/              # LLM processing
-│       ├── client.py     # Unified LLM client
-│       ├── cloud.py      # Cloud Ollama integration
-│       └── local.py      # Local Ollama fallback
-├── storage/              # Storage layer
-│   ├── __init__.py
-│   ├── kuzu_adapter.py   # Kuzu graph database adapter
-│   └── schema.py         # Graph schema definitions
-├── hooks/                # Hook integrations
-│   ├── git/              # Git hooks
-│   │   ├── post-commit
-│   │   └── install.sh
-│   └── session/          # Session hooks (future)
-│       └── start.sh
-├── mcp/                  # MCP server interface
-│   ├── __init__.py
-│   ├── server.py         # MCP server implementation
-│   ├── tools.py          # MCP tool definitions
-│   ├── resources.py      # MCP resources
-│   └── transports/       # Transport implementations
-│       ├── stdio.py
-│       └── http.py
-└── config/               # Configuration management
-    ├── __init__.py
-    ├── global_config.py  # ~/.graphiti/config.toml
-    └── project_config.py # .graphiti/config.toml
+~/.graphiti/retention.db          # global scope sidecar
+.graphiti/retention.db            # per-project scope sidecar
 ```
 
-### Structure Rationale
+Same placement pattern as `graphiti.kuzu` — one DB per scope, one retention sidecar per scope.
 
-- **cli/**: Entry point for all operations; provides the canonical interface that other wrappers call
-- **core/**: Business logic is isolated from interfaces, making it testable and reusable across CLI, hooks, and MCP
-- **storage/**: Kuzu adapter abstracts database details; schema defines graph structure separately from implementation
-- **hooks/**: Wrapper scripts that invoke CLI commands; minimal logic to ensure maintainability
-- **mcp/**: MCP server wraps core operations, not CLI (for better error handling), but CLI remains primary interface
-- **config/**: Hierarchical config (global defaults, project overrides) using standard patterns
+### Schema
 
-## Architectural Patterns
+```sql
+CREATE TABLE IF NOT EXISTS entity_retention (
+    uuid TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    created_at REAL NOT NULL,       -- Unix timestamp
+    last_accessed_at REAL NOT NULL, -- Updated on every search/get_entity hit
+    access_count INTEGER DEFAULT 0, -- Reinforcement signal
+    reinforcement_score REAL DEFAULT 1.0,  -- Computed: decays with time, boosts with access
+    ttl_days INTEGER DEFAULT 90     -- Per-entity override (NULL = use config default)
+);
+CREATE INDEX IF NOT EXISTS idx_last_accessed ON entity_retention(last_accessed_at);
+CREATE INDEX IF NOT EXISTS idx_group_id ON entity_retention(group_id);
+```
 
-### Pattern 1: CLI-First with Interface Wrappers
+### New Module: `src/retention/`
 
-**What:** Core functionality exposed through CLI as primary interface, with hooks and MCP as thin wrappers calling CLI operations.
+```
+src/retention/
+    __init__.py
+    store.py          # RetentionStore — SQLite sidecar CRUD
+    policy.py         # RetentionPolicy — TTL, scoring, expiry decisions
+    sweeper.py        # RetentionSweeper — background scan + delete expired
+```
 
-**When to use:** When building multi-interface tools where consistency is critical and you want a single source of truth for operations.
+`RetentionStore` is initialized by `GraphService.__init__()` alongside `GraphManager`.
+It receives the same `scope` and `project_root` signals to open the correct sidecar.
 
-**Trade-offs:**
-- **Pros:** Single implementation to maintain; CLI provides excellent debugging; consistent behavior across interfaces; easier testing
-- **Cons:** Slight performance overhead from subprocess calls; serialization/deserialization of data between processes; less type safety at boundaries
+### What `compact()` in `service.py` Becomes
 
-**Example:**
+The existing `compact()` method removes exact-name duplicates. Retention adds a distinct operation:
+`expire()` — deletes entities whose `reinforcement_score` has decayed below threshold.
+
+These are separate concerns:
+- `compact()` — deduplication (already shipped, kept as-is)
+- `expire()` — time-based decay (new, added to `GraphService`)
+
+Both should be exposed as a combined `graphiti compact --with-expiry` flag for convenience,
+or as separate `graphiti compact` and `graphiti expire` commands. The MCP tool `graphiti_compact`
+should accept an optional `--with-expiry` argument.
+
+### Access Tracking Hook
+
+`GraphService.search()` and `GraphService.get_entity()` are the two read paths.
+After every successful result, call `retention_store.record_access(uuid)` for each returned entity.
+This is a fire-and-forget write to SQLite (no await needed — use `threading.Thread` or
+run in the existing `BackgroundWorker`).
+
+```
+src/graph/service.py (modified)
+    search()
+        → calls retention_store.record_access() for each result uuid
+    get_entity()
+        → calls retention_store.record_access() for entity uuid
+```
+
+### LLMConfig Addition
+
+Add to `LLMConfig` in `src/llm/config.py`:
 ```python
-# hooks/git/post-commit (shell script calling CLI)
-#!/bin/bash
-graphiti add --mode commit --async --project-dir "$PWD"
-
-# mcp/tools.py (Python calling CLI via subprocess)
-async def add_knowledge(content: str, mode: str = "manual"):
-    result = await asyncio.create_subprocess_exec(
-        "graphiti", "add",
-        "--content", content,
-        "--mode", mode,
-        "--format", "json",  # Machine-readable output
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await result.communicate()
-    return json.loads(stdout)
-
-# Alternative: MCP wraps core library directly (better for error handling)
-from graphiti.core.graph import KnowledgeGraph
-
-async def add_knowledge(content: str, mode: str = "manual"):
-    graph = KnowledgeGraph.from_context()
-    return await graph.add(content, mode=mode)
+retention_ttl_days: int = 90                  # Default entity TTL
+retention_score_threshold: float = 0.1        # Delete below this score
+retention_sweep_interval_hours: int = 24      # How often sweeper runs
 ```
 
-**Recommendation:** Use direct core library calls for MCP (better error handling, type safety) but keep CLI as the canonical human interface. Hooks should call CLI (simpler, shell-based).
+And corresponding `[retention]` section in `llm.toml`:
+```toml
+[retention]
+ttl_days = 90
+score_threshold = 0.1
+sweep_interval_hours = 24
+```
 
-### Pattern 2: Graph Selector (Global vs Per-Project)
+---
 
-**What:** Routing layer that determines whether operations target global preferences graph or project-specific knowledge graph based on context.
+## 2. Configurable Capture Modes
 
-**When to use:** When managing multiple knowledge domains with different scopes (user-wide vs project-specific).
+### What "Decisions-Only" vs "Decisions-and-Patterns" Actually Means
 
-**Trade-offs:**
-- **Pros:** Clean separation of concerns; git-safe project graphs; global preferences apply everywhere
-- **Cons:** Must handle "which graph?" decision for every operation; potential confusion if routing logic is unclear
+Looking at `src/capture/relevance.py`: there are already four `RELEVANCE_CATEGORIES`:
+`decisions`, `architecture`, `bugs`, `dependencies`. All four are active today.
 
-**Example:**
+Looking at `src/capture/summarizer.py`: `BATCH_SUMMARIZATION_PROMPT` extracts
+"Decisions & Rationale", "Architecture & Patterns", "Bug Fixes & Root Causes",
+"Dependencies & Config" — all four categories, always.
+
+So "decisions-only" in v1.1 means **narrowing** the prompt and the relevance filter
+to only `decisions` + `bugs` (no architecture patterns, no dependency tracking).
+"Decisions-and-patterns" is the current full behavior, but renamed to make it explicit.
+
+### Where the Mode Hook Lives
+
+**Not in the git post-commit hook shell script.** The shell hook just appends the commit hash
+to `~/.graphiti/pending_commits`. The mode needs to be read when the background worker
+processes the queue — in Python, not shell.
+
+**The capture pipeline flow:**
+```
+git commit
+  → post-commit.sh appends hash to pending_commits
+  → BackgroundWorker reads pending_commits (src/queue/worker.py)
+  → git_worker.py fetches diff, calls summarize_and_store()
+  → summarize_and_store() → summarize_batch() → BATCH_SUMMARIZATION_PROMPT
+  → service.add()
+```
+
+The mode lives in `summarize_batch()` — it selects which prompt template to use.
+
+### Implementation: Prompt Selection, Not Filter
+
+The mode is a **prompt change**, not a post-LLM filter. Two separate prompts:
+
 ```python
-# core/selector.py
-class GraphSelector:
-    def __init__(self):
-        self.global_path = Path.home() / ".graphiti" / "global"
+# src/capture/summarizer.py
 
-    def select_graph(self, project_dir: Optional[Path] = None) -> Path:
-        """Route to global or project graph based on context."""
-        if project_dir is None:
-            # No project context, use global
-            return self.global_path
+DECISIONS_ONLY_PROMPT = """...
+EXTRACT ONLY:
+1. **Decisions & Rationale**: Why something was chosen over alternatives
+2. **Bug Fixes & Root Causes**: What went wrong, why, how it was fixed
+EXCLUDE: Architecture patterns, dependency changes, all code details
+..."""
 
-        project_graph = project_dir / ".graphiti"
-        if project_graph.exists():
-            # Project graph initialized, use it
-            return project_graph
-
-        # Fallback to global (project not initialized)
-        return self.global_path
-
-    def get_merged_context(self, project_dir: Optional[Path] = None) -> list:
-        """Retrieve knowledge from both global and project graphs."""
-        contexts = []
-
-        # Always include global preferences
-        global_graph = KuzuGraph(self.global_path)
-        contexts.append(global_graph.search(query))
-
-        # Add project-specific if available
-        if project_dir and (project_dir / ".graphiti").exists():
-            project_graph = KuzuGraph(project_dir / ".graphiti")
-            contexts.append(project_graph.search(query))
-
-        return contexts
+DECISIONS_AND_PATTERNS_PROMPT = """... (current BATCH_SUMMARIZATION_PROMPT) ..."""
 ```
 
-### Pattern 3: Background Async Queue
+`summarize_batch()` accepts a `mode: str = "decisions-and-patterns"` argument.
+The mode value is read from `LLMConfig` at call time.
 
-**What:** Non-blocking capture system using local queue for job submission with background worker processing.
+For `decisions-only`, the `relevance.py` filter is tightened too: only `decisions`
+and `bugs` categories pass. This provides a pre-LLM filter that reduces content
+sent to the LLM (saves tokens, faster), and a prompt that excludes the rest.
 
-**When to use:** When operations must never block user workflow but need expensive processing (LLM calls, graph updates).
+### Config Integration
 
-**Trade-offs:**
-- **Pros:** Zero latency impact on dev work; graceful degradation if processing fails; can batch operations
-- **Cons:** Eventual consistency (knowledge not immediately available); need monitoring/failure handling; additional complexity
-
-**Example:**
+**`LLMConfig` addition:**
 ```python
-# core/queue/manager.py
-import asyncio
-from asyncio import Queue
-from dataclasses import dataclass
-from typing import Optional
-
-@dataclass
-class CaptureJob:
-    content: str
-    mode: str
-    project_dir: Optional[Path]
-    timestamp: float
-
-class QueueManager:
-    def __init__(self):
-        self.queue = Queue()
-        self.worker = None
-
-    async def submit(self, content: str, mode: str, project_dir: Optional[Path] = None):
-        """Submit job to queue (non-blocking)."""
-        job = CaptureJob(
-            content=content,
-            mode=mode,
-            project_dir=project_dir,
-            timestamp=time.time()
-        )
-        await self.queue.put(job)
-
-    async def start_worker(self):
-        """Start background worker to process queue."""
-        self.worker = asyncio.create_task(self._process_queue())
-
-    async def _process_queue(self):
-        """Background worker processing jobs."""
-        while True:
-            try:
-                job = await self.queue.get()
-                await self._process_job(job)
-            except Exception as e:
-                logger.error(f"Queue processing error: {e}")
-                # Don't crash worker on errors
-
-    async def _process_job(self, job: CaptureJob):
-        """Process individual capture job."""
-        # Filter content
-        if not security_filter.is_safe(job.content):
-            return
-
-        # Extract entities via LLM
-        entities = await llm_client.extract_entities(job.content)
-
-        # Store in graph
-        graph = graph_selector.select_graph(job.project_dir)
-        await graph.add_entities(entities)
-
-# Usage in CLI
-queue_manager = QueueManager()
-await queue_manager.submit(content, mode="conversation", project_dir=cwd)
-# Returns immediately, processing happens in background
+capture_mode: str = "decisions-and-patterns"  # "decisions-only" | "decisions-and-patterns"
 ```
 
-### Pattern 4: Security Filter Pipeline
+**`llm.toml` section:**
+```toml
+[capture]
+mode = "decisions-only"  # or "decisions-and-patterns"
+```
 
-**What:** Multi-stage filtering to prevent secrets, PII, and sensitive data from entering knowledge graphs.
+**No changes to the git hook shell template.** The hook is mode-agnostic.
+The mode is read in Python when content is processed.
 
-**When to use:** When capturing automatic context that must be git-safe and never leak credentials.
+### Files Modified
 
-**Trade-offs:**
-- **Pros:** Defense in depth (file-level + entity-level); configurable patterns; catches secrets before storage
-- **Cons:** False positives (over-filtering); maintenance burden for patterns; can't catch novel secret formats
+| File | Change |
+|------|--------|
+| `src/capture/summarizer.py` | Add `DECISIONS_ONLY_PROMPT`, `mode` param to `summarize_batch()` |
+| `src/capture/relevance.py` | Add `filter_for_mode(content, mode)` — narrows categories |
+| `src/llm/config.py` | Add `capture_mode: str` field |
+| `src/llm/config.py` (`load_config`) | Read `[capture] mode` from TOML |
+| `src/capture/git_worker.py` | Pass `mode=config.capture_mode` to `summarize_and_store()` |
+| `src/capture/conversation.py` | Same — pass mode for conversation captures |
 
-**Example:**
+### No New Modules
+
+This is entirely a parameterization of existing code. No new `src/` directory needed.
+
+---
+
+## 3. Localhost UI
+
+### What `graphiti ui` Should Do
+
+The UI goal is: graph visualization (entity nodes + relationship edges) and a monitoring
+dashboard for capture stats. This is a read-only view of Kuzu data.
+
+### Option A: Docker-based Kuzu Explorer (Recommended for Node Graph)
+
+Kuzu ships an official browser-based explorer (`kuzudb/explorer` Docker image) that provides
+graph visualization at `http://localhost:8000`. The user mounts a local Kuzu database path
+as a volume.
+
+**`graphiti ui` command implementation:**
+```
+src/cli/commands/ui.py (new)
+```
+
+The command:
+1. Checks Docker is available (`docker info`)
+2. Resolves the current scope's Kuzu DB path (global or project)
+3. Mounts it read-only: `docker run -p 8000:8000 -v <db_path>:/database:ro kuzudb/explorer`
+4. Opens browser to `http://localhost:8000`
+5. Stays running until Ctrl+C (or `--detach` flag)
+
+**Constraint:** Kuzu Explorer requires Docker. Document this requirement.
+The Kuzu DB cannot be open by two writers simultaneously — use read-only volume mount to avoid
+conflicts with the running graphiti process.
+
+**Cons of this option:** requires Docker; the Explorer UI is Kuzu's generic query interface,
+not a graphiti-branded dashboard. Good for graph exploration, not for capture monitoring.
+
+### Option B: FastAPI + Custom UI (Recommended for Monitoring Dashboard)
+
+For the monitoring dashboard (capture stats, queue depth, retention health), a small FastAPI
+server in `src/ui/` is the right tool. It does not require Docker.
+
+**`graphiti ui` serves two surfaces:**
+- `/` → static HTML dashboard (capture stats, queue depth, entity counts, retention health)
+- `/api/stats` → JSON endpoint — entity_count, episode_count, queue_depth, last_capture_time
+- `/api/graph` → JSON graph data (nodes + edges) for D3.js or Cytoscape.js visualization
+
+**`src/ui/` module:**
+```
+src/ui/
+    __init__.py
+    server.py         # FastAPI app, route definitions
+    static/
+        index.html    # Dashboard HTML (single file, embedded JS — no build step)
+```
+
+**How it reads Kuzu:**
+`server.py` calls `GraphService` methods directly (same process, same `run_graph_operation()`
+pattern). It does NOT go through the CLI subprocess. This is acceptable because `graphiti ui`
+is a long-running process that owns the GraphService for the duration of the session.
+
+**Important:** `graphiti ui` must NOT run at the same time as `graphiti mcp serve` using the
+same Kuzu DB path, since Kuzu allows only one writer per database. Document this constraint.
+In practice, during UI sessions the user is browsing — not committing — so capture hooks
+will try to write to Kuzu while the UI holds the connection. Mitigation: open the Kuzu DB
+in read-only mode for the UI server (check KuzuDriver constructor options).
+
+### Recommended Hybrid
+
+- Phase 9 (quick win): Use Docker Kuzu Explorer approach. Zero custom UI code, one command.
+- Phase 10: Add FastAPI dashboard in `src/ui/` for capture monitoring. Kuzu Explorer handles graph viz.
+
+This matches the PROJECT.md "Web UI deferred to Phase 10" note.
+
+### CLI Command Location
+
+```
+src/cli/commands/ui.py (new file)
+```
+
+Registered in the main CLI `__init__.py` the same way `mcp_app`, `hooks_app` are registered.
+
 ```python
-# core/security/file_filter.py
-class FileFilter:
-    """File-level exclusions."""
-    DEFAULT_PATTERNS = [
-        "**/.env*",
-        "**/*secret*",
-        "**/*credential*",
-        "**/*.key",
-        "**/*.pem",
-        "**/config/prod*.yaml",
-    ]
-
-    def should_exclude(self, filepath: Path) -> bool:
-        """Check if file should be excluded from capture."""
-        for pattern in self.patterns:
-            if filepath.match(pattern):
-                return True
-        return False
-
-# core/security/entity_filter.py
-class EntityFilter:
-    """Entity-level sanitization."""
-
-    # Pattern-based detection
-    SECRET_PATTERNS = [
-        r"AKIA[0-9A-Z]{16}",  # AWS access key
-        r"sk-[a-zA-Z0-9]{32,}",  # OpenAI API key
-        r"ghp_[a-zA-Z0-9]{36}",  # GitHub token
-    ]
-
-    # Entropy-based detection
-    MIN_ENTROPY = 4.5  # High-randomness strings
-
-    def sanitize_entity(self, text: str) -> Optional[str]:
-        """Remove secrets from entity text."""
-        # Pattern matching
-        for pattern in self.SECRET_PATTERNS:
-            if re.search(pattern, text):
-                return None  # Discard entity entirely
-
-        # Entropy detection
-        if self._calculate_entropy(text) > self.MIN_ENTROPY:
-            # Could be a secret
-            if len(text) > 16 and not " " in text:
-                return None
-
-        return text
-
-    def _calculate_entropy(self, text: str) -> float:
-        """Calculate Shannon entropy."""
-        if not text:
-            return 0
-        entropy = 0
-        for char in set(text):
-            p = text.count(char) / len(text)
-            entropy -= p * math.log2(p)
-        return entropy
-
-# core/security/filter.py
-class SecurityFilter:
-    """Orchestrate file and entity filtering."""
-
-    def __init__(self):
-        self.file_filter = FileFilter()
-        self.entity_filter = EntityFilter()
-
-    def is_safe_file(self, filepath: Path) -> bool:
-        """Check if file is safe to process."""
-        return not self.file_filter.should_exclude(filepath)
-
-    def sanitize_content(self, content: str) -> Optional[str]:
-        """Sanitize content, return None if unsafe."""
-        return self.entity_filter.sanitize_entity(content)
+@ui_app.command(name="open")  # or just `graphiti ui` as a direct command
+def ui_command(
+    scope: ...,
+    port: int = typer.Option(8000, "--port"),
+    no_browser: bool = typer.Option(False, "--no-browser"),
+):
+    ...
 ```
 
-### Pattern 5: Embedded Graph Database per Scope
+**Files to Create/Modify:**
 
-**What:** Separate Kuzu embedded database instances for global and each project, providing isolation and git-safety.
+| File | Action |
+|------|--------|
+| `src/cli/commands/ui.py` | New — Typer command group, Docker launcher or FastAPI launcher |
+| `src/cli/__init__.py` | Modified — register `ui_app` |
+| `src/ui/server.py` | New (Phase 10 only) — FastAPI app |
+| `src/ui/static/index.html` | New (Phase 10 only) — Dashboard HTML |
 
-**When to use:** When different knowledge domains require separate persistence with different sharing/security properties.
+---
 
-**Trade-offs:**
-- **Pros:** Complete isolation; project graphs are git-committable; no cross-contamination; simple backup
-- **Cons:** Can't easily query across graphs; duplication if same knowledge in multiple projects; multiple database instances
+## 4. Multi-Provider LLM
 
-**Example:**
+### Current Architecture
+
+```
+src/llm/
+    client.py       # OllamaClient — hard-wired to Ollama SDK (cloud + local)
+    config.py       # LLMConfig frozen dataclass + load_config()
+```
+
+`OllamaClient` is Ollama-specific: it uses `ollama.Client` (the Ollama Python SDK),
+not the OpenAI SDK. The cloud endpoint (`https://ollama.com`) happens to be OpenAI-API-compatible,
+but the client is instantiated as an `ollama.Client` with an Authorization header.
+
+`OllamaLLMClient` in `src/graph/adapters.py` wraps `OllamaClient` to implement
+graphiti-core's `LLMClient` ABC.
+
+### What Multi-Provider Means in Practice
+
+The goal: add OpenAI, Anthropic, Groq, and any OpenAI-compatible endpoint as `[provider]`
+config without code changes. The user changes `llm.toml` only.
+
+The right abstraction is a **provider factory** that returns a unified callable interface.
+
+### Recommended Approach: New `src/llm/providers/` Directory
+
+**NOT LiteLLM** — LiteLLM adds a large dependency with a proxy server pattern. This project
+runs locally and needs minimal dependencies. The providers are: OpenAI-compatible (covers
+OpenAI, Groq, any OpenAI-API endpoint), Anthropic (separate SDK), and Ollama (existing).
+
+**Provider interface** — a Protocol matching the existing `OllamaClient.chat()` signature:
 ```python
-# storage/kuzu_adapter.py
-import kuzu
-
-class KuzuGraph:
-    """Adapter for Kuzu embedded graph database."""
-
-    def __init__(self, db_path: Path):
-        self.db_path = db_path
-        self.db_path.mkdir(parents=True, exist_ok=True)
-        self.db = kuzu.Database(str(db_path))
-        self.conn = kuzu.Connection(self.db)
-        self._init_schema()
-
-    def _init_schema(self):
-        """Initialize graph schema."""
-        # Create node tables
-        self.conn.execute("""
-            CREATE NODE TABLE IF NOT EXISTS Entity(
-                id STRING PRIMARY KEY,
-                type STRING,
-                content STRING,
-                created_at TIMESTAMP,
-                last_accessed TIMESTAMP,
-                access_count INT64
-            )
-        """)
-
-        self.conn.execute("""
-            CREATE NODE TABLE IF NOT EXISTS Concept(
-                id STRING PRIMARY KEY,
-                name STRING,
-                embedding FLOAT[768]
-            )
-        """)
-
-        # Create relationship tables
-        self.conn.execute("""
-            CREATE REL TABLE IF NOT EXISTS RELATES_TO(
-                FROM Entity TO Entity,
-                relationship_type STRING,
-                confidence FLOAT
-            )
-        """)
-
-    async def add_entity(self, entity_id: str, entity_type: str, content: str):
-        """Add entity to graph."""
-        self.conn.execute("""
-            CREATE (:Entity {
-                id: $id,
-                type: $type,
-                content: $content,
-                created_at: timestamp(),
-                last_accessed: timestamp(),
-                access_count: 0
-            })
-        """, parameters={"id": entity_id, "type": entity_type, "content": content})
-
-    async def search(self, query: str, embedding: list[float]) -> list:
-        """Search graph using semantic similarity."""
-        # Vector search using Kuzu's built-in vector indexing
-        results = self.conn.execute("""
-            MATCH (c:Concept)
-            WHERE array_cosine_similarity(c.embedding, $embedding) > 0.7
-            MATCH (c)-[:RELATES_TO]->(e:Entity)
-            RETURN e.content, e.type, c.name
-            ORDER BY array_cosine_similarity(c.embedding, $embedding) DESC
-            LIMIT 10
-        """, parameters={"embedding": embedding})
-
-        return results.get_as_df().to_dict('records')
-
-    async def prune_unused(self, days: int = 90):
-        """Remove entities not accessed in N days."""
-        self.conn.execute("""
-            MATCH (e:Entity)
-            WHERE e.last_accessed < timestamp() - interval($days DAY)
-              AND e.access_count < 3
-            DELETE e
-        """, parameters={"days": days})
+# src/llm/providers/base.py
+class LLMProvider(Protocol):
+    def chat(self, model=None, messages=None, **kwargs) -> dict: ...
+    def embed(self, model=None, input=None, **kwargs) -> dict: ...
+    def generate(self, model=None, prompt=None, **kwargs) -> dict: ...
 ```
 
-### Pattern 6: LLM Client with Graceful Fallback
+**Provider implementations:**
+```
+src/llm/providers/
+    __init__.py
+    base.py           # LLMProvider Protocol
+    ollama.py         # Extracted from client.py — existing OllamaClient logic
+    openai_compat.py  # OpenAI SDK client (covers OpenAI, Groq, custom endpoints)
+    anthropic.py      # Anthropic SDK client (translate chat messages format)
+```
 
-**What:** Unified LLM client that tries cloud Ollama first, falls back to local Ollama if quota exhausted or unavailable.
+`openai_compat.py` uses `openai.OpenAI(base_url=..., api_key=...)`. This covers:
+- OpenAI native (`https://api.openai.com/v1`)
+- Groq (`https://api.groq.com/openai/v1`)
+- Any OpenAI-compatible local endpoint (LM Studio, Ollama via `/v1/` path, etc.)
 
-**When to use:** When you want cost-efficiency (free tier) but need reliability (local fallback).
+`anthropic.py` uses `anthropic.Anthropic(api_key=...)` and translates message format.
 
-**Trade-offs:**
-- **Pros:** Cost-efficient; always available; transparent to callers; can tune quality vs speed
-- **Cons:** Inconsistent latency; different model capabilities; quota management complexity
+### Config Changes
 
-**Example:**
+**`LLMConfig` — add provider section:**
 ```python
-# core/llm/client.py
-class LLMClient:
-    """Unified LLM client with cloud-first, local-fallback strategy."""
-
-    def __init__(self):
-        self.cloud = CloudOllamaClient()
-        self.local = LocalOllamaClient()
-        self.quota_exhausted = False
-
-    async def extract_entities(self, content: str) -> dict:
-        """Extract entities using LLM, with fallback."""
-        try:
-            if not self.quota_exhausted:
-                # Try cloud first (free tier)
-                return await self.cloud.extract_entities(content)
-        except QuotaExhausted:
-            self.quota_exhausted = True
-            logger.warning("Cloud quota exhausted, falling back to local")
-        except NetworkError as e:
-            logger.warning(f"Cloud unreachable: {e}, using local")
-
-        # Fallback to local Ollama
-        return await self.local.extract_entities(content)
-
-# core/llm/cloud.py
-class CloudOllamaClient:
-    """Cloud Ollama integration (free tier)."""
-
-    def __init__(self):
-        self.base_url = "https://ollama.ai/api"  # Example
-        self.model = "gemma2:9b"
-
-    async def extract_entities(self, content: str) -> dict:
-        """Extract entities via cloud LLM."""
-        response = await self._call_api(
-            prompt=f"Extract entities from: {content}",
-            temperature=0.1,
-            max_tokens=500
-        )
-        return self._parse_entities(response)
-
-# core/llm/local.py
-class LocalOllamaClient:
-    """Local Ollama fallback."""
-
-    def __init__(self):
-        self.base_url = "http://localhost:11434"
-        self.model = "llama3.2:3b"  # Faster, lower quality
-
-    async def extract_entities(self, content: str) -> dict:
-        """Extract entities via local LLM."""
-        response = await self._call_api(
-            prompt=f"Extract entities from: {content}",
-            temperature=0.1
-        )
-        return self._parse_entities(response)
+# New fields
+provider_type: str = "ollama"             # "ollama" | "openai" | "anthropic" | "openai_compat"
+provider_endpoint: str | None = None      # Custom endpoint (openai_compat)
+provider_api_key: str | None = None       # API key for provider
+provider_models: list[str] = field(default_factory=list)  # Provider model list
 ```
 
-## Data Flow
-
-### Request Flow: Manual Add Operation
-
-```
-User: graphiti add --content "Use pytest for testing"
-    ↓
-[CLI] Parse arguments, validate input
-    ↓
-[Core Engine] Determine target graph (global vs project)
-    ↓
-[Security Filter] Check content safety (no secrets/PII)
-    ↓ (if async flag)
-[Background Queue] Submit job to queue → returns immediately
-    ↓ (background worker)
-[LLM Processing] Extract entities (Cloud Ollama → Local fallback)
-    ↓
-[Storage Layer] Store entities/relationships in Kuzu graph
-    ↓
-[CLI] Output success message
+**`llm.toml` — new `[provider]` section:**
+```toml
+[provider]
+type = "openai"                           # Replaces cloud Ollama
+endpoint = "https://api.openai.com/v1"   # Optional override
+api_key = "sk-..."                        # Or via PROVIDER_API_KEY env var
+models = ["gpt-4o-mini"]
 ```
 
-### Request Flow: Automatic Capture (Git Hook)
+The existing `[cloud]` and `[local]` sections remain for Ollama compatibility.
+`[provider]` takes precedence over `[cloud]` when set.
 
-```
-Git Event: post-commit hook triggered
-    ↓
-[Hook] Call CLI: graphiti add --mode commit --async
-    ↓
-[CLI] Parse commit message and diff
-    ↓
-[Core Engine] Select project graph (.graphiti/)
-    ↓
-[Security Filter]
-    ├─ File-level: Skip .env*, *secret*, etc.
-    └─ Entity-level: Detect and remove secrets/high-entropy strings
-    ↓
-[Background Queue] Submit job (non-blocking, hook returns immediately)
-    ↓ (background worker)
-[LLM Processing] Extract architectural decisions and patterns
-    ↓
-[Storage Layer] Store in project graph
-    ↓
-[Smart Retention] Update access timestamps for relevant entities
-```
+### How It Integrates with `OllamaLLMClient` in `adapters.py`
 
-### Request Flow: MCP Search Operation
+`OllamaLLMClient` calls `ollama_chat` (imported from `src.llm`) through `run_in_executor`.
+After the refactor, `src.llm.chat` becomes provider-aware: it calls the configured provider
+rather than always Ollama.
 
-```
-AI Assistant (Claude): Needs context about project architecture
-    ↓
-[MCP Client] Call tools/call with "search_knowledge" tool
-    ↓
-[MCP Server] Receive request via stdio/HTTP transport
-    ↓
-[Core Engine] Determine context (global + project if available)
-    ↓
-[Storage Layer]
-    ├─ Query global graph for user preferences
-    └─ Query project graph for project-specific knowledge
-    ↓
-[Core Engine] Merge and rank results by relevance
-    ↓
-[MCP Server] Format as MCP resource response
-    ↓
-[AI Assistant] Use context for informed responses
-```
+The `adapters.py` file does NOT change. The `OllamaLLMClient` name is a historical artifact;
+it continues to work by routing through the updated `src.llm.chat()` function.
 
-### Background Processing Flow
+### `client.py` Refactor
 
-```
-[Background Worker] Loop waiting for jobs
-    ↓
-[Queue] Pop next job
-    ↓
-[Security Filter] Final safety check
-    ↓
-[LLM Processing]
-    ├─ Try Cloud Ollama (free tier)
-    │   ├─ Success → Continue
-    │   └─ Quota/Network Error → Fallback to Local
-    └─ Local Ollama (CPU-only, slower but reliable)
-    ↓
-[Storage Layer]
-    ├─ Add new entities/relationships
-    ├─ Update existing entity access timestamps
-    └─ ACID transaction (all-or-nothing)
-    ↓
-[Smart Retention] (periodic)
-    └─ Prune entities unused for 90+ days with <3 accesses
-```
+`OllamaClient` in `client.py` is renamed to the `ollama.py` provider. `client.py` becomes
+a thin **provider factory**:
 
-### Key Data Flows
-
-1. **Synchronous operations (CLI manual add, MCP search):** Direct flow through core → storage, returns result immediately
-2. **Asynchronous operations (git hooks, conversation capture):** Submit to queue, return immediately, background processing
-3. **Multi-graph context (MCP search):** Query both global and project graphs, merge results, rank by relevance
-4. **Graceful degradation (LLM calls):** Cloud Ollama → Local Ollama → Return error (never crash)
-
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-10 projects | Embedded Kuzu per project works perfectly; global graph stays small (<10k entities) |
-| 10-100 projects | Consider project graph archival (compress unused projects); background worker may need rate limiting on LLM calls |
-| 100+ projects | May need shared Kuzu instance for global; consider removing graph data from very old projects |
-
-### Scaling Priorities
-
-1. **First bottleneck: LLM API rate limits**
-   - **What breaks:** Cloud Ollama quota exhausted frequently, local Ollama queue backs up
-   - **Fix:** Implement smarter capture (less frequent, only on meaningful changes), batch entity extraction, tune to extract fewer entities
-
-2. **Second bottleneck: Background queue processing time**
-   - **What breaks:** Queue grows faster than worker can process, delays in knowledge availability
-   - **Fix:** Add multiple background workers (careful with LLM rate limits), prioritize jobs (commits > conversations), implement job expiration
-
-3. **Third bottleneck: Graph query performance**
-   - **What breaks:** Searches slow down as graphs grow (>100k entities)
-   - **Fix:** Kuzu's built-in indexing helps, but consider graph compaction (merge similar entities), prune more aggressively, add caching layer for common queries
-
-**Non-bottlenecks (unlikely to be issues):**
-- Kuzu storage size: Graph databases are compact, even 100k entities ~= few hundred MB
-- Disk I/O: Kuzu's columnar storage optimized for reads, embedded = no network overhead
-- CPU: LLM processing is bottleneck, not graph operations; Kuzu is highly optimized
-- Memory: Kuzu efficient with memory, unlikely to exhaust 32GB RAM on reasonable graph sizes
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Bypassing CLI for Core Operations
-
-**What people do:** Other interfaces (MCP, hooks) directly import and call core library instead of going through CLI.
-
-**Why it's wrong:** Creates multiple paths to same functionality, leading to inconsistent behavior, divergent implementations, and difficult debugging. CLI stops being the source of truth.
-
-**Do this instead:**
-- For hooks: Always call CLI via subprocess (shell scripts)
-- For MCP: Can use core library directly (better error handling) BUT keep CLI as canonical human interface
-- Never duplicate logic in multiple interfaces
-
-**Correct approach:**
 ```python
-# GOOD: Hook calls CLI
-# hooks/git/post-commit
-#!/bin/bash
-graphiti add --mode commit --async
-
-# ACCEPTABLE: MCP calls core library (for error handling)
-# mcp/tools.py
-from graphiti.core.graph import KnowledgeGraph
-async def add_knowledge(content: str):
-    graph = KnowledgeGraph.from_context()
-    return await graph.add(content)
-
-# BAD: MCP reimplements logic
-# mcp/tools.py
-async def add_knowledge(content: str):
-    # Custom entity extraction here (diverges from CLI)
-    entities = custom_extract(content)
-    # Direct storage access (bypasses security filter)
-    graph.store(entities)
+# src/llm/client.py (refactored)
+def get_provider(config: LLMConfig) -> LLMProvider:
+    if config.provider_type == "openai" or config.provider_type == "openai_compat":
+        from src.llm.providers.openai_compat import OpenAICompatProvider
+        return OpenAICompatProvider(config)
+    elif config.provider_type == "anthropic":
+        from src.llm.providers.anthropic import AnthropicProvider
+        return AnthropicProvider(config)
+    else:  # "ollama" (default)
+        from src.llm.providers.ollama import OllamaProvider
+        return OllamaProvider(config)
 ```
 
-### Anti-Pattern 2: Synchronous Capture in Git Hooks
+The module-level `chat()`, `embed()`, `generate()` functions in `src/llm/__init__.py`
+call `get_provider(load_config())` and dispatch. The existing callers (`adapters.py`,
+`summarizer.py`, `indexer/`) continue to work without modification.
 
-**What people do:** Git hooks call `graphiti add` without `--async` flag, waiting for LLM processing to complete.
+### Files Modified/Created
 
-**Why it's wrong:** Blocks git commits for 2-10 seconds while waiting for LLM, terrible UX. Users will disable hooks or abandon tool.
+| File | Action |
+|------|--------|
+| `src/llm/config.py` | Add `provider_type`, `provider_endpoint`, `provider_api_key`, `provider_models` fields |
+| `src/llm/client.py` | Refactor to provider factory `get_provider()` |
+| `src/llm/providers/__init__.py` | New — package init |
+| `src/llm/providers/base.py` | New — `LLMProvider` Protocol |
+| `src/llm/providers/ollama.py` | New — extracted from `client.py` (OllamaClient logic) |
+| `src/llm/providers/openai_compat.py` | New — OpenAI SDK adapter |
+| `src/llm/providers/anthropic.py` | New — Anthropic SDK adapter |
+| `src/graph/adapters.py` | No changes |
+| `src/llm/__init__.py` | Modified — `chat()` calls `get_provider()` |
 
-**Do this instead:** Always use `--async` flag in hooks; submit to background queue and return immediately. User never waits.
+---
 
-**Correct approach:**
-```bash
-# BAD: Blocks commit
-graphiti add --mode commit  # Waits for LLM
+## System Overview: v1.1 Architecture
 
-# GOOD: Non-blocking
-graphiti add --mode commit --async  # Returns immediately
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           INTERFACE LAYER                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │   CLI    │  │  Hooks   │  │   MCP    │  │  UI cmd  │  │  Queue   │   │
+│  │ (typer)  │  │ (git +   │  │ (stdio)  │  │(ui.py)   │  │ worker   │   │
+│  │          │  │ session) │  │          │  │          │  │          │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│       └─────────────┴─────────────┴──────────────┴─────────────┘         │
+├───────────────────────────────────────────────────────────────────────────┤
+│                         SERVICE LAYER                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐  │
+│  │                GraphService (service.py)                             │  │
+│  │  add() search() get_entity() compact() expire() [NEW]               │  │
+│  │  + retention_store.record_access()  [NEW hook in search/get_entity] │  │
+│  └─────────────────────────────────────────────────────────────────────┘  │
+├───────────────────────────────────────────────────────────────────────────┤
+│                       CAPTURE LAYER  (modified)                           │
+│  ┌────────────────────────┐  ┌──────────────────────────────────────┐    │
+│  │    summarizer.py       │  │          relevance.py                 │    │
+│  │  mode-aware prompts    │  │  filter_for_mode(content, mode)      │    │
+│  │  DECISIONS_ONLY_PROMPT │  │  narrows categories for decisions-   │    │
+│  │  DECISIONS_AND_... PTR │  │  only mode                           │    │
+│  └────────────────────────┘  └──────────────────────────────────────┘    │
+├───────────────────────────────────────────────────────────────────────────┤
+│                        LLM LAYER  (new providers)                         │
+│  ┌────────────────────────────────────────────────────────────────────┐   │
+│  │                    Provider Factory (client.py)                    │   │
+│  │  get_provider(config) → OllamaProvider | OpenAICompatProvider |   │   │
+│  │                          AnthropicProvider                         │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+├───────────────────────────────────────────────────────────────────────────┤
+│                       STORAGE LAYER                                       │
+│  ┌────────────────────────┐  ┌────────────────────────┐                  │
+│  │    Kuzu Graph DB       │  │   SQLite Retention DB  │  [NEW]           │
+│  │  (graphiti-core +      │  │   entity_retention     │                  │
+│  │   KuzuDriver)          │  │   (per-scope sidecar)  │                  │
+│  └────────────────────────┘  └────────────────────────┘                  │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Anti-Pattern 3: Shared Mutable State Across Graph Instances
+### New Modules Summary
 
-**What people do:** Create singleton or module-level Kuzu connection shared across global and project graphs.
+| New Module | Purpose |
+|------------|---------|
+| `src/retention/store.py` | SQLite sidecar CRUD for retention metadata |
+| `src/retention/policy.py` | TTL scoring, expiry decisions |
+| `src/retention/sweeper.py` | Background scan + delete expired entities |
+| `src/llm/providers/base.py` | LLMProvider Protocol |
+| `src/llm/providers/ollama.py` | Extracted OllamaClient (existing logic) |
+| `src/llm/providers/openai_compat.py` | OpenAI SDK adapter |
+| `src/llm/providers/anthropic.py` | Anthropic SDK adapter |
+| `src/cli/commands/ui.py` | `graphiti ui` command (Docker launcher) |
 
-**Why it's wrong:** Kuzu embedded instances are per-database; sharing connections causes data corruption, transaction conflicts, and debugging nightmares.
+### Modified Files Summary
 
-**Do this instead:** Each graph scope (global, each project) gets its own Kuzu instance. Use GraphSelector to route operations.
+| Modified File | Change |
+|---------------|--------|
+| `src/graph/service.py` | Add `expire()` method; add retention access tracking in `search()` and `get_entity()` |
+| `src/capture/summarizer.py` | Add `DECISIONS_ONLY_PROMPT`; `mode` param to `summarize_batch()` |
+| `src/capture/relevance.py` | Add `filter_for_mode(content, mode)` |
+| `src/capture/git_worker.py` | Pass `mode=config.capture_mode` to `summarize_and_store()` |
+| `src/capture/conversation.py` | Pass `mode=config.capture_mode` to `summarize_and_store()` |
+| `src/llm/config.py` | Add provider fields, capture_mode, retention fields |
+| `src/llm/client.py` | Refactor to provider factory; existing OllamaClient logic moves to `providers/ollama.py` |
+| `src/llm/__init__.py` | `chat()` calls `get_provider()` instead of singleton OllamaClient |
+| `src/cli/__init__.py` | Register `ui_app` |
 
-**Correct approach:**
-```python
-# BAD: Shared connection
-_kuzu_conn = None  # Module-level singleton
-def get_graph():
-    global _kuzu_conn
-    if _kuzu_conn is None:
-        _kuzu_conn = kuzu.Connection(...)
-    return _kuzu_conn
+---
 
-# GOOD: Per-scope instances
-class KuzuGraph:
-    def __init__(self, db_path: Path):
-        self.db = kuzu.Database(str(db_path))  # Separate instance
-        self.conn = kuzu.Connection(self.db)
+## Recommended Component Boundaries
 
-# Usage
-global_graph = KuzuGraph(Path.home() / ".graphiti" / "global")
-project_graph = KuzuGraph(Path.cwd() / ".graphiti")
+| Component | Responsibility | Does NOT Do |
+|-----------|---------------|-------------|
+| `src/retention/store.py` | Read/write retention SQLite sidecar | Graph queries, entity deletion |
+| `src/retention/policy.py` | Score calculation, expiry decisions | Storage, deletion |
+| `src/retention/sweeper.py` | Periodic scan, calls `service.expire()` | Score logic, storage directly |
+| `src/llm/providers/` | LLM API calls per provider | Failover logic (stays in `client.py`) |
+| `src/cli/commands/ui.py` | Spawn Docker or FastAPI process | Read data directly (delegates to CLI/service) |
+| `src/ui/server.py` (Phase 10) | Serve HTTP dashboard | Modify data — read-only |
+
+---
+
+## Data Flow Changes
+
+### Retention Access Tracking
+
+```
+User: graphiti search "query"
+  → GraphService.search()
+  → graphiti-core search() → Kuzu
+  → Results: [entity_uuids]
+  → RetentionStore.record_access(uuids)  [async, background]
+  → Returns results to user
 ```
 
-### Anti-Pattern 4: Filtering Only at File Level
+### Capture Mode Flow
 
-**What people do:** Implement file exclusions (skip .env files) but skip entity-level sanitization, assuming file filtering is sufficient.
-
-**Why it's wrong:** Secrets leak into graphs from allowed files (e.g., test files with hardcoded tokens, commits with pasted API keys). Git history contains sensitive data in unexpected places.
-
-**Do this instead:** Defense in depth: file-level AND entity-level filtering. Both are necessary.
-
-**Correct approach:**
-```python
-# BAD: Only file filtering
-if not file_filter.should_exclude(filepath):
-    content = read_file(filepath)
-    graph.add(content)  # No entity-level sanitization
-
-# GOOD: Both file and entity filtering
-if not file_filter.should_exclude(filepath):
-    content = read_file(filepath)
-    sanitized = entity_filter.sanitize_content(content)
-    if sanitized:  # None if secrets detected
-        graph.add(sanitized)
+```
+git commit
+  → post-commit.sh: append hash to pending_commits [no change]
+  → BackgroundWorker.process()
+  → git_worker.py: fetch diff
+  → relevance.filter_for_mode(diff, config.capture_mode)  [new filter step]
+  → summarize_batch(items, mode=config.capture_mode)  [prompt selection]
+  → service.add(summary)
 ```
 
-### Anti-Pattern 5: Coupling MCP Transport to Business Logic
+### Multi-Provider LLM Flow
 
-**What people do:** Write MCP server with stdio-specific assumptions embedded throughout, making HTTP transport difficult to add later.
-
-**Why it's wrong:** Violates separation of concerns; transport is orthogonal to business logic. Makes testing hard and alternative transports impossible.
-
-**Do this instead:** Abstract transport layer; core MCP server logic is transport-agnostic. Use transport adapters.
-
-**Correct approach:**
-```python
-# BAD: Transport coupled to logic
-class MCPServer:
-    def __init__(self, stdio_reader, stdio_writer):
-        self.reader = stdio_reader  # Assumes stdio
-        self.writer = stdio_writer
-
-    async def handle_tool_call(self, request):
-        result = await self.process_tool(request)
-        # Writes directly to stdio
-        await self.writer.write(json.dumps(result))
-
-# GOOD: Transport abstraction
-class MCPServer:
-    """Transport-agnostic MCP server."""
-    async def handle_tool_call(self, request: dict) -> dict:
-        # Pure business logic, returns dict
-        return await self.process_tool(request)
-
-class StdioTransport:
-    """Stdio transport adapter."""
-    def __init__(self, server: MCPServer):
-        self.server = server
-
-    async def run(self, reader, writer):
-        async for request in self._read_requests(reader):
-            response = await self.server.handle_tool_call(request)
-            await writer.write(json.dumps(response))
-
-class HTTPTransport:
-    """HTTP transport adapter."""
-    def __init__(self, server: MCPServer):
-        self.server = server
-
-    async def handle_request(self, request):
-        mcp_request = self._parse_http_request(request)
-        response = await self.server.handle_tool_call(mcp_request)
-        return self._format_http_response(response)
+```
+adapters.py: OllamaLLMClient._generate_response(messages, response_model)
+  → loop.run_in_executor(None, lambda: ollama_chat(messages=..., **kwargs))
+  → src.llm.__init__.chat()
+  → get_provider(load_config())           [NEW: provider factory]
+  → provider.chat(messages=..., **kwargs) [dispatches to Ollama/OpenAI/Anthropic]
 ```
 
-## Integration Points
+---
 
-### External Services
+## Anti-Patterns to Avoid
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Cloud Ollama | HTTP REST API with retry + quota tracking | Free tier limits; need quota management and graceful fallback |
-| Local Ollama | HTTP REST API via localhost:11434 | Assumes Ollama running locally; handle connection refused gracefully |
-| Git | Shell script hooks in .git/hooks/ or via Githooks manager | post-commit for capture; must be non-blocking (--async) |
-| MCP Clients | JSON-RPC 2.0 via stdio or HTTP transports | Claude Desktop (stdio), generic clients (HTTP); need transport abstraction |
+### Anti-Pattern 1: Storing TTL Metadata in Kuzu Entity Nodes
 
-### Internal Boundaries
+**What people do:** Add `last_accessed_at` property to the `Entity` node table with raw Kuzu DDL.
+**Why it is wrong:** graphiti-core rebuilds/recreates schema on `build_indices_and_constraints()` calls.
+Custom properties added outside graphiti-core's schema management can be dropped silently.
+Also breaks compatibility with future graphiti-core upgrades.
+**Do this instead:** SQLite sidecar keyed by uuid.
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| CLI ↔ Core | Direct Python function calls | CLI is thin layer over core; validates args, formats output |
-| Hooks ↔ CLI | Subprocess execution | Shell scripts call CLI commands; simple, maintainable |
-| MCP ↔ Core | Direct Python function calls | Better error handling than subprocess; skip CLI serialization overhead |
-| Core ↔ Storage | Adapter pattern (KuzuGraph interface) | Isolates Kuzu details; easier to test, could swap storage later |
-| Core ↔ LLM | Async HTTP client with fallback strategy | Try cloud, fall back to local; unified interface hides complexity |
-| Core ↔ Queue | asyncio.Queue for job submission | Non-blocking submission; background worker processes asynchronously |
+### Anti-Pattern 2: Mode Selection in the Shell Hook
 
-## Build Order Implications
+**What people do:** Add a `GRAPHITI_CAPTURE_MODE` environment variable to `post-commit.sh`
+and pass it through the shell script.
+**Why it is wrong:** The hook just captures the commit hash — it does not process content.
+The mode needs to be active when the background worker summarizes commits (Python), not when
+the hash is appended (shell). Shell env vars do not survive across asynchronous background processing.
+**Do this instead:** Read `config.capture_mode` in `summarize_batch()` at processing time.
 
-Suggested implementation order based on dependencies:
+### Anti-Pattern 3: Making `graphiti ui` Open the Kuzu DB for Writing
 
-### Phase 1: Storage Foundation
-**Why first:** Everything depends on persistent storage; need to migrate from in-memory to Kuzu.
-- Implement Kuzu adapter with schema
-- Test basic graph operations (add, search, delete)
-- Verify embedded architecture works with separate instances
+**What people do:** Serve a FastAPI app that uses `GraphService` with read-write Kuzu access
+simultaneously with background capture.
+**Why it is wrong:** Kuzu is embedded (one writer at a time). If the UI server holds an open
+write connection and a git hook fires, the hook's `service.add()` call will block or fail.
+**Do this instead:** Open Kuzu in read-only mode for the UI server, or use the Docker Kuzu
+Explorer (which documents the read-only volume mount pattern explicitly).
 
-### Phase 2: Core Engine
-**Why second:** Business logic layer that all interfaces will use.
-- Graph selector (global vs project routing)
-- Core operations (add, search, delete, summarize)
-- LLM client with cloud/local fallback
-- Security filter (file + entity level)
+### Anti-Pattern 4: Adding LiteLLM as a Dependency
 
-### Phase 3: CLI Interface
-**Why third:** Primary interface; needed before building wrappers.
-- Typer CLI with subcommands
-- Output formatting (JSON, table, text)
-- Config management (global + project)
-- Integration with core engine
+**What people do:** Add LiteLLM to get multi-provider support "for free".
+**Why it is wrong:** LiteLLM is 170MB+ with dozens of transitive dependencies. It has a
+proxy-server model that adds latency. This project is a local tool where dependency minimalism
+matters. The OpenAI Python SDK covers OpenAI + Groq + any OpenAI-compatible endpoint; Anthropic
+has its own SDK. That is two optional dependencies, not a gateway.
+**Do this instead:** `openai` and `anthropic` as optional extras in `pyproject.toml`
+(`pip install graphiti-knowledge-graph[openai]` or `[anthropic]`).
 
-### Phase 4: Background Queue
-**Why fourth:** Required for non-blocking hooks; can be added incrementally to CLI.
-- asyncio queue implementation
-- Background worker
-- Job definitions
-- Integration with CLI (--async flag)
+---
 
-### Phase 5: Git Hooks
-**Why fifth:** Depends on CLI and background queue.
-- post-commit hook implementation
-- Hook installation script
-- Test non-blocking behavior
+## Phase Sequencing Recommendation
 
-### Phase 6: MCP Server
-**Why last:** Wrapper around core; can be built after CLI is stable.
-- MCP server using Python SDK
-- Tool definitions (add, search, delete, summarize)
-- Transport implementations (stdio, HTTP)
-- Resource definitions (context retrieval)
+Based on integration complexity and dependency order:
 
-**Rationale:** Bottom-up approach ensures each layer has solid foundation. Storage → Core → CLI → Queue → Hooks → MCP matches dependency graph.
+| Phase | Feature | Rationale |
+|-------|---------|-----------|
+| Phase 9 | Smart retention | Standalone new module; no existing code changes except `service.py` hook |
+| Phase 10 | Configurable capture modes | Touches summarizer + relevance — easy prompt change, low risk |
+| Phase 11 | `graphiti ui` (Docker Explorer) | No new UI code for Phase 11 — just a CLI command wrapper |
+| Phase 12 | Multi-provider LLM | Largest refactor (client.py decomposition); do last to avoid blocking earlier phases |
+
+**Why retention before modes:**
+Retention requires the new sidecar infrastructure. Capture mode changes are simpler (prompt
+parameterization) and do not block any other phase.
+
+**Why UI before multi-provider LLM:**
+UI is a new surface (no existing code to break). Multi-provider LLM refactors the core
+`client.py` / `__init__.py` and `adapters.py` dependency chain — highest regression risk.
+Do it after other features are stable.
+
+---
+
+## Integration Points Summary (for Planner)
+
+| Question | Answer | New Files | Modified Files |
+|----------|--------|-----------|----------------|
+| Retention TTL/scoring | SQLite sidecar (`src/retention/`); EntityNode has no TTL fields | `src/retention/store.py`, `policy.py`, `sweeper.py` | `service.py`, `config.py` |
+| Retention vs compact() | `compact()` = dedup (unchanged); `expire()` = new method in service | None | `service.py` |
+| Capture mode | Prompt change + filter in summarizer.py; no hook changes | None | `summarizer.py`, `relevance.py`, `config.py`, `git_worker.py`, `conversation.py` |
+| Localhost UI | Docker Kuzu Explorer wrapped by CLI command | `src/cli/commands/ui.py` | `src/cli/__init__.py` |
+| UI data access | Read-only Kuzu mount (Docker) or read-only GraphService (FastAPI, Phase 10) | `src/ui/server.py` (Phase 10) | None |
+| Multi-provider LLM | `src/llm/providers/` directory; `client.py` becomes factory | `providers/base.py`, `ollama.py`, `openai_compat.py`, `anthropic.py` | `client.py`, `config.py`, `llm/__init__.py` |
+| Adapters.py changes | None — `OllamaLLMClient` continues working unchanged | None | None |
+
+---
 
 ## Sources
 
-**CLI Architecture & Patterns:**
-- [Command Line Interface Guidelines](https://clig.dev/) - CLI design principles for human-first interfaces
-- [Tailor Gemini CLI to your workflow with hooks](https://developers.googleblog.com/tailor-gemini-cli-to-your-workflow-with-hooks/) - 2026 CLI hooks patterns
-- [Unix Interface Design Patterns](https://homepage.cs.uri.edu/~thenry/resources/unix_art/ch11s06.html) - Separation of engine from interface
-- [Designing and Architecting the Confluent CLI](https://www.confluent.io/blog/how-we-designed-and-architected-the-confluent-cli/) - Multi-backend unified CLI experience
-
-**Knowledge Graph Architecture:**
-- [GraphRAG & Knowledge Graphs: Making Your Data AI-Ready for 2026](https://flur.ee/fluree-blog/graphrag-knowledge-graphs-making-your-data-ai-ready-for-2026/) - Modern KG architecture patterns
-- [Kuzu GitHub Repository](https://github.com/kuzudb/kuzu) - Embedded graph database architecture
-- [Building Production-Ready Graph Systems in 2025](https://medium.com/@claudiubranzan/from-llms-to-knowledge-graphs-building-production-ready-graph-systems-in-2025-2b4aff1ec99a) - MEDIUM confidence
-
-**MCP Architecture:**
-- [MCP Architecture Overview](https://modelcontextprotocol.io/docs/learn/architecture) - Official MCP protocol architecture (HIGH confidence)
-- [MCP Server Best Practices for 2026](https://www.cdata.com/blog/mcp-server-best-practices-2026) - Security and OAuth 2.1 patterns
-- [Building Scalable MCP Servers with Domain-Driven Design](https://medium.com/@chris.p.hughes10/building-scalable-mcp-servers-with-domain-driven-design-fb9454d4c726) - DDD patterns for MCP
-
-**Background Processing:**
-- [Python asyncio Queues Documentation](https://docs.python.org/3/library/asyncio-queue.html) - Official asyncio queue patterns (HIGH confidence)
-- [Taskiq: Distributed task queue with async support](https://github.com/taskiq-python/taskiq) - Modern async queue library
-- [RQ: Simple job queues for Python](https://python-rq.org/) - Redis-backed job processing (HIGH confidence)
-
-**Security & Filtering:**
-- [Yelp detect-secrets](https://github.com/Yelp/detect-secrets) - Enterprise secrets detection patterns
-- [Bandit: Python security scanner](https://www.helpnetsecurity.com/2026/01/21/bandit-open-source-tool-find-security-issues-python-code/) - 2026 Python security tool
-- [Pydantic Validation Layers](https://johal.in/pydantic-validation-layers-secure-python-ml-input-sanitization-2025/) - Multi-layer sanitization patterns (MEDIUM confidence)
-- [Top 8 Git Secrets Scanners in 2026](https://www.jit.io/resources/appsec-tools/git-secrets-scanners-key-features-and-top-tools-) - Secret detection tools comparison
-
-**Architecture Patterns:**
-- [Layered Architecture in Software Design](https://www.sayonetech.com/blog/software-architecture-patterns/) - 2026 architecture patterns overview
-- [The 2026 Guide to AI Agent Architecture Components](https://procreator.design/blog/guide-to-ai-agent-architecture-components/) - Modern agent architecture patterns
-- [Google's Multi-Agent Design Patterns](https://www.infoq.com/news/2026/01/multi-agent-design-patterns/) - Microservices-style agent architecture
-
-**Configuration Management:**
-- [A Design Pattern for Configuration Management in Python](https://www.hackerearth.com/practice/notes/samarthbhargav/a-design-pattern-for-configuration-management-in-python/) - Python config patterns
-- [Best Practices for Working with Configuration in Python](https://tech.preferred.jp/en/blog/working-with-configuration-in-python/) - Hierarchical config patterns (MEDIUM confidence)
+- graphiti-core 0.26.3 source: `/home/tasostilsi/Development/Projects/graphiti-knowledge-graph/.venv/lib/python3.12/site-packages/graphiti_core/nodes.py` (EntityNode fields verified)
+- graphiti-core edges.py: confirmed `expired_at`, `valid_at`, `invalid_at` fields exist on EdgeNode only
+- Kuzu Explorer Docker: [kuzudb/explorer](https://github.com/kuzudb/explorer), [Docker Hub](https://hub.docker.com/r/kuzudb/explorer)
+- Kuzu Explorer docs: [docs.kuzudb.com/visualization/kuzu-explorer/](https://docs.kuzudb.com/visualization/kuzu-explorer/)
+- Multi-provider options: [LiteLLM](https://docs.litellm.ai/docs/), [aisuite](https://pypi.org/project/aisuite/)
+- graphiti-core GitHub: [getzep/graphiti](https://github.com/getzep/graphiti)
+- Existing codebase reviewed: `service.py`, `adapters.py`, `client.py`, `config.py`, `summarizer.py`, `relevance.py`, `graph_manager.py`, `hooks/`, `capture/`
 
 ---
-*Architecture research for: Multi-interface knowledge graph systems*
-*Researched: 2026-02-02*
-*Confidence: HIGH (verified with official docs and 2026 sources)*
+
+*Architecture research for: graphiti-knowledge-graph v1.1 Advanced Features*
+*Researched: 2026-03-01*
