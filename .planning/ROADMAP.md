@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- ✅ **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- 📋 **v1.1 Advanced Features** — Phases 9–11 (planned)
+- [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
+- [ ] **v1.1 Advanced Features** — Phases 9–12 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 MVP (Phases 1–8.9) — SHIPPED 2026-03-01</summary>
+<summary>v1.0 MVP (Phases 1–8.9) — SHIPPED 2026-03-01</summary>
 
 - [x] Phase 1: Storage Foundation (3/3 plans) — completed 2026-02-03
 - [x] Phase 2: Security Filtering (5/5 plans) — completed 2026-02-04
@@ -33,11 +33,59 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 
 </details>
 
-### 📋 v1.1 Advanced Features (Planned)
+### v1.1 Advanced Features (Phases 9–12)
 
-- [ ] Phase 9: Advanced Features — Smart retention, capture modes, performance, context refresh
-- [ ] Phase 10: Frontend UI — Localhost graph visualization and monitoring dashboard
-- [ ] Phase 11: Multi-Provider LLM Support — OpenAI, Anthropic, Groq, any OpenAI-compatible endpoint
+- [ ] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion
+- [ ] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate
+- [ ] **Phase 11: Graph UI** — `graphiti ui` command launching Docker Kuzu Explorer for localhost graph visualization with scope selection
+- [ ] **Phase 12: Multi-Provider LLM** — Provider factory pattern enabling OpenAI, Groq, and any OpenAI-compatible endpoint via llm.toml without code changes
+
+## Phase Details
+
+### Phase 9: Smart Retention
+**Goal**: Users can manage knowledge freshness — stale knowledge expires automatically, frequently-accessed knowledge persists longer, and critical knowledge is pinned permanently.
+**Depends on**: Phase 8 (graph service and CLI foundation)
+**Requirements**: RETN-01, RETN-02, RETN-03, RETN-04, RETN-05, RETN-06
+**Success Criteria** (what must be TRUE):
+  1. User can run `graphiti stale` to see a list of nodes that would be deleted before any deletion occurs
+  2. User can run `graphiti compact --expire` to delete nodes older than `retention_days` (default 90) with no dangling edges left behind
+  3. User can set `[retention] retention_days = N` in `llm.toml` and the next retention sweep respects that value
+  4. User can run `graphiti pin <uuid>` to protect a node — it does not appear in `graphiti stale` output and is not deleted by `compact --expire`
+  5. User can run `graphiti unpin <uuid>` to remove pin protection — the node becomes eligible for TTL expiry again
+**Plans**: TBD
+
+### Phase 10: Configurable Capture Modes
+**Goal**: Users can control what the capture system records — narrow (decisions and architecture only) or broad (decisions, patterns, bugs, dependencies) — and see the active mode at a glance.
+**Depends on**: Phase 9 (stable retention infrastructure before adding capture parameterization)
+**Requirements**: CAPT-01, CAPT-02, CAPT-03
+**Success Criteria** (what must be TRUE):
+  1. User can set `[capture] mode = "decisions-only"` in `llm.toml` and subsequent captures record only decisions and architectural choices
+  2. User can set `[capture] mode = "decisions-and-patterns"` in `llm.toml` and subsequent captures also record bugs, patterns, and dependencies
+  3. User can run `graphiti config show` and see the active capture mode clearly labeled in the output
+  4. Security sanitization runs before any mode-based filtering regardless of which mode is active (secrets are never captured in any mode)
+**Plans**: TBD
+
+### Phase 11: Graph UI
+**Goal**: Users can visually explore their knowledge graph in a browser — seeing entity nodes and relationship edges — launched from the CLI with scope selection and no manual Docker configuration.
+**Depends on**: Phase 10 (stable capture pipeline before exposing visualization; Docker Kuzu Explorer has zero Python dependency risk)
+**Requirements**: UI-01, UI-02, UI-03
+**Success Criteria** (what must be TRUE):
+  1. User can run `graphiti ui` and a browser opens to `http://localhost:8000` showing the project-scope knowledge graph
+  2. The Kuzu database is mounted read-only — the UI cannot modify graph content
+  3. User can run `graphiti ui --global` to visualize the global scope graph instead of the project scope
+  4. `graphiti ui` fails with a clear error message if Docker is not installed or not running, rather than hanging silently
+**Plans**: TBD
+
+### Phase 12: Multi-Provider LLM
+**Goal**: Users can switch LLM providers (OpenAI, Groq, any OpenAI-compatible endpoint) by editing `llm.toml` — no code changes required — with clear startup feedback on provider reachability.
+**Depends on**: Phase 11 (highest regression risk deferred last; retention, capture modes, and UI must be stable before restructuring the LLM dispatch chain)
+**Requirements**: PROV-01, PROV-02, PROV-03, PROV-04
+**Success Criteria** (what must be TRUE):
+  1. User can add a `[provider]` section to `llm.toml` specifying `type = "openai"`, `base_url`, and `api_key`, and all graph operations use that provider without restarting
+  2. An existing `llm.toml` without a `[provider]` section continues to work with Ollama exactly as before (backward compatibility guaranteed)
+  3. `graphiti health` shows the active provider name and whether it is reachable
+  4. If the configured provider API key is invalid or the endpoint is unreachable, `graphiti health` reports the error at startup rather than failing silently at first use
+**Plans**: TBD
 
 ## Progress
 
@@ -53,6 +101,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 | 7.1. Git Indexing Pivot | v1.0 | 4/4 | Complete | 2026-02-20 |
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
-| 9. Advanced Features | v1.1 | 0/TBD | Not started | — |
-| 10. Frontend UI | v1.1 | 0/TBD | Not started | — |
-| 11. Multi-Provider LLM | v1.1 | 0/TBD | Not started | — |
+| 9. Smart Retention | v1.1 | 0/TBD | Not started | — |
+| 10. Configurable Capture Modes | v1.1 | 0/TBD | Not started | — |
+| 11. Graph UI | v1.1 | 0/TBD | Not started | — |
+| 12. Multi-Provider LLM | v1.1 | 0/TBD | Not started | — |
