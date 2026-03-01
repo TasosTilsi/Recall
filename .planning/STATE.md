@@ -15,18 +15,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-01 after v1.0 milestone)
+See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Planning next milestone v1.1 (Advanced Features — smart retention, capture modes, performance, UI, multi-provider LLM)
+**Current focus:** Milestone v1.1 Advanced Features — defining requirements
 
 ## Current Position
 
-Milestone v1.0 MVP — SHIPPED 2026-03-01
-18 phases (1–8.9), 62 plans, all complete
-Archived to: .planning/milestones/v1.0-ROADMAP.md, v1.0-REQUIREMENTS.md
-
-Next: `/gsd:new-milestone` to define v1.1 requirements and roadmap
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-01 — Milestone v1.1 started
 
 ## Performance Metrics
 

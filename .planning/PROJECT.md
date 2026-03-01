@@ -8,6 +8,17 @@ A production-ready local knowledge graph system with persistent Kuzu storage, de
 
 **Context continuity without repetition** — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
 
+## Current Milestone: v1.1 Advanced Features
+
+**Goal:** Extend the working v1.0 system with smart knowledge retention, configurable capture modes, a local graph visualization UI, and multi-provider LLM support.
+
+**Target features:**
+- Smart retention — 90-day expiry + reinforcement scoring for frequently-accessed nodes
+- Configurable capture modes — decisions-only (default) vs. decisions-and-patterns
+- Performance budgets — enforce latency targets (context injection <100ms, search <200ms)
+- `graphiti ui` — localhost graph visualization + monitoring dashboard
+- Multi-provider LLM — OpenAI, Anthropic, Groq, any OpenAI-compatible endpoint via `llm.toml`
+
 ## Requirements
 
 ### Validated
@@ -103,4 +114,4 @@ LLM: Cloud Ollama (cloud, chat-only) + local Ollama (gemma2:9b, llama3.2:3b, nom
 | Smart retention (90 days unused) | Keeps knowledge fresh; reinforced facts persist longer; configurable | — Pending (Phase 9) |
 
 ---
-*Last updated: 2026-03-01 after v1.0 milestone*
+*Last updated: 2026-03-01 after v1.1 milestone start*
