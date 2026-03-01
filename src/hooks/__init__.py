@@ -9,6 +9,7 @@ This package provides:
 from .installer import (
     install_claude_hook,
     install_git_hook,
+    is_claude_hook_installed,
     is_git_hook_installed,
     uninstall_claude_hook,
     uninstall_git_hook,
@@ -26,6 +27,7 @@ __all__ = [
     "uninstall_git_hook",
     "is_git_hook_installed",
     "install_claude_hook",
+    "is_claude_hook_installed",
     "uninstall_claude_hook",
     "install_hooks",
     "uninstall_hooks",

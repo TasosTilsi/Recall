@@ -4,7 +4,6 @@ Provides high-level hook management functions that coordinate installation,
 status checking, and configuration toggling across both git and Claude Code hooks.
 """
 
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +17,7 @@ _GRAPHITI_CLI = str(Path(sys.executable).parent / "graphiti")
 from .installer import (
     install_claude_hook,
     install_git_hook,
+    is_claude_hook_installed,
     is_git_hook_installed,
     uninstall_claude_hook,
     uninstall_git_hook,
@@ -90,38 +90,15 @@ def set_hooks_enabled(enabled: bool) -> None:
 def _is_claude_hook_installed(project_path: Path) -> bool:
     """Check if graphiti Claude Code hook is installed.
 
+    Delegates to installer.is_claude_hook_installed — single source of truth.
+
     Args:
         project_path: Path to project root
 
     Returns:
         True if .claude/settings.json has graphiti Stop hook
     """
-    settings_path = project_path / ".claude" / "settings.json"
-
-    if not settings_path.exists():
-        return False
-
-    try:
-        with open(settings_path, 'r') as f:
-            settings = json.load(f)
-
-        if "hooks" not in settings or "Stop" not in settings["hooks"]:
-            return False
-
-        # Check if any Stop hook entry contains graphiti capture command
-        # Settings structure: hooks.Stop = [{ matcher, hooks: [{type, command, ...}] }]
-        for entry in settings["hooks"]["Stop"]:
-            if isinstance(entry, dict):
-                for h in entry.get("hooks", []):
-                    if isinstance(h, dict) and "graphiti capture" in h.get("command", ""):
-                        return True
-
-        return False
-
-    except (json.JSONDecodeError, IOError) as e:
-        logger.warning("Failed to read Claude settings",
-                      path=str(settings_path), error=str(e))
-        return False
+    return is_claude_hook_installed(project_path)
 
 
 def install_hooks(

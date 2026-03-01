@@ -83,6 +83,41 @@ def is_git_hook_installed(repo_path: Path) -> bool:
         return False
 
 
+def is_claude_hook_installed(project_path: Path) -> bool:
+    """Check if graphiti Claude Code Stop hook is installed in .claude/settings.json.
+
+    Args:
+        project_path: Path to project root
+
+    Returns:
+        True if .claude/settings.json has a Stop hook entry with graphiti capture command
+    """
+    settings_path = project_path / ".claude" / "settings.json"
+
+    if not settings_path.exists():
+        return False
+
+    try:
+        with open(settings_path, 'r') as f:
+            settings = json.load(f)
+    except (json.JSONDecodeError, IOError) as e:
+        logger.warning("Failed to read .claude/settings.json",
+                      path=str(settings_path), error=str(e))
+        return False
+
+    if "hooks" not in settings or "Stop" not in settings["hooks"]:
+        return False
+
+    # Structure: hooks.Stop = [{ matcher, hooks: [{type, command, ...}] }]
+    for entry in settings["hooks"]["Stop"]:
+        if isinstance(entry, dict):
+            for h in entry.get("hooks", []):
+                if isinstance(h, dict) and "graphiti capture" in h.get("command", ""):
+                    return True
+
+    return False
+
+
 def install_git_hook(repo_path: Path, force: bool = False) -> bool:
     """Install post-commit hook non-destructively.
 

@@ -10,24 +10,14 @@ protocol. Use `logger.*` calls only; logging is configured to stream=sys.stderr.
 """
 import json
 import logging
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-from src.mcp_server.tools import _GRAPHITI_CLI
+from src.mcp_server.tools import _GRAPHITI_CLI, _get_cwd
 
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger(__name__)
-
-
-def _get_project_root() -> str | None:
-    """Get project root at request time (not server start).
-
-    Checks GRAPHITI_PROJECT_ROOT env var first (set by Claude Code per-project),
-    then falls back to CWD. Returns None if not in a git project.
-    """
-    return os.environ.get("GRAPHITI_PROJECT_ROOT") or None
 
 
 def _is_index_stale(project_root: str | None) -> bool:
@@ -106,7 +96,7 @@ def get_context() -> str:
     """
     from src.mcp_server.toon_utils import encode_response, trim_to_token_budget
 
-    project_root = _get_project_root()
+    project_root = _get_cwd()
 
     # Check staleness in <10ms and trigger background re-index if needed.
     # Do NOT wait for re-index — return current (possibly stale) context immediately.

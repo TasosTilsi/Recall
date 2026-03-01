@@ -97,6 +97,24 @@ def _scope_flags(scope: str) -> list[str]:
     return []
 
 
+def _parse_json_or_raw(stdout: str, cmd_name: str) -> str:
+    """Parse JSON stdout and encode via encode_response, or return raw on failure.
+
+    Args:
+        stdout: Raw stdout string from the graphiti CLI subprocess.
+        cmd_name: Command name used in the warning log (e.g. "search", "list").
+
+    Returns:
+        encode_response(data) if stdout is valid JSON, else stdout.strip().
+    """
+    try:
+        data = json.loads(stdout)
+    except json.JSONDecodeError:
+        logger.warning("graphiti %s returned non-JSON output; returning raw stdout", cmd_name)
+        return stdout.strip()
+    return encode_response(data)
+
+
 # ---------------------------------------------------------------------------
 # Read-oriented tools (5)
 # ---------------------------------------------------------------------------
@@ -131,13 +149,7 @@ def graphiti_search(
     if returncode != 0:
         raise RuntimeError(f"graphiti search failed: {stderr.strip()}")
 
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        logger.warning("graphiti search returned non-JSON output; returning raw stdout")
-        return stdout.strip()
-
-    return encode_response(data)
+    return _parse_json_or_raw(stdout, "search")
 
 
 def graphiti_list(
@@ -164,13 +176,7 @@ def graphiti_list(
     if returncode != 0:
         raise RuntimeError(f"graphiti list failed: {stderr.strip()}")
 
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        logger.warning("graphiti list returned non-JSON output; returning raw stdout")
-        return stdout.strip()
-
-    return encode_response(data)
+    return _parse_json_or_raw(stdout, "list")
 
 
 def graphiti_show(name_or_id: str) -> str:
@@ -192,14 +198,8 @@ def graphiti_show(name_or_id: str) -> str:
     if returncode != 0:
         raise RuntimeError(f"graphiti show failed: {stderr.strip()}")
 
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        logger.warning("graphiti show returned non-JSON output; returning raw stdout")
-        return stdout.strip()
-
     # Single item — encode_response() returns JSON (not TOON) for single dicts
-    return encode_response(data)
+    return _parse_json_or_raw(stdout, "show")
 
 
 def graphiti_summarize(scope: str = "auto") -> str:
@@ -222,14 +222,8 @@ def graphiti_summarize(scope: str = "auto") -> str:
     if returncode != 0:
         raise RuntimeError(f"graphiti summarize failed: {stderr.strip()}")
 
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        logger.warning("graphiti summarize returned non-JSON output; returning raw stdout")
-        return stdout.strip()
-
     # Summary is a single dict object — return as JSON (not TOON)
-    return encode_response(data)
+    return _parse_json_or_raw(stdout, "summarize")
 
 
 def graphiti_health() -> str:
