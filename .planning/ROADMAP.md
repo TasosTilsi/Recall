@@ -37,8 +37,9 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 
 - [ ] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion
 - [ ] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate
-- [ ] **Phase 11: Graph UI** — `graphiti ui` command launching Docker Kuzu Explorer for localhost graph visualization with scope selection
+- [ ] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning)
 - [ ] **Phase 12: Multi-Provider LLM** — Provider factory pattern enabling OpenAI, Groq, and any OpenAI-compatible endpoint via llm.toml without code changes
+  > Phases 11 & 12 have zero code overlap — can run in parallel after Phase 10
 
 ## Phase Details
 
@@ -66,19 +67,19 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 **Plans**: TBD
 
 ### Phase 11: Graph UI
-**Goal**: Users can visually explore their knowledge graph in a browser — seeing entity nodes and relationship edges — launched from the CLI with scope selection and no manual Docker configuration.
-**Depends on**: Phase 10 (stable capture pipeline before exposing visualization; Docker Kuzu Explorer has zero Python dependency risk)
+**Goal**: Users can visually explore their knowledge graph in a browser — seeing entity nodes and relationship edges — launched from the CLI with scope selection.
+**Depends on**: Phase 10 (stable capture pipeline before exposing visualization)
 **Requirements**: UI-01, UI-02, UI-03
 **Success Criteria** (what must be TRUE):
   1. User can run `graphiti ui` and a browser opens to `http://localhost:8000` showing the project-scope knowledge graph
   2. The Kuzu database is mounted read-only — the UI cannot modify graph content
   3. User can run `graphiti ui --global` to visualize the global scope graph instead of the project scope
-  4. `graphiti ui` fails with a clear error message if Docker is not installed or not running, rather than hanging silently
+  4. `graphiti ui` fails with a clear error message if required dependencies are missing, rather than hanging silently
 **Plans**: TBD
 
 ### Phase 12: Multi-Provider LLM
 **Goal**: Users can switch LLM providers (OpenAI, Groq, any OpenAI-compatible endpoint) by editing `llm.toml` — no code changes required — with clear startup feedback on provider reachability.
-**Depends on**: Phase 11 (highest regression risk deferred last; retention, capture modes, and UI must be stable before restructuring the LLM dispatch chain)
+**Depends on**: Phase 10 (no code overlap with Phase 11 — can run in parallel)
 **Requirements**: PROV-01, PROV-02, PROV-03, PROV-04
 **Success Criteria** (what must be TRUE):
   1. User can add a `[provider]` section to `llm.toml` specifying `type = "openai"`, `base_url`, and `api_key`, and all graph operations use that provider without restarting
