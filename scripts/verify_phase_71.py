@@ -253,9 +253,10 @@ def test_graphiti_index(r: Runner, skip_ollama: bool) -> None:
             )
         return
 
-    # Index only the 3 most recent commits to keep the test bounded
-    r.info("Running: graphiti index --since HEAD~3 --verbose (may take 30-120s, uses Ollama)...")
-    result = graphiti("index", "--since", "HEAD~3", "--verbose", timeout=180)
+    # Index only the most recent commit to keep the test bounded.
+    # gemma2:9b needs ~60-150s for 2-pass extraction; 300s gives safe margin.
+    r.info("Running: graphiti index --since HEAD~1 --verbose (may take 60-150s, uses Ollama)...")
+    result = graphiti("index", "--since", "HEAD~1", "--verbose", timeout=300)
 
     output = result.stdout + result.stderr
     if result.returncode == 0:
