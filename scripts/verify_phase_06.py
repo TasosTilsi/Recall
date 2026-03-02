@@ -258,6 +258,12 @@ def test_excluded_files_not_captured(r: Runner, skip_ollama: bool) -> None:
         f"FAKE_DB_URL=postgresql://user:password@localhost/testdb\n"
     )
 
+    # Isolate from accumulated backlog so queue process only sees this one commit.
+    pending_file = Path.home() / ".graphiti" / "pending_commits"
+    pending_backup = pending_file.read_text() if pending_file.exists() else None
+    if pending_file.exists():
+        pending_file.unlink()
+
     try:
         git("add", str(test_file))
         commit_result = git("commit", "-m", "test: add fake env file for exclusion verification (will remove)")
@@ -293,7 +299,8 @@ def test_excluded_files_not_captured(r: Runner, skip_ollama: bool) -> None:
             r.ok("Fake secret not found in graph — excluded file correctly ignored")
 
     finally:
-        # Clean up test file and commit
+        if pending_backup is not None:
+            pending_file.write_text(pending_backup)
         if test_file.exists():
             test_file.unlink()
         git("add", "-f", "--", ".env.test_verification")
@@ -321,6 +328,12 @@ def test_captured_knowledge_queryable(r: Runner, skip_ollama: bool) -> None:
         '        """Validate JWT token and check permissions."""\n'
         "        pass\n"
     )
+
+    # Isolate from accumulated backlog so queue process only sees this one commit.
+    pending_file = Path.home() / ".graphiti" / "pending_commits"
+    pending_backup = pending_file.read_text() if pending_file.exists() else None
+    if pending_file.exists():
+        pending_file.unlink()
 
     try:
         git("add", str(test_file))
@@ -356,6 +369,8 @@ def test_captured_knowledge_queryable(r: Runner, skip_ollama: bool) -> None:
             )
 
     finally:
+        if pending_backup is not None:
+            pending_file.write_text(pending_backup)
         if test_file.exists():
             test_file.unlink()
         git("add", "--", "user_auth_service_test_capture.py")
