@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: unknown
-last_updated: "2026-03-05T21:26:21.643Z"
+last_updated: "2026-03-05T21:36:56.107Z"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 ## Current Position
 
 Phase: 9 of 12 (Smart Retention)
-Plan: 01 complete (1/5 plans done)
+Plan: 02 complete (2/5 plans done)
 Status: In progress
-Last activity: 2026-03-05 — 09-01 completed: RetentionManager + LLMConfig retention_days
+Last activity: 2026-03-05 — 09-02 completed: GraphService retention integration (list_stale, archive_nodes, record_access, add() reactivation)
 
-Progress: [█░░░░░░░░░] 5% (v1.1 milestone — 0/4 phases complete, 1/5 plans in Phase 9)
+Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases complete, 2/5 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [█░░░░░░░░░] 5% (v1.1 milestone — 0/4 phases com
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 09-smart-retention P01 | 3 min | 2 tasks | 5 files |
+| Phase 09-smart-retention P02 | 22 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,9 @@ Key v1.1 architectural decisions from research:
 - [v1.1 research]: Phase 12 deferred last — highest regression risk (client.py decomposition touches every graph operation)
 - [Phase 09-smart-retention]: stdlib sqlite3 only for RetentionManager — no additional dependencies
 - [Phase 09-smart-retention]: retention_days minimum 30 enforced in load_config() with structlog warning, default 90
+- [Phase 09-smart-retention]: Lazy imports of get_retention_manager inside method bodies to avoid circular import from src.graph.service to src.retention
+- [Phase 09-smart-retention]: uuid field added to list_entities() and get_entity() result dicts — required for archive filter via e.get('uuid')
+- [Phase 09-smart-retention]: Reactivation fast path in add(): skip EntityNode.get_by_group_ids() when archive_state is empty (most add() calls are a no-op)
 
 ### Pending Todos
 
@@ -82,5 +86,5 @@ Key v1.1 architectural decisions from research:
 ## Session Continuity
 
 Last session: 2026-03-05
-Stopped at: Completed 09-smart-retention/09-01-PLAN.md
+Stopped at: Completed 09-smart-retention/09-02-PLAN.md
 Resume file: None — continue with `/gsd:execute-phase` on next plan in Phase 9

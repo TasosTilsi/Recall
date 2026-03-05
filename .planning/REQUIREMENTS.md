@@ -9,8 +9,8 @@ Requirements for the v1.1 Advanced Features milestone. Each maps to roadmap phas
 
 ### Smart Retention
 
-- [ ] **RETN-01**: User can run `graphiti compact --expire` to delete nodes older than the configured `retention_days` (default 90 days)
-- [ ] **RETN-02**: User can run `graphiti stale` to preview which nodes would be deleted by a retention sweep before committing to deletion
+- [x] **RETN-01**: User can run `graphiti compact --expire` to delete nodes older than the configured `retention_days` (default 90 days)
+- [x] **RETN-02**: User can run `graphiti stale` to preview which nodes would be deleted by a retention sweep before committing to deletion
 - [x] **RETN-03**: User can set `[retention] retention_days` in `llm.toml` to configure the TTL for knowledge expiry
 - [ ] **RETN-04**: User can run `graphiti pin <uuid>` to protect a node from TTL expiry indefinitely
 - [ ] **RETN-05**: User can run `graphiti unpin <uuid>` to remove expiry protection from a pinned node
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RETN-01 | Phase 9 | Pending |
-| RETN-02 | Phase 9 | Pending |
+| RETN-01 | Phase 9 | Complete |
+| RETN-02 | Phase 9 | Complete |
 | RETN-03 | Phase 9 | Complete |
 | RETN-04 | Phase 9 | Pending |
 | RETN-05 | Phase 9 | Pending |
