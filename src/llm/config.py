@@ -58,6 +58,9 @@ class LLMConfig:
     # Hooks configuration
     hooks_enabled: bool = False  # Enable/disable automatic capture hooks
 
+    # Retention configuration
+    retention_days: int = 90  # Days before a node is considered stale (min 30)
+
 
 def load_config(config_path: Path | None = None) -> LLMConfig:
     """Load LLM configuration from TOML file with environment overrides.
@@ -91,6 +94,17 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
     queue = config_data.get("queue", {})
     reranking = config_data.get("reranking", {})
     hooks = config_data.get("hooks", {})
+    retention = config_data.get("retention", {})
+    raw_days = retention.get("retention_days", 90)
+    if raw_days < 30:
+        import structlog as _structlog
+        _structlog.get_logger(__name__).warning(
+            "retention_days below minimum, using default",
+            configured=raw_days,
+            minimum=30,
+            using=90,
+        )
+        raw_days = 90
 
     # Apply environment variable overrides
     cloud_endpoint = os.getenv("OLLAMA_CLOUD_ENDPOINT", cloud.get("endpoint", "https://ollama.com"))
@@ -116,6 +130,7 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         reranking_enabled=reranking.get("enabled", False),
         reranking_backend=reranking.get("backend", "none"),
         hooks_enabled=hooks.get("enabled", False),
+        retention_days=raw_days,
     )
 
 
