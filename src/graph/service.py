@@ -605,6 +605,7 @@ class GraphService:
 
                 # Build entity dict
                 entity_dict = {
+                    "uuid": record["uuid"],
                     "name": record["name"],
                     "type": "entity",
                     "created_at": (
@@ -619,6 +620,18 @@ class GraphService:
                     "relationships": relationships,
                 }
                 entity_dicts.append(entity_dict)
+
+            # Record access for retention tracking (non-blocking)
+            if entity_dicts:
+                try:
+                    from src.retention import get_retention_manager
+                    scope_key = self._get_group_id(scope, project_root)
+                    retention = get_retention_manager()
+                    for ed in entity_dicts:
+                        if ed.get("uuid"):
+                            retention.record_access(uuid=ed["uuid"], scope=scope_key)
+                except Exception:
+                    logger.warning("retention_access_recording_failed", method="get_entity")
 
             # Return single dict, list, or None based on match count
             if len(entity_dicts) == 1:
@@ -975,6 +988,28 @@ class GraphService:
             retention.archive_node(uuid=uuid, scope=scope_key)
 
         return len(uuids)
+
+    async def record_access(
+        self,
+        uuid: str,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> None:
+        """Record an access event for a node in the retention database.
+
+        Failure is always silenced — access recording must not affect the caller.
+
+        Args:
+            uuid: Entity UUID that was accessed
+            scope: Graph scope
+            project_root: Project root path
+        """
+        try:
+            from src.retention import get_retention_manager
+            scope_key = self._get_group_id(scope, project_root)
+            get_retention_manager().record_access(uuid=uuid, scope=scope_key)
+        except Exception:
+            logger.warning("retention_access_recording_failed", method="record_access")
 
     async def get_stats(
         self,
