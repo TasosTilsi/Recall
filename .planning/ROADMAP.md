@@ -53,7 +53,14 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
   3. User can set `[retention] retention_days = N` in `llm.toml` and the next retention sweep respects that value
   4. User can run `graphiti pin <uuid>` to protect a node — it does not appear in `graphiti stale` output and is not deleted by `compact --expire`
   5. User can run `graphiti unpin <uuid>` to remove pin protection — the node becomes eligible for TTL expiry again
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — RetentionManager module + LLMConfig retention_days
+- [ ] 09-02-PLAN.md — GraphService: list_stale, archive_nodes, record_access
+- [ ] 09-03-PLAN.md — stale command + compact --expire flag
+- [ ] 09-04-PLAN.md — pin/unpin commands + MCP stale tool
+- [ ] 09-05-PLAN.md — CLI wiring, show access hook, integration tests + human checkpoint
 
 ### Phase 10: Configurable Capture Modes
 **Goal**: Users can control what the capture system records — narrow (decisions and architecture only) or broad (decisions, patterns, bugs, dependencies) — and see the active mode at a glance.
