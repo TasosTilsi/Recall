@@ -317,6 +317,28 @@ class GraphService:
                 group_id=group_id,
             )
 
+            # Reactivation: if any archived entity was matched by this episode, remove it from archive_state
+            try:
+                from src.retention import get_retention_manager
+                scope_key = self._get_group_id(scope, project_root)
+                retention = get_retention_manager()
+                archived_uuids = retention.get_archive_state_uuids(scope_key)
+                if archived_uuids:
+                    graphiti_instance = await self._get_graphiti(scope, project_root)
+                    current_entities = await EntityNode.get_by_group_ids(
+                        graphiti_instance._driver, group_ids=[group_id]
+                    )
+                    for entity in current_entities:
+                        if entity.uuid in archived_uuids:
+                            retention.clear_archive(uuid=entity.uuid, scope=scope_key)
+                            logger.info(
+                                "retention_node_reactivated",
+                                uuid=entity.uuid,
+                                scope=scope_key,
+                            )
+            except Exception:
+                logger.warning("retention_reactivation_check_failed", method="add")
+
             # Return success result
             # Note: graphiti.add_episode doesn't return created nodes/edges count
             # We'd need to query the graph to get accurate counts
