@@ -98,7 +98,7 @@ class TestCaptureGitCommitsDispatch:
         mock_handler.assert_not_called()
         # Verify the subprocess was called with the right command structure
         call_args = mock_subprocess.call_args[0][0]
-        assert call_args[0] == "graphiti"
+        assert Path(call_args[0]).name == "graphiti"
         assert call_args[1] == "add"
 
 
