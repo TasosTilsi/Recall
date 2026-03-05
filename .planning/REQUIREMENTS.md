@@ -11,10 +11,10 @@ Requirements for the v1.1 Advanced Features milestone. Each maps to roadmap phas
 
 - [ ] **RETN-01**: User can run `graphiti compact --expire` to delete nodes older than the configured `retention_days` (default 90 days)
 - [ ] **RETN-02**: User can run `graphiti stale` to preview which nodes would be deleted by a retention sweep before committing to deletion
-- [ ] **RETN-03**: User can set `[retention] retention_days` in `llm.toml` to configure the TTL for knowledge expiry
+- [x] **RETN-03**: User can set `[retention] retention_days` in `llm.toml` to configure the TTL for knowledge expiry
 - [ ] **RETN-04**: User can run `graphiti pin <uuid>` to protect a node from TTL expiry indefinitely
 - [ ] **RETN-05**: User can run `graphiti unpin <uuid>` to remove expiry protection from a pinned node
-- [ ] **RETN-06**: Retention sweep tracks `last_accessed_at` and `access_count` via SQLite sidecar; frequently-accessed nodes receive extended effective TTL (reinforcement scoring)
+- [x] **RETN-06**: Retention sweep tracks `last_accessed_at` and `access_count` via SQLite sidecar; frequently-accessed nodes receive extended effective TTL (reinforcement scoring)
 
 ### Capture Modes
 
@@ -80,10 +80,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | RETN-01 | Phase 9 | Pending |
 | RETN-02 | Phase 9 | Pending |
-| RETN-03 | Phase 9 | Pending |
+| RETN-03 | Phase 9 | Complete |
 | RETN-04 | Phase 9 | Pending |
 | RETN-05 | Phase 9 | Pending |
-| RETN-06 | Phase 9 | Pending |
+| RETN-06 | Phase 9 | Complete |
 | CAPT-01 | Phase 10 | Pending |
 | CAPT-02 | Phase 10 | Pending |
 | CAPT-03 | Phase 10 | Pending |
