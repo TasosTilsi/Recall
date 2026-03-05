@@ -393,6 +393,9 @@ class GraphService:
             for edge in results:
                 result_list.append(
                     {
+                        "uuid": getattr(edge, "uuid", None),
+                        "source_node_uuid": getattr(edge, "source_node_uuid", None),
+                        "target_node_uuid": getattr(edge, "target_node_uuid", None),
                         "name": getattr(edge, "name", None)
                         or getattr(edge, "fact", "Unknown"),
                         "type": "relationship",
@@ -407,6 +410,23 @@ class GraphService:
                 )
 
             logger.info("Search completed", num_results=len(result_list))
+
+            # Post-filter archived nodes — archived entities are invisible in all outputs
+            try:
+                from src.retention import get_retention_manager
+                scope_key = self._get_group_id(scope, project_root)
+                archived_uuids = get_retention_manager().get_archive_state_uuids(scope_key)
+                result_list = [
+                    r for r in result_list
+                    if not (
+                        r.get("uuid") in archived_uuids
+                        or r.get("source_node_uuid") in archived_uuids
+                        or r.get("target_node_uuid") in archived_uuids
+                    )
+                ]
+            except Exception:
+                logger.warning("retention_filter_failed", method="search")
+
             return result_list
 
         except Exception as e:
@@ -460,6 +480,7 @@ class GraphService:
 
                 result_list.append(
                     {
+                        "uuid": entity.uuid,
                         "name": entity.name,
                         "type": "entity",
                         "created_at": entity.created_at.isoformat(),
@@ -470,6 +491,16 @@ class GraphService:
                 )
 
             logger.info("Listed entities", count=len(result_list))
+
+            # Post-filter archived nodes — archived entities are invisible in all outputs
+            try:
+                from src.retention import get_retention_manager
+                scope_key = self._get_group_id(scope, project_root)
+                archived_uuids = get_retention_manager().get_archive_state_uuids(scope_key)
+                result_list = [e for e in result_list if e.get("uuid") not in archived_uuids]
+            except Exception:
+                logger.warning("retention_filter_failed", method="list_entities")
+
             return result_list
 
         except Exception as e:
@@ -836,6 +867,114 @@ class GraphService:
                 error_type=type(e).__name__,
             )
             raise
+
+    async def list_stale(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> list[dict]:
+        """List entities that are stale (older than retention_days, not pinned, not archived).
+
+        Fetches all entities for the scope, applies retention filters, computes staleness
+        scores, and returns the stale candidates sorted ascending by score (most stale first).
+
+        Args:
+            scope: Graph scope
+            project_root: Project root path (required for PROJECT scope)
+
+        Returns:
+            List of dicts with: uuid, name, age_days, score — sorted ascending by score.
+            Caller (CLI) applies display caps. Always returns full list.
+        """
+        from datetime import timezone as _tz
+
+        from src.retention import get_retention_manager
+
+        graphiti = await self._get_graphiti(scope, project_root)
+        group_id = self._get_group_id(scope, project_root)
+        scope_key = group_id
+
+        config = load_config()
+        retention_days = config.retention_days
+
+        retention = get_retention_manager()
+
+        # Batch reads — two calls total, not N+1
+        archived_uuids = retention.get_archive_state_uuids(scope_key)
+        pinned_uuids = retention.get_pin_state_uuids(scope_key)
+
+        entities = await EntityNode.get_by_group_ids(
+            graphiti._driver, group_ids=[group_id]
+        )
+
+        now = datetime.now(_tz.utc)
+        result_list = []
+        for entity in entities:
+            # Skip archived or pinned
+            if entity.uuid in archived_uuids or entity.uuid in pinned_uuids:
+                continue
+
+            # Normalize timezone-naive created_at
+            created_at = entity.created_at
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=_tz.utc)
+
+            age_days = (now - created_at).total_seconds() / 86400.0
+
+            # Only include nodes older than retention_days
+            if age_days <= retention_days:
+                continue
+
+            access_record = retention.get_access_record(uuid=entity.uuid, scope=scope_key)
+            last_accessed_at = access_record["last_accessed_at"]
+            access_count = access_record["access_count"]
+
+            from src.retention.manager import RetentionManager
+            score = RetentionManager.compute_score(
+                created_at=created_at,
+                last_accessed_at=last_accessed_at,
+                access_count=access_count,
+                retention_days=retention_days,
+            )
+
+            result_list.append(
+                {
+                    "uuid": entity.uuid,
+                    "name": entity.name,
+                    "age_days": round(age_days, 1),
+                    "score": score,
+                }
+            )
+
+        # Sort ascending by score — lowest score = most stale = first
+        result_list.sort(key=lambda x: x["score"])
+        return result_list
+
+    async def archive_nodes(
+        self,
+        uuids: list[str],
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> int:
+        """Archive nodes in retention.db (SQLite-only — Kuzu graph is untouched).
+
+        Args:
+            uuids: List of entity UUIDs to archive
+            scope: Graph scope
+            project_root: Project root path
+
+        Returns:
+            Count of nodes archived
+        """
+        from src.retention import get_retention_manager
+
+        scope_key = self._get_group_id(scope, project_root)
+        retention = get_retention_manager()
+
+        for uuid in uuids:
+            retention.archive_node(uuid=uuid, scope=scope_key)
+
+        return len(uuids)
 
     async def get_stats(
         self,
