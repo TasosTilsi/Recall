@@ -42,6 +42,10 @@ def _compact_graph(scope: GraphScope, project_root: Optional[Path] = None) -> di
 
 
 def compact_command(
+    expire: Annotated[
+        bool,
+        typer.Option("--expire", help="Archive nodes older than retention_days (no dedup)")
+    ] = False,
     force: Annotated[
         bool,
         typer.Option("--force", help="Skip confirmation prompt")
@@ -77,10 +81,33 @@ def compact_command(
         graphiti compact
         graphiti compact --force
         graphiti compact --format json
+        graphiti compact --expire
+        graphiti compact --expire --force
     """
     try:
         # Resolve scope
         scope, project_root = resolve_scope(global_scope, project_scope)
+
+        if expire:
+            with console.status("[cyan]Scanning for stale nodes...", spinner="dots"):
+                stale = run_graph_operation(
+                    get_service().list_stale(scope, project_root, show_all=True)
+                )
+            if not stale:
+                print_success("No stale nodes to archive.")
+                raise typer.Exit(0)
+            console.print(f"\n[cyan]{len(stale)} nodes are eligible for archiving.[/cyan]\n")
+            confirmed = confirm_action(
+                f"{len(stale)} nodes will be archived. Proceed?", force=force
+            )
+            if not confirmed:
+                console.print("Cancelled")
+                raise typer.Exit(0)
+            archived_count = run_graph_operation(
+                get_service().archive_nodes([n["uuid"] for n in stale], scope, project_root)
+            )
+            print_success(f"Archived {archived_count} nodes.")
+            return
 
         # Load current graph statistics
         stats = _get_graph_stats(scope, project_root)
