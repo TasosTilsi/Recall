@@ -91,7 +91,7 @@ def compact_command(
         if expire:
             with console.status("[cyan]Scanning for stale nodes...", spinner="dots"):
                 stale = run_graph_operation(
-                    get_service().list_stale(scope, project_root, show_all=True)
+                    get_service().list_stale(scope, project_root)
                 )
             if not stale:
                 print_success("No stale nodes to archive.")
