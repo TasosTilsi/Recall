@@ -60,6 +60,8 @@ def cli_entry():
 # Command imports
 from src.cli.commands.add import add_command
 from src.cli.commands.search import search_command
+from src.cli.commands.stale import stale_command
+from src.cli.commands.pin import pin_command, unpin_command
 from src.cli.commands.summarize import summarize_command
 from src.cli.commands.compact import compact_command
 from src.cli.commands.list_cmd import list_command
@@ -76,7 +78,9 @@ from src.cli.commands.mcp import mcp_app
 
 # Register commands
 app.command(name="add", help="Add content to the knowledge graph")(add_command)
+app.command(name="pin", help="Protect a node from TTL archiving permanently")(pin_command)
 app.command(name="search", help="Search the knowledge graph")(search_command)
+app.command(name="stale", help="Preview nodes eligible for TTL archiving")(stale_command)
 
 app.command(
     name="summarize",
@@ -97,6 +101,8 @@ app.command(
     name="show",
     help="Show detailed entity information"
 )(show_command)
+
+app.command(name="unpin", help="Remove TTL archiving protection from a node")(unpin_command)
 
 app.command(
     name="delete",
@@ -129,4 +135,4 @@ app.command(name="index", help="Index git history into the knowledge graph")(ind
 app.add_typer(mcp_app, name="mcp", help="MCP server for Claude Code integration")
 
 
-# All 14 commands registered: add, search, list, show, delete, summarize, compact, config, health, queue (group), capture, hooks (group), index, mcp (group)
+# All 17 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, mcp (group)

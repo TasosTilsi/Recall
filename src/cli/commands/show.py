@@ -85,6 +85,7 @@ def show_command(
     # JSON output
     if format == "json":
         print_json(entity_data)
+        _record_entity_access(entity_data, scope, project_root)
         return
 
     # Rich formatted output
@@ -124,3 +125,23 @@ def show_command(
         console.print("\n[dim]No relationships[/dim]")
 
     console.print()  # Blank line at end
+
+    # Record access for retention tracking (must never fail show)
+    _record_entity_access(entity_data, scope, project_root)
+
+
+def _record_entity_access(
+    entity_data: dict,
+    scope: "GraphScope",
+    project_root: Optional[Path],
+) -> None:
+    """Record entity access in retention.db for TTL tracking.
+
+    Silently ignores all errors — access recording must never fail the show command.
+    """
+    try:
+        entity_uuid = entity_data.get("uuid")
+        if entity_uuid:
+            run_graph_operation(get_service().record_access(entity_uuid, scope, project_root))
+    except Exception:
+        pass  # access recording must never fail show
