@@ -939,7 +939,7 @@ class GraphService:
         pinned_uuids = retention.get_pin_state_uuids(scope_key)
 
         entities = await EntityNode.get_by_group_ids(
-            graphiti._driver, group_ids=[group_id]
+            graphiti.driver, group_ids=[group_id]
         )
 
         now = datetime.now(_tz.utc)
