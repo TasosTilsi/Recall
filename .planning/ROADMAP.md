@@ -72,12 +72,13 @@ Plans:
   2. User can set `[capture] mode = "decisions-and-patterns"` in `llm.toml` and subsequent captures also record bugs, patterns, and dependencies
   3. User can run `graphiti config show` and see the active capture mode clearly labeled in the output
   4. Security sanitization runs before any mode-based filtering regardless of which mode is active (secrets are never captured in any mode)
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [ ] 10-01-PLAN.md — Test scaffold (failing stubs for all CAPT-01/02/03 test cases)
 - [ ] 10-02-PLAN.md — Core: LLMConfig.capture_mode + dual prompt constants + summarizer param threading
 - [ ] 10-03-PLAN.md — Wire: CLI config display + call site wiring in git_worker + conversation
+- [ ] 10-04-PLAN.md — Wire: indexer extraction pipeline — mode-aware FREE_FORM_EXTRACTION_PROMPT in extraction.py + capture_mode threading through GitIndexer.run()
 
 ### Phase 11: Graph UI
 **Goal**: Users can visually explore their knowledge graph in a browser — seeing entity nodes and relationship edges — launched from the CLI with scope selection.
@@ -195,6 +196,6 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
-| 10. Configurable Capture Modes | v1.1 | 0/3 | Planned | — |
+| 10. Configurable Capture Modes | v1.1 | 0/4 | Planned | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v1.1 | 0/TBD | Not started | — |
