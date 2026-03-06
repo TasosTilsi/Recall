@@ -167,6 +167,8 @@ def compact_command(
                     f"({reduction_pct:.1f}% reduction)[/dim]"
                 )
 
+    except typer.Exit:
+        raise
     except Exception as e:
         print_error(f"Failed to compact graph: {str(e)}")
         raise typer.Exit(EXIT_ERROR)
