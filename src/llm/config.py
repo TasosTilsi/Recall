@@ -61,6 +61,9 @@ class LLMConfig:
     # Retention configuration
     retention_days: int = 90  # Days before a node is considered stale (min 30)
 
+    # Capture mode: "decisions-only" | "decisions-and-patterns"
+    capture_mode: str = "decisions-only"
+
 
 def load_config(config_path: Path | None = None) -> LLMConfig:
     """Load LLM configuration from TOML file with environment overrides.
@@ -106,6 +109,18 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         )
         raw_days = 90
 
+    capture = config_data.get("capture", {})
+    VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
+    raw_mode = capture.get("mode", "decisions-only")
+    if raw_mode not in VALID_CAPTURE_MODES:
+        import structlog as _structlog
+        _structlog.get_logger(__name__).warning(
+            "invalid capture_mode, falling back to decisions-only",
+            configured=raw_mode,
+            valid=sorted(VALID_CAPTURE_MODES),
+        )
+        raw_mode = "decisions-only"
+
     # Apply environment variable overrides
     cloud_endpoint = os.getenv("OLLAMA_CLOUD_ENDPOINT", cloud.get("endpoint", "https://ollama.com"))
     cloud_api_key = os.getenv("OLLAMA_API_KEY", cloud.get("api_key"))
@@ -131,6 +146,7 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         reranking_backend=reranking.get("backend", "none"),
         hooks_enabled=hooks.get("enabled", False),
         retention_days=raw_days,
+        capture_mode=raw_mode,
     )
 
 
