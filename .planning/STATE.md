@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: unknown
-last_updated: "2026-03-06T06:37:01.275Z"
+last_updated: "2026-03-06T06:44:12.038Z"
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 ## Current Position
 
 Phase: 9 of 12 (Smart Retention)
-Plan: 04 complete (4/5 plans done)
-Status: In progress
-Last activity: 2026-03-06 — 09-04 completed: pin_command/unpin_command CLI and graphiti_stale MCP tool
+Plan: 05 complete — awaiting human-verify checkpoint (Task 3) (5/5 plans done)
+Status: Phase 9 complete pending human approval
+Last activity: 2026-03-06 — 09-05 completed: stale/pin/unpin CLI registration, show access recording, 15 integration tests
 
-Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases complete, 2/5 plans in Phase 9)
+Progress: [███░░░░░░░] 20% (v1.1 milestone — 1/4 phases complete pending human approval, 5/5 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -41,7 +41,7 @@ Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases co
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 01–08.9 (all v1.0 phases) | 62/62 | Complete |
-| 09. Smart Retention | 1/5 | In progress |
+| 09. Smart Retention | 5/5 | Complete (pending human verify) |
 | 10. Capture Modes | 0/TBD | Not started |
 | 11. Graph UI | 0/TBD | Not started |
 | 12. Multi-Provider LLM | 0/TBD | Not started |
@@ -54,6 +54,7 @@ Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases co
 | Phase 09-smart-retention P02 | 22 | 3 tasks | 4 files |
 | Phase 09-smart-retention P03 | 2 | 2 tasks | 2 files |
 | Phase 09-smart-retention P04 | 3 | 2 tasks | 2 files |
+| Phase 09-smart-retention P05 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Key v1.1 architectural decisions from research:
 - [Phase 09-smart-retention]: compact --expire branch returns early before existing dedup logic — zero risk to dedup path
 - [Phase 09-smart-retention]: Use get_service()._get_group_id() in pin.py to guarantee scope_key matches retention sidecar values
 - [Phase 09-smart-retention]: graphiti_stale MCP tool uses --format json --all for full parseable stale list without display cap
+- [Phase 09-smart-retention]: Patch test targets at src.cli.commands.X.get_service not src.graph.get_service — modules bind import at load time
+- [Phase 09-smart-retention]: Auto-fix compact.py: except typer.Exit: raise before except Exception — typer.Exit extends RuntimeError
 
 ### Pending Todos
 
@@ -92,5 +95,5 @@ Key v1.1 architectural decisions from research:
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: Completed 09-smart-retention/09-04-PLAN.md
-Resume file: None — continue with `/gsd:execute-phase` on next plan in Phase 9
+Stopped at: 09-05 human-verify checkpoint (Task 3) — stale/pin/unpin registered, 15 integration tests pass, awaiting manual end-to-end verification
+Resume file: None — type "approved" to complete Phase 9 then move to Phase 10

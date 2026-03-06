@@ -35,7 +35,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 
 ### v1.1 Advanced Features (Phases 9–12)
 
-- [ ] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion
+- [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
 - [ ] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate
 - [ ] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning)
 - [ ] **Phase 12: Multi-Provider LLM** — Provider factory pattern enabling OpenAI, Groq, and any OpenAI-compatible endpoint via llm.toml without code changes
@@ -109,7 +109,7 @@ Plans:
 | 7.1. Git Indexing Pivot | v1.0 | 4/4 | Complete | 2026-02-20 |
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
-| 9. Smart Retention | 4/5 | In Progress|  | — |
+| 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
 | 10. Configurable Capture Modes | v1.1 | 0/TBD | Not started | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v1.1 | 0/TBD | Not started | — |
