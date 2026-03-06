@@ -313,6 +313,31 @@ def graphiti_delete(
     return stdout.strip() or "Entity deleted."
 
 
+def graphiti_stale(scope: str = "auto") -> str:
+    """Preview nodes eligible for TTL archiving.
+
+    Returns TOON-encoded list of stale nodes with name, age (days), and score.
+    Score 0.0 = most stale, 1.0 = healthiest.
+
+    Args:
+        scope: "auto" (default), "global", or "project".
+
+    Returns:
+        TOON-encoded stale node list or JSON for small result sets.
+
+    Raises:
+        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+    """
+    cmd = ["stale", "--format", "json", "--all"] + _scope_flags(scope)
+
+    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+
+    if returncode != 0:
+        raise RuntimeError(f"graphiti stale failed: {stderr.strip() or stdout.strip()}")
+
+    return _parse_json_or_raw(stdout, "stale")
+
+
 def graphiti_compact(scope: str = "auto") -> str:
     """Compact the knowledge graph by deduplicating entities.
 
@@ -450,6 +475,7 @@ __all__ = [
     "graphiti_show",
     "graphiti_delete",
     "graphiti_summarize",
+    "graphiti_stale",
     "graphiti_compact",
     "graphiti_index",
     "graphiti_capture",
