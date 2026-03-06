@@ -51,7 +51,7 @@ def stale_command(
 
     with console.status("[cyan]Scanning for stale nodes...", spinner="dots"):
         stale = run_graph_operation(
-            get_service().list_stale(scope, project_root, show_all=all_results)
+            get_service().list_stale(scope, project_root)
         )
 
     if not stale:
