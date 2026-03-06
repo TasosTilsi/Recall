@@ -151,6 +151,12 @@ def _backdate_entities(uuids: list[str], days: int = 100) -> None:
             f"MATCH (e:Entity) WHERE e.uuid = '{uid}' "
             f"SET e.created_at = timestamp('{old_ts}')"
         )
+    # Flush WAL to disk so subprocess `graphiti stale` sees the updated created_at
+    conn.execute("CHECKPOINT")
+    # Explicit close required — implicit GC releases the lock but may not flush first
+    _db = conn.database
+    conn.close()
+    _db.close()
 
 
 def _delete_entities(uuids: list[str]) -> None:
@@ -234,6 +240,11 @@ def _insert_directly(r: Runner) -> list[str]:
             f"created_at: timestamp('{old_ts}'), "
             f"name_embedding: [], summary: 'UAT test node', attributes: '{{}}'}})"
         )
+    # Flush WAL to disk so subprocess `graphiti stale` sees the new entities
+    conn.execute("CHECKPOINT")
+    _db = conn.database
+    conn.close()
+    _db.close()
     return uuids
 
 
@@ -319,8 +330,9 @@ def test_stale_lists_nodes(r: Runner, test_uuids: list[str]) -> None:
         r.fail("graphiti stale exited non-zero", detail=output[:300])
         return
 
-    # At least one test UUID should appear (some may have merged with existing nodes)
-    found_uuids = [uid for uid in test_uuids if uid in output]
+    # At least one test UUID should appear (some may have merged with existing nodes).
+    # Use uid[:8] because the stale table truncates UUIDs past ~33 chars.
+    found_uuids = [uid for uid in test_uuids if uid[:8] in output]
     if found_uuids:
         r.ok(f"{len(found_uuids)}/{len(test_uuids)} test UUIDs visible in stale output")
     else:
@@ -372,10 +384,10 @@ def test_pin_hides_node(r: Runner, test_uuids: list[str]) -> str | None:
     else:
         r.fail("UUID not found in pin_state after pin command")
 
-    # Stale must not show pinned UUID
+    # Stale must not show pinned UUID (use first 8 chars — table truncates UUIDs)
     res2 = graphiti("stale", "--project", "--verbose")
     after_output = res2.stdout + res2.stderr
-    if pin_uuid not in after_output:
+    if pin_uuid[:8] not in after_output:
         r.ok("Pinned node absent from stale output")
     else:
         r.fail("Pinned node still appears in stale output")
@@ -405,9 +417,9 @@ def test_unpin_restores_node(r: Runner, pin_uuid: str) -> None:
     else:
         r.fail("UUID still in pin_state after unpin")
 
-    # Stale must show the UUID again
+    # Stale must show the UUID again (use first 8 chars — table truncates UUIDs)
     res2 = graphiti("stale", "--project", "--verbose")
-    if pin_uuid in (res2.stdout + res2.stderr):
+    if pin_uuid[:8] in (res2.stdout + res2.stderr):
         r.ok("Node back in stale output after unpinning")
     else:
         r.fail("Node still absent from stale after unpinning")
@@ -419,6 +431,7 @@ def test_show_records_access(r: Runner, test_uuids: list[str]) -> None:
     r.banner("Test 4 (RETN-06): graphiti show records access in retention.db")
 
     # Get the name of a test entity so we can call `graphiti show <name>`
+    # Must explicitly close before subprocess — Kuzu allows only one writer at a time.
     conn = _kuzu_conn()
     entity_name = None
     for uid in test_uuids:
@@ -429,6 +442,9 @@ def test_show_records_access(r: Runner, test_uuids: list[str]) -> None:
             entity_name = result.get_next()[0]
             check_uuid = uid
             break
+    _db = conn.database
+    conn.close()
+    _db.close()
 
     if entity_name is None:
         r.fail("Could not retrieve entity name from Kuzu for show test")
@@ -454,7 +470,7 @@ def test_show_records_access(r: Runner, test_uuids: list[str]) -> None:
 
     if row and row[1] >= 1:
         r.ok(f"access_log written after graphiti show — uuid={row[0][:8]}…, access_count={row[1]}")
-    elif res.returncode != 0 and "no entity" in output.lower():
+    elif res.returncode != 0 and ("no entity" in output.lower() or "not found" in output.lower()):
         # Entity not found by FTS name search (may happen for short/unusual names).
         # Fall back to direct API call to verify the recording mechanism itself works.
         r.info("Entity not found by FTS name search — verifying record_access() API directly")
