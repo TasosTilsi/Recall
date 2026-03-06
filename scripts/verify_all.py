@@ -6,10 +6,11 @@ Usage:
     python scripts/verify_all.py [--fail-fast] [--skip-ollama]
 
 Runs:
-    Phase 02: Security Filtering  (R3.1, R3.2, R3.3) — no Ollama required
-    Phase 06: Automatic Capture   (R4.1, R4.2)        — Ollama optional
-    Phase 07: Git Integration     (R8.1)               — no Ollama required
-    Phase 71: Git Indexing Pivot  (R8.1, R8.2)         — Ollama optional
+    Phase 02: Security Filtering  (R3.1, R3.2, R3.3)                    — no Ollama required
+    Phase 06: Automatic Capture   (R4.1, R4.2)                           — Ollama optional
+    Phase 07: Git Integration     (R8.1)                                 — no Ollama required
+    Phase 71: Git Indexing Pivot  (R8.1, R8.2)                           — Ollama optional
+    Phase 09: Smart Retention     (RETN-01 … RETN-06)                    — no Ollama required
 """
 
 import subprocess
@@ -30,6 +31,7 @@ SCRIPTS_TO_RUN = [
     ("Phase 06", "verify_phase_06.py", "Automatic Capture",   "R4.1 · R4.2"),
     ("Phase 07", "verify_phase_07.py", "Git Integration",     "R8.1"),
     ("Phase 71", "verify_phase_71.py", "Git Indexing Pivot",  "R8.1 · R8.2"),
+    ("Phase 09", "verify_phase_09.py", "Smart Retention",     "RETN-01 · RETN-02 · RETN-03 · RETN-04 · RETN-05 · RETN-06"),
 ]
 
 
