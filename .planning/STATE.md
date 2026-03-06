@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Milestone v1.1 Advanced Features — Phase 9: Smart Retention (ready to plan)
+**Current focus:** Milestone v1.1 Advanced Features — Phase 10: Capture Modes (Phase 9 complete)
 
 ## Current Position
 
-Phase: 9 of 12 (Smart Retention)
-Plan: 05 complete — awaiting human-verify checkpoint (Task 3) (5/5 plans done)
-Status: Phase 9 complete pending human approval
-Last activity: 2026-03-06 — 09-05 completed: stale/pin/unpin CLI registration, show access recording, 15 integration tests
+Phase: 9 of 12 (Smart Retention) — COMPLETE
+Plan: 05 complete (5/5 plans done) — human approved
+Status: Phase 9 complete, ready for Phase 10
+Last activity: 2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing
 
-Progress: [███░░░░░░░] 20% (v1.1 milestone — 1/4 phases complete pending human approval, 5/5 plans in Phase 9)
+Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases complete, 5/5 plans in Phase 9)
 
 ## Performance Metrics
 
@@ -41,7 +41,7 @@ Progress: [███░░░░░░░] 20% (v1.1 milestone — 1/4 phases co
 | Phase | Plans | Status |
 |-------|-------|--------|
 | 01–08.9 (all v1.0 phases) | 62/62 | Complete |
-| 09. Smart Retention | 5/5 | Complete (pending human verify) |
+| 09. Smart Retention | 5/5 | Complete (human approved 2026-03-06) |
 | 10. Capture Modes | 0/TBD | Not started |
 | 11. Graph UI | 0/TBD | Not started |
 | 12. Multi-Provider LLM | 0/TBD | Not started |
@@ -54,7 +54,7 @@ Progress: [███░░░░░░░] 20% (v1.1 milestone — 1/4 phases co
 | Phase 09-smart-retention P02 | 22 | 3 tasks | 4 files |
 | Phase 09-smart-retention P03 | 2 | 2 tasks | 2 files |
 | Phase 09-smart-retention P04 | 3 | 2 tasks | 2 files |
-| Phase 09-smart-retention P05 | 4 | 2 tasks | 4 files |
+| Phase 09-smart-retention P05 | ~8 (incl. verify) | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -80,6 +80,8 @@ Key v1.1 architectural decisions from research:
 - [Phase 09-smart-retention]: graphiti_stale MCP tool uses --format json --all for full parseable stale list without display cap
 - [Phase 09-smart-retention]: Patch test targets at src.cli.commands.X.get_service not src.graph.get_service — modules bind import at load time
 - [Phase 09-smart-retention]: Auto-fix compact.py: except typer.Exit: raise before except Exception — typer.Exit extends RuntimeError
+- [Phase 09-smart-retention]: list_stale() capping is CLI responsibility — stale_command had erroneous show_all kwarg removed
+- [Phase 09-smart-retention]: graphiti-core exposes .driver (public) not ._driver (private) — use graphiti.driver in service.py
 
 ### Pending Todos
 
@@ -90,10 +92,10 @@ Key v1.1 architectural decisions from research:
 
 - **Phase 12 pre-check required**: Verify graphiti-core 0.28.1 internal openai version pin (`pip show graphiti-core` + inspect METADATA) before writing Phase 12 plan — pin conflict could block openai SDK 2.x addition
 - **Phase 11 pre-check required**: Verify `kuzudb/explorer` Docker image version compatible with Kuzu 0.11.3 schema during Phase 11 plan creation
-- **Phase 9 pre-check required**: Confirm installed graphiti-core version matches `==0.28.1` pin (`pip show graphiti-core`) before retention work touches EntityNode schema
+- ~~**Phase 9 pre-check required**: Confirm installed graphiti-core version matches `==0.28.1` pin~~ — Phase 9 complete
 
 ## Session Continuity
 
 Last session: 2026-03-06
-Stopped at: 09-05 human-verify checkpoint (Task 3) — stale/pin/unpin registered, 15 integration tests pass, awaiting manual end-to-end verification
-Resume file: None — type "approved" to complete Phase 9 then move to Phase 10
+Stopped at: Phase 9 complete — 09-05 human-approved, all 5 plans done, 272 tests passing
+Resume file: None — run /gsd:plan-phase 10 to start Phase 10 Capture Modes

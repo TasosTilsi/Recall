@@ -36,6 +36,8 @@ key-files:
     - src/cli/__init__.py
     - src/cli/commands/show.py
     - src/cli/commands/compact.py
+    - src/cli/commands/stale.py
+    - src/graph/service.py
 
 key-decisions:
   - "Patch test targets at src.cli.commands.X.get_service not src.graph.get_service — modules import at module load time"
@@ -59,17 +61,19 @@ completed: 2026-03-06
 
 ## Performance
 
-- **Duration:** 4 min
+- **Duration:** ~8 min (including human verify)
 - **Started:** 2026-03-06T06:38:24Z
-- **Completed:** 2026-03-06T06:42:30Z
-- **Tasks:** 2/3 complete (Task 3 = human verify checkpoint)
-- **Files modified:** 4
+- **Completed:** 2026-03-06 (human approved)
+- **Tasks:** 3/3 complete
+- **Files modified:** 6
 
 ## Accomplishments
 - Registered `graphiti stale`, `graphiti pin`, `graphiti unpin` commands on Typer app (alphabetical order)
 - Added `_record_entity_access()` to show command — silently records access to retention.db after display, never fails show
 - Wrote 15 integration tests in `tests/test_retention_integration.py` covering all 6 RETN requirements
 - Auto-fixed compact command bug where `except Exception` was catching `typer.Exit(0)` (RuntimeError subclass)
+- Human verified: `graphiti stale` → "No stale nodes found." (end-to-end confirmed on live system)
+- Two runtime bugs fixed during human verification: `show_all` kwarg removed from `list_stale()` call; `graphiti._driver` → `graphiti.driver` in service.py
 
 ## Task Commits
 
@@ -77,14 +81,16 @@ Each task was committed atomically:
 
 1. **Task 1: Register stale/pin/unpin and show access recording** - `8b45bb7` (feat)
 2. **Task 2: Write retention integration tests** - `8bceed6` (feat)
-3. **Task 3: Human verify end-to-end** - pending checkpoint
+3. **Task 3: Human verify end-to-end** - `5240b57` + `e6ed32d` (fix — bugs found during verification)
 
-**Plan metadata:** pending (docs: complete plan)
+**Plan metadata:** `ea207b7` (docs: complete plan — pre-verify); final update pending
 
 ## Files Created/Modified
 - `src/cli/__init__.py` — added stale/pin/unpin imports and registrations
 - `src/cli/commands/show.py` — added `_record_entity_access()` helper and calls
 - `src/cli/commands/compact.py` — auto-fix: re-raise typer.Exit before generic exception handler
+- `src/cli/commands/stale.py` — verification fix: removed `show_all=all_results` kwarg (method has no such param)
+- `src/graph/service.py` — verification fix: `graphiti._driver` → `graphiti.driver` in list_stale()
 - `tests/test_retention_integration.py` — 15 integration tests covering RETN-01 through RETN-06
 
 ## Decisions Made
@@ -112,10 +118,26 @@ Each task was committed atomically:
 - **Verification:** All 15 integration tests pass
 - **Committed in:** `8bceed6` (Task 2 commit, same commit after iterative fix)
 
+**3. [Rule 1 - Bug] Removed show_all kwarg from stale.py list_stale() call**
+- **Found during:** Task 3 (human verification — `graphiti stale` raised TypeError)
+- **Issue:** `stale_command` called `get_service().list_stale(scope, project_root, show_all=all_results)` but `list_stale()` does not accept a `show_all` parameter; display capping is done in the CLI layer, not service layer
+- **Fix:** Removed `show_all=all_results` kwarg from the call
+- **Files modified:** `src/cli/commands/stale.py`
+- **Verification:** `graphiti stale` runs cleanly on live system
+- **Committed in:** `5240b57` (fix(09-03))
+
+**4. [Rule 1 - Bug] Fixed graphiti._driver → graphiti.driver in service.py list_stale()**
+- **Found during:** Task 3 (human verification — AttributeError on `list_stale()`)
+- **Issue:** `list_stale()` in service.py accessed `graphiti._driver` (private attribute) but the graphiti-core object exposes `.driver` as a public attribute
+- **Fix:** Changed `graphiti._driver` to `graphiti.driver`
+- **Files modified:** `src/graph/service.py`
+- **Verification:** `graphiti stale` → "No stale nodes found." end-to-end on live system
+- **Committed in:** `e6ed32d` (fix(09-02))
+
 ---
 
-**Total deviations:** 2 auto-fixed (2 blocking)
-**Impact on plan:** Both fixes required for tests to pass. No scope creep.
+**Total deviations:** 4 auto-fixed (4 blocking)
+**Impact on plan:** All fixes required for correct operation. No scope creep.
 
 ## Issues Encountered
 - Patch path discovery: initial attempt patched `src.graph.get_service` but commands bind their own reference at import time; corrected to patch at `src.cli.commands.<cmd>.get_service`.
@@ -124,9 +146,9 @@ Each task was committed atomically:
 None — no external service configuration required.
 
 ## Next Phase Readiness
-- Phase 9 Smart Retention fully wired: all CLI commands registered, access recording active, MCP tool available
-- Human checkpoint (Task 3) required to confirm end-to-end CLI flow on live system
-- Ready for Phase 10 Capture Modes after human approval
+- Phase 9 Smart Retention complete: all CLI commands registered and live-verified, access recording active, MCP tool available
+- Human approved end-to-end: `graphiti stale`, `graphiti pin`, `graphiti unpin`, `compact --expire` all functional
+- Ready for Phase 10 Capture Modes
 
 ## Self-Check: PASSED
 
