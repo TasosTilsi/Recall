@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: unknown
-last_updated: "2026-03-05T21:36:56.107Z"
+last_updated: "2026-03-06T06:35:30.424Z"
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 ## Current Position
 
 Phase: 9 of 12 (Smart Retention)
-Plan: 02 complete (2/5 plans done)
+Plan: 03 complete (3/5 plans done)
 Status: In progress
-Last activity: 2026-03-05 — 09-02 completed: GraphService retention integration (list_stale, archive_nodes, record_access, add() reactivation)
+Last activity: 2026-03-06 — 09-03 completed: CLI stale_command and compact --expire for previewing/archiving stale nodes
 
 Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases complete, 2/5 plans in Phase 9)
 
@@ -52,6 +52,7 @@ Progress: [██░░░░░░░░] 10% (v1.1 milestone — 0/4 phases co
 |------|----------|-------|-------|
 | Phase 09-smart-retention P01 | 3 min | 2 tasks | 5 files |
 | Phase 09-smart-retention P02 | 22 | 3 tasks | 4 files |
+| Phase 09-smart-retention P03 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Key v1.1 architectural decisions from research:
 - [Phase 09-smart-retention]: Lazy imports of get_retention_manager inside method bodies to avoid circular import from src.graph.service to src.retention
 - [Phase 09-smart-retention]: uuid field added to list_entities() and get_entity() result dicts — required for archive filter via e.get('uuid')
 - [Phase 09-smart-retention]: Reactivation fast path in add(): skip EntityNode.get_by_group_ids() when archive_state is empty (most add() calls are a no-op)
+- [Phase 09-smart-retention]: stale_command capped at 25 rows by default with summary line when more exist
+- [Phase 09-smart-retention]: compact --expire branch returns early before existing dedup logic — zero risk to dedup path
 
 ### Pending Todos
 
@@ -85,6 +88,6 @@ Key v1.1 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-05
-Stopped at: Completed 09-smart-retention/09-02-PLAN.md
+Last session: 2026-03-06
+Stopped at: Completed 09-smart-retention/09-03-PLAN.md
 Resume file: None — continue with `/gsd:execute-phase` on next plan in Phase 9
