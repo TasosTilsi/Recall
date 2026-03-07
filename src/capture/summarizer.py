@@ -20,8 +20,37 @@ from src.models import GraphScope
 
 logger = structlog.get_logger()
 
-# LLM batch summarization prompt template
-BATCH_SUMMARIZATION_PROMPT = """You are summarizing a development session from {source}.
+VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
+
+# Narrow prompt: only Decisions & Rationale + Architecture & Patterns
+BATCH_SUMMARIZATION_PROMPT_NARROW = """You are summarizing a development session from {source}.
+
+INPUT: {count} {items} with full context below.
+
+EXTRACT ONLY:
+1. **Decisions & Rationale**: Why something was chosen over alternatives
+2. **Architecture & Patterns**: System structure, component relationships, design patterns
+
+EXCLUDE:
+- Raw code snippets (store WHAT/WHY, not HOW)
+- Routine operations ("ran tests", "formatted code")
+- WIP/scratch content (fixup commits, debugging traces)
+
+SPECIAL NOTE - Merge commit deduplication:
+- If merge commit content overlaps with individual commits in this batch, skip redundant information
+- Focus on unique knowledge not already covered by constituent commits
+
+OUTPUT: Single cohesive session summary as a knowledge graph entity.
+Focus on knowledge that helps understand the system's evolution and design decisions.
+
+---
+{content}
+---
+
+Summarize the session:"""
+
+# Broad prompt: all 4 categories (decisions-and-patterns mode)
+BATCH_SUMMARIZATION_PROMPT_BROAD = """You are summarizing a development session from {source}.
 
 INPUT: {count} {items} with full context below.
 
@@ -49,11 +78,15 @@ Focus on knowledge that helps understand the system's evolution and design decis
 
 Summarize the session:"""
 
+# Kept for backward compatibility — alias for BATCH_SUMMARIZATION_PROMPT_BROAD
+BATCH_SUMMARIZATION_PROMPT = BATCH_SUMMARIZATION_PROMPT_BROAD
+
 
 async def summarize_batch(
     content_items: list[str],
     source: str = "git commits",
     item_label: str = "commits",
+    capture_mode: str = "decisions-only",
 ) -> str:
     """Summarize a batch of content items via LLM.
 
@@ -97,8 +130,14 @@ async def summarize_batch(
             source=source,
         )
 
+    # Select prompt based on capture mode
+    if capture_mode == "decisions-and-patterns":
+        prompt_template = BATCH_SUMMARIZATION_PROMPT_BROAD
+    else:
+        prompt_template = BATCH_SUMMARIZATION_PROMPT_NARROW
+
     # Format prompt with safe content
-    prompt = BATCH_SUMMARIZATION_PROMPT.format(
+    prompt = prompt_template.format(
         source=source,
         count=len(content_items),
         items=item_label,
@@ -148,6 +187,7 @@ async def summarize_and_store(
     scope: GraphScope,
     project_root: Path | None = None,
     tags: list[str] | None = None,
+    capture_mode: str = "decisions-only",
 ) -> dict | None:
     """High-level function: summarize batch and store in graph.
 
@@ -190,6 +230,7 @@ async def summarize_and_store(
         content_items,
         source=source,
         item_label="items",
+        capture_mode=capture_mode,
     )
 
     # Store in graph

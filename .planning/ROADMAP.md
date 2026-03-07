@@ -3,7 +3,7 @@
 ## Milestones
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- [ ] **v1.1 Advanced Features** — Phases 9–12 (in progress)
+- [ ] **v1.1 Advanced Features** — Phases 9–11 (in progress)
 - [ ] **v2.0 Simplification** — After v1.1 complete: storage migration (sqlite-vec replaces KuzuDB + graphiti-core), complexity audit, cut what doesn't earn its keep
 
 ## Phases
@@ -34,13 +34,11 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 
 </details>
 
-### v1.1 Advanced Features (Phases 9–12)
+### v1.1 Advanced Features (Phases 9–11)
 
 - [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
 - [ ] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate
 - [ ] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning)
-- [ ] **Phase 12: Multi-Provider LLM** — Provider factory pattern enabling OpenAI, Groq, and any OpenAI-compatible endpoint via llm.toml without code changes
-  > Phases 11 & 12 have zero code overlap — can run in parallel after Phase 10
 
 ## Phase Details
 
@@ -91,9 +89,17 @@ Plans:
   4. `graphiti ui` fails with a clear error message if required dependencies are missing, rather than hanging silently
 **Plans**: TBD
 
-### Phase 12: Multi-Provider LLM
+---
+
+## v2.0 Simplification (After v1.1 Complete)
+
+**Goal:** Reassess what earned its complexity after shipping v1.1. Replace the archived KuzuDB + graphiti-core stack with a maintained, minimal alternative. Keep what is genuinely valuable; cut what is infrastructure serving infrastructure.
+
+**Trigger:** Begin planning only after Phase 11 (Graph UI) is verified complete.
+
+### Phase 12: Multi-Provider LLM (moved from v1.1)
 **Goal**: Users can switch LLM providers (OpenAI, Groq, any OpenAI-compatible endpoint) by editing `llm.toml` — no code changes required — with clear startup feedback on provider reachability.
-**Depends on**: Phase 10 (no code overlap with Phase 11 — can run in parallel)
+**Depends on**: v1.1 complete (no code overlap with Graph UI — can be planned early in v2.0)
 **Requirements**: PROV-01, PROV-02, PROV-03, PROV-04
 **Success Criteria** (what must be TRUE):
   1. User can add a `[provider]` section to `llm.toml` specifying `type = "openai"`, `base_url`, and `api_key`, and all graph operations use that provider without restarting
@@ -101,14 +107,6 @@ Plans:
   3. `graphiti health` shows the active provider name and whether it is reachable
   4. If the configured provider API key is invalid or the endpoint is unreachable, `graphiti health` reports the error at startup rather than failing silently at first use
 **Plans**: TBD
-
----
-
-## v2.0 Simplification (After v1.1 Complete)
-
-**Goal:** Reassess what earned its complexity after shipping v1.1. Replace the archived KuzuDB + graphiti-core stack with a maintained, minimal alternative. Keep what is genuinely valuable; cut what is infrastructure serving infrastructure.
-
-**Trigger:** Begin planning only after Phase 12 (Multi-Provider LLM) is verified complete.
 
 ### Strategic questions to answer at planning time
 
@@ -198,4 +196,4 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
 | 10. Configurable Capture Modes | v1.1 | 0/4 | Planned | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
-| 12. Multi-Provider LLM | v1.1 | 0/TBD | Not started | — |
+| 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
