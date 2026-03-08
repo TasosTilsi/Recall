@@ -74,6 +74,7 @@ from src.cli.commands.capture import capture_command
 from src.cli.commands.hooks import hooks_app
 from src.cli.commands.index import index_command
 from src.cli.commands.mcp import mcp_app
+from src.cli.commands.ui import ui_command
 
 
 # Register commands
@@ -134,5 +135,8 @@ app.command(name="index", help="Index git history into the knowledge graph")(ind
 # Register mcp command group
 app.add_typer(mcp_app, name="mcp", help="MCP server for Claude Code integration")
 
+# Register ui command
+app.command(name="ui", help="Launch graph visualization UI")(ui_command)
 
-# All 17 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, mcp (group)
+
+# All 18 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, mcp (group), ui

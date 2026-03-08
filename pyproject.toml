@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Dual-scope knowledge graph system with global preferences and project-specific memory"
 requires-python = ">=3.12"
 dependencies = [
+    "aiofiles>=23.0.0",
     "detect-secrets>=1.5.0",
+    "fastapi>=0.135.0",
     "GitPython>=3.1.0",
     "graphiti-core[kuzu]==0.28.1",
     "httpx>=0.28.0",
@@ -15,10 +17,9 @@ dependencies = [
     "python-toon>=0.1.3",
     "structlog>=25.5.0",
     "tenacity==9.1.4",
-    "typer>=0.15.0",
-    "fastapi>=0.111.0",
-    "uvicorn>=0.30.0",
     "starlette>=0.37.0",
+    "typer>=0.15.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.optional-dependencies]
@@ -37,6 +38,10 @@ gk = "src.cli:cli_entry"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
+
+# TODO: Phase 12 — add MANIFEST.in or data_files for ui/out/ in wheel builds
+# ui/out/ ships via git (pre-built artifact committed); static_dir in ui.py resolves
+# Path(_REPO_ROOT) / "ui/out" which works correctly for both editable and source installs.
 
 [build-system]
 requires = ["setuptools>=61.0"]
