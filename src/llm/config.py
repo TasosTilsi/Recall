@@ -64,6 +64,10 @@ class LLMConfig:
     # Capture mode: "decisions-only" | "decisions-and-patterns"
     capture_mode: str = "decisions-only"
 
+    # UI server configuration
+    ui_api_port: int = 8765   # FastAPI server port (avoids MCP conflict on 8000)
+    ui_port: int = 3000        # Reserved for future next dev mode
+
 
 def load_config(config_path: Path | None = None) -> LLMConfig:
     """Load LLM configuration from TOML file with environment overrides.
@@ -109,6 +113,7 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         )
         raw_days = 90
 
+    ui = config_data.get("ui", {})
     capture = config_data.get("capture", {})
     VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
     raw_mode = capture.get("mode", "decisions-only")
@@ -147,6 +152,8 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         hooks_enabled=hooks.get("enabled", False),
         retention_days=raw_days,
         capture_mode=raw_mode,
+        ui_api_port=ui.get("api_port", 8765),
+        ui_port=ui.get("ui_port", 3000),
     )
 
 

@@ -216,6 +216,22 @@ class GraphService:
         else:
             return project_root.name if project_root else "unknown_project"
 
+    def _resolve_db_path(self, scope: GraphScope, project_root: Optional[Path]) -> Optional[Path]:
+        """Resolve the Kuzu database path for a given scope without calling _get_graphiti().
+
+        Args:
+            scope: Graph scope
+            project_root: Project root path (required for PROJECT scope)
+
+        Returns:
+            Path to the Kuzu database directory, or None if unresolvable
+        """
+        if scope == GraphScope.GLOBAL:
+            return GLOBAL_DB_PATH
+        elif project_root:
+            return get_project_db_path(project_root)
+        return None
+
     def _get_db_size(self, scope: GraphScope, project_root: Optional[Path], driver) -> int:
         """Calculate database size in bytes.
 
@@ -1113,3 +1129,137 @@ class GraphService:
                 "duplicate_count": 0,
                 "size_bytes": 0,
             }
+
+    async def list_edges(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> list[dict]:
+        """List all relationship edges for the given scope.
+
+        Returns edges as dicts with source, target, label, fact keys.
+        Uses read-only Kuzu access — does NOT call _get_graphiti().
+        """
+        import kuzu
+
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return []
+
+        try:
+            db = kuzu.Database(str(db_path), read_only=True)
+            conn = kuzu.Connection(db)
+            group_id = self._get_group_id(scope, project_root)
+
+            query = """
+                MATCH (a:Entity {group_id: $group_id})-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity {group_id: $group_id})
+                RETURN a.uuid AS source, b.uuid AS target, rel.name AS label, rel.fact AS fact
+                LIMIT 5000
+            """
+            result = conn.execute(query, {"group_id": group_id})
+            edges = []
+            while result.has_next():
+                row = result.get_next()
+                edges.append({
+                    "source": row[0],
+                    "target": row[1],
+                    "label": row[2] or "RELATES_TO",
+                    "fact": row[3] or "",
+                })
+            return edges
+        except Exception as e:
+            logger.warning("list_edges failed", error=str(e), scope=str(scope))
+            return []
+
+    async def list_entities_readonly(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+        limit: Optional[int] = None,
+    ) -> list[dict]:
+        """List all entity nodes for the given scope using read-only Kuzu access.
+
+        Identical shape to list_entities() output but NEVER calls _get_graphiti().
+        Returns list of dicts with: uuid, name, tags, scope, summary, created_at, last_accessed_at.
+        """
+        import kuzu
+
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return []
+
+        try:
+            db = kuzu.Database(str(db_path), read_only=True)
+            conn = kuzu.Connection(db)
+            group_id = self._get_group_id(scope, project_root)
+
+            limit_clause = f"LIMIT {limit}" if limit else ""
+            query = f"""
+                MATCH (e:Entity {{group_id: $group_id}})
+                RETURN e.uuid AS uuid, e.name AS name, e.labels AS tags,
+                       e.summary AS summary, e.created_at AS created_at
+                {limit_clause}
+            """
+            result = conn.execute(query, {"group_id": group_id})
+            entities = []
+            scope_str = "global" if scope == GraphScope.GLOBAL else "project"
+            while result.has_next():
+                row = result.get_next()
+                entities.append({
+                    "uuid": row[0],
+                    "name": row[1],
+                    "tags": row[2] if isinstance(row[2], list) else [row[2]] if row[2] else ["Entity"],
+                    "scope": scope_str,
+                    "summary": row[3] or "",
+                    "created_at": row[4],
+                    "last_accessed_at": None,
+                    "access_count": 0,
+                    "pinned": False,
+                })
+            return entities
+        except Exception as e:
+            logger.warning("list_entities_readonly failed", error=str(e), scope=str(scope))
+            return []
+
+    async def get_entity_by_uuid(
+        self,
+        uuid: str,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> dict | None:
+        """Fetch a single entity node by UUID using read-only Kuzu access.
+
+        Does NOT call _get_graphiti(). Returns None if not found.
+        """
+        import kuzu
+
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return None
+
+        try:
+            db = kuzu.Database(str(db_path), read_only=True)
+            conn = kuzu.Connection(db)
+
+            query = """
+                MATCH (e:Entity {uuid: $uuid})
+                RETURN e.uuid AS uuid, e.name AS name, e.labels AS tags,
+                       e.summary AS summary, e.created_at AS created_at
+            """
+            result = conn.execute(query, {"uuid": uuid})
+            if result.has_next():
+                row = result.get_next()
+                return {
+                    "uuid": row[0],
+                    "name": row[1],
+                    "tags": row[2] if isinstance(row[2], list) else [row[2]] if row[2] else ["Entity"],
+                    "summary": row[3] or "",
+                    "created_at": row[4],
+                    "last_accessed_at": None,
+                    "access_count": 0,
+                    "pinned": False,
+                }
+            return None
+        except Exception as e:
+            logger.warning("get_entity_by_uuid failed", error=str(e), uuid=uuid)
+            return None
