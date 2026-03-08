@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: completed
-stopped_at: Completed 10-configurable-capture-modes/10-02-PLAN.md
-last_updated: "2026-03-07T23:29:59.992Z"
+stopped_at: "Completed 10-03-PLAN.md (checkpoint:human-verify pending)"
+last_updated: "2026-03-08T00:27:45.802Z"
 last_activity: "2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing"
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -60,6 +60,7 @@ Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases co
 | Phase 09-smart-retention P05 | ~8 (incl. verify) | 3 tasks | 6 files |
 | Phase 10-configurable-capture-modes P01 | 8 | 1 tasks | 2 files |
 | Phase 10-configurable-capture-modes P02 | 8 | 2 tasks | 2 files |
+| Phase 10-configurable-capture-modes P03 | 10 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,8 @@ Key v1.1 architectural decisions from research:
 - [Phase 10-configurable-capture-modes]: capture_mode default is 'decisions-only' — narrower scope is the safe default; users opt into broader capture
 - [Phase 10-configurable-capture-modes]: BATCH_SUMMARIZATION_PROMPT alias points to BROAD prompt for backward compatibility — preserves pre-Phase-10 behavior
 - [Phase 10-configurable-capture-modes]: Security gate (sanitize_content) runs unconditionally before any capture_mode prompt selection — locked Phase 2 invariant
+- [Phase 10-configurable-capture-modes]: allowed_values enforcement happens after _parse_value() and before _set_nested_value() in --set handler — clean separation of type parsing and domain validation
+- [Phase 10-configurable-capture-modes]: load_config() called once per process_pending_commits() invocation — acceptable disk I/O, no caching needed
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ Key v1.1 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-07T23:29:59.987Z
-Stopped at: Completed 10-configurable-capture-modes/10-02-PLAN.md
+Last session: 2026-03-08T00:27:45.798Z
+Stopped at: Completed 10-03-PLAN.md (checkpoint:human-verify pending)
 Resume file: None

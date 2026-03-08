@@ -194,6 +194,6 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
-| 10. Configurable Capture Modes | 2/4 | In Progress|  | — |
+| 10. Configurable Capture Modes | 3/4 | In Progress|  | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |

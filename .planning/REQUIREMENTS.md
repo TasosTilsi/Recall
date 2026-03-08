@@ -18,9 +18,9 @@ Requirements for the v1.1 Advanced Features milestone. Each maps to roadmap phas
 
 ### Capture Modes
 
-- [ ] **CAPT-01**: User can set `[capture] mode = "decisions-only"` in `llm.toml` to capture only decisions and architectural choices (narrow — current implicit default behavior)
-- [ ] **CAPT-02**: User can set `[capture] mode = "decisions-and-patterns"` in `llm.toml` to capture broader patterns, bugs, and dependencies alongside decisions
-- [ ] **CAPT-03**: User can see the active capture mode in `graphiti config show` output
+- [x] **CAPT-01**: User can set `[capture] mode = "decisions-only"` in `llm.toml` to capture only decisions and architectural choices (narrow — current implicit default behavior)
+- [x] **CAPT-02**: User can set `[capture] mode = "decisions-and-patterns"` in `llm.toml` to capture broader patterns, bugs, and dependencies alongside decisions
+- [x] **CAPT-03**: User can see the active capture mode in `graphiti config show` output
 
 ### Graph UI
 
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RETN-04 | Phase 9 | Complete |
 | RETN-05 | Phase 9 | Complete |
 | RETN-06 | Phase 9 | Complete |
-| CAPT-01 | Phase 10 | Pending |
-| CAPT-02 | Phase 10 | Pending |
-| CAPT-03 | Phase 10 | Pending |
+| CAPT-01 | Phase 10 | Complete |
+| CAPT-02 | Phase 10 | Complete |
+| CAPT-03 | Phase 10 | Complete |
 | UI-01 | Phase 11 | Pending |
 | UI-02 | Phase 11 | Pending |
 | UI-03 | Phase 11 | Pending |
