@@ -28,6 +28,15 @@ VALID_CONFIG_KEYS = {
     "queue.item_ttl_hours": {"type": int, "desc": "Queue item TTL in hours"},
     "reranking.enabled": {"type": bool, "desc": "Enable cross-encoder reranking"},
     "reranking.backend": {"type": str, "desc": "Reranking backend (none, bge, openai)"},
+    "capture.mode": {
+        "type": str,
+        "desc": "Capture mode (decisions-only, decisions-and-patterns)",
+        "allowed_values": ["decisions-only", "decisions-and-patterns"],
+    },
+    "retention.retention_days": {
+        "type": int,
+        "desc": "Days before a node is considered stale (min 30)",
+    },
 }
 
 
@@ -216,6 +225,14 @@ def config_command(
             )
             sys.exit(EXIT_BAD_ARGS)
 
+        # Validate allowed values if defined for this key
+        if "allowed_values" in key_info and parsed_value not in key_info["allowed_values"]:
+            print_error(
+                f"Invalid value for {key}: '{parsed_value}'.",
+                suggestion=f"Valid values: {', '.join(key_info['allowed_values'])}"
+            )
+            sys.exit(EXIT_BAD_ARGS)
+
         # Update config dict
         _set_nested_value(existing_toml, key, parsed_value)
 
@@ -255,6 +272,8 @@ def config_command(
                 "queue.item_ttl_hours": "queue_item_ttl_hours",
                 "reranking.enabled": "reranking_enabled",
                 "reranking.backend": "reranking_backend",
+                "capture.mode": "capture_mode",
+                "retention.retention_days": "retention_days",
             }
             attr_name = attr_map.get(get_key)
             if attr_name:
@@ -302,6 +321,12 @@ def config_command(
                 "enabled": config.reranking_enabled,
                 "backend": config.reranking_backend,
             },
+            "capture": {
+                "mode": config.capture_mode,
+            },
+            "retention": {
+                "retention_days": config.retention_days,
+            },
         }
         print_json(config_data)
     else:
@@ -337,6 +362,11 @@ def config_command(
         for key, value in rows:
             desc = VALID_CONFIG_KEYS.get(key, {}).get("desc", "")
             table.add_row(key, value, desc)
+
+        table.add_row("[bold]Capture Settings[/bold]", "", "", style="dim")
+        table.add_row("capture.mode", config.capture_mode, VALID_CONFIG_KEYS["capture.mode"]["desc"])
+        table.add_row("[bold]Retention Settings[/bold]", "", "", style="dim")
+        table.add_row("retention.retention_days", str(config.retention_days), VALID_CONFIG_KEYS["retention.retention_days"]["desc"])
 
         console.print(table)
 
