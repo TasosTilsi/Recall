@@ -24,8 +24,8 @@ Requirements for the v1.1 Advanced Features milestone. Each maps to roadmap phas
 
 ### Graph UI
 
-- [ ] **UI-01**: User can run `graphiti ui` to launch a localhost graph browser (Docker Kuzu Explorer at `http://localhost:8000`)
-- [ ] **UI-02**: `graphiti ui` mounts the scope-appropriate Kuzu DB read-only and opens the browser automatically on launch
+- [ ] **UI-01**: User can run `graphiti ui` to launch a localhost graph browser (FastAPI server at `http://localhost:8765` — no Docker required)
+- [ ] **UI-02**: `graphiti ui` mounts the scope-appropriate Kuzu DB read-only and prints the URL to the terminal (no browser auto-open — works on SSH/headless environments)
 - [ ] **UI-03**: User can choose global vs. project scope when launching `graphiti ui`
 
 ### Multi-Provider LLM
@@ -102,4 +102,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 — roadmap phases 9–12 created with success criteria*
+*Last updated: 2026-03-08 — UI-01 and UI-02 updated to reflect FastAPI + port 8765 architecture (no Docker, no browser auto-open per CONTEXT.md locked decisions)*
