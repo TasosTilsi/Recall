@@ -33,6 +33,7 @@ from typing import Optional
 import structlog
 
 from src.capture.summarizer import summarize_and_store
+from src.llm.config import load_config
 from src.models import GraphScope
 
 logger = structlog.get_logger()
@@ -324,12 +325,15 @@ async def capture_conversation(
         content_length=len(conversation_text)
     )
 
+    cfg = load_config()
+
     entity = await summarize_and_store(
         content_items=[conversation_text],
         source="conversation",
         scope=scope,
         project_root=project_root,
         tags=tags,
+        capture_mode=cfg.capture_mode,
     )
 
     # Update metadata if auto mode and capture succeeded

@@ -44,6 +44,7 @@ from src.capture.git_capture import (
 from src.capture.batching import BatchAccumulator
 from src.capture.relevance import filter_relevant_commit
 from src.capture.summarizer import summarize_and_store
+from src.llm.config import load_config
 from src.queue import enqueue
 from src.models import GraphScope
 
@@ -153,6 +154,8 @@ async def process_pending_commits(
         ...     project_root=Path.cwd()
         ... )
     """
+    cfg = load_config()
+
     # Set defaults
     if scope is None:
         scope = GraphScope.GLOBAL
@@ -241,6 +244,7 @@ async def process_pending_commits(
                 scope=scope,
                 project_root=project_root,
                 tags=["auto-capture", "git-commits"],
+                capture_mode=cfg.capture_mode,
             )
 
             if entity:
@@ -256,6 +260,7 @@ async def process_pending_commits(
             scope=scope,
             project_root=project_root,
             tags=["auto-capture", "git-commits"],
+            capture_mode=cfg.capture_mode,
         )
 
         if entity:

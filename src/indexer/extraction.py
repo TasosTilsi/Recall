@@ -41,7 +41,18 @@ Answer these questions:
 4. What was the impact or risk?
 """
 
-FREE_FORM_EXTRACTION_PROMPT = """\
+FREE_FORM_EXTRACTION_PROMPT_NARROW = """\
+Extract entities and relationships from this git commit as natural language knowledge graph facts.
+Focus on: people, components, architectural decisions.
+
+Commit: {sha_short} by {author}
+Message: {message}
+
+Diff content:
+{diff_content}
+"""
+
+FREE_FORM_EXTRACTION_PROMPT_BROAD = """\
 Extract all entities and relationships from this git commit as natural language knowledge graph facts.
 Focus on: people, components, architectural decisions, bugs fixed, features added, dependencies introduced.
 
@@ -51,6 +62,9 @@ Message: {message}
 Diff content:
 {diff_content}
 """
+
+# Backward-compatible alias — points to broad prompt (original behavior)
+FREE_FORM_EXTRACTION_PROMPT = FREE_FORM_EXTRACTION_PROMPT_BROAD
 
 DIFF_SUMMARIZATION_PROMPT = """\
 Summarize this large git diff concisely for knowledge extraction.
@@ -101,6 +115,7 @@ async def extract_commit_knowledge(
     graphiti_instance: Any,
     group_id: str,
     reference_time: datetime,
+    capture_mode: str = "decisions-only",
 ) -> dict:
     """Run the two-pass extraction pipeline for a single git commit.
 
@@ -160,8 +175,14 @@ async def extract_commit_knowledge(
 
         logger.debug("structured_pass_complete", sha=sha_short)
 
+        # Select free-form prompt based on capture mode
+        if capture_mode == "decisions-and-patterns":
+            freeform_prompt_template = FREE_FORM_EXTRACTION_PROMPT_BROAD
+        else:
+            freeform_prompt_template = FREE_FORM_EXTRACTION_PROMPT_NARROW
+
         # Pass 2 — free-form entity extraction
-        freeform_text = FREE_FORM_EXTRACTION_PROMPT.format(
+        freeform_text = freeform_prompt_template.format(
             sha_short=sha_short,
             author=commit_author,
             message=commit_message,
