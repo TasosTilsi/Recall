@@ -83,11 +83,18 @@ Plans:
 **Depends on**: Phase 10 (stable capture pipeline before exposing visualization)
 **Requirements**: UI-01, UI-02, UI-03
 **Success Criteria** (what must be TRUE):
-  1. User can run `graphiti ui` and a browser opens to `http://localhost:8000` showing the project-scope knowledge graph
-  2. The Kuzu database is mounted read-only — the UI cannot modify graph content
-  3. User can run `graphiti ui --global` to visualize the global scope graph instead of the project scope
-  4. `graphiti ui` fails with a clear error message if required dependencies are missing, rather than hanging silently
-**Plans**: TBD
+  1. User can run `graphiti ui` and visit `http://localhost:8765` to see the project-scope knowledge graph (FastAPI + Next.js static export, no Docker)
+  2. The Kuzu database is opened read-only — the UI cannot modify graph content
+  3. User can run `graphiti ui --global` to visualize the global scope graph instead of the project scope; in-UI scope toggle switches without restarting
+  4. `graphiti ui` fails with a clear error message if the port is already in use or if `ui/out/` static files are missing
+**Plans**: 5 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — RED test scaffold: tests/test_ui_command.py + tests/test_ui_server.py (8 failing tests)
+- [ ] 11-02-PLAN.md — Python backend: LLMConfig [ui] section + GraphService.list_edges() + src/ui_server/ package
+- [ ] 11-03-PLAN.md — Next.js frontend: ui/ directory with react-force-graph-2d, static build committed to git
+- [ ] 11-04-PLAN.md — Wire: src/cli/commands/ui.py + CLI registration + pyproject.toml deps (turns 8 tests GREEN)
+- [ ] 11-05-PLAN.md — Human checkpoint: live browser verification of graph rendering, scope toggle, sidebar
 
 ---
 
@@ -189,5 +196,5 @@ Embedded Python graph DB with full Cypher. Open issue in graphiti-core ([#1240](
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
-| 11. Graph UI | v1.1 | 0/TBD | Not started | — |
+| 11. Graph UI | v1.1 | 0/5 | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
