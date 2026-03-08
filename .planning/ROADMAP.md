@@ -4,7 +4,7 @@
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [ ] **v1.1 Advanced Features** — Phases 9–11 (in progress)
-- [ ] **v2.0 Simplification** — After v1.1 complete: storage migration (sqlite-vec replaces KuzuDB + graphiti-core), complexity audit, cut what doesn't earn its keep
+- [ ] **v2.0 Rebuild** — After v1.1 complete: keep graphiti-core (graph engine justified by enterprise use case), replace KuzuDB with maintained backend, add claude-mem-inspired live capture and UX layer
 
 ## Phases
 
@@ -91,15 +91,24 @@ Plans:
 
 ---
 
-## v2.0 Simplification (After v1.1 Complete)
+## v2.0 Rebuild (After v1.1 Complete)
 
-**Goal:** Reassess what earned its complexity after shipping v1.1. Replace the archived KuzuDB + graphiti-core stack with a maintained, minimal alternative. Keep what is genuinely valuable; cut what is infrastructure serving infrastructure.
+**Goal:** Keep graphiti-core's graph engine — entity resolution, typed relationship edges, multi-hop traversal. These capabilities are the system's ceiling for enterprise and legacy codebase use cases and justify the dependency. Replace only KuzuDB (archived Oct 2025) with a maintained backend. Add a claude-mem-inspired live capture and UX layer on top of the same graph core.
 
 **Trigger:** Begin planning only after Phase 11 (Graph UI) is verified complete.
 
+**Strategic direction (locked 2026-03-08):**
+
+- **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for teams working on legacy codebases, not just solo developers. The graph model enables questions flat vector search cannot answer.
+- **KuzuDB replaced.** Archived Oct 2025. All 3 workarounds in `graph_manager.py` are Kuzu-specific bugs — they disappear with the backend swap.
+- **Two-tier backend model.** Embedded default (zero container requirement) + containerized power path (opt-in). Most users get a zero-infrastructure install; power users and teams get Neo4j via Docker Compose.
+- **claude-mem-inspired UX layer.** PostToolUse hook for real-time capture, progressive disclosure MCP search (3-layer: index → timeline → full entity), web viewer for live graph introspection.
+- **Async pipeline preserved.** LLM calls and graph writes stay async. The latency lives in Ollama, not the DB layer. No change to the concurrency model.
+- **Git history bootstrap stays.** `graphiti index` is the unique differentiator — no other tool in this space builds a knowledge scaffold from commit history. Non-negotiable.
+
 ### Phase 12: Multi-Provider LLM (moved from v1.1)
 **Goal**: Users can switch LLM providers (OpenAI, Groq, any OpenAI-compatible endpoint) by editing `llm.toml` — no code changes required — with clear startup feedback on provider reachability.
-**Depends on**: v1.1 complete (no code overlap with Graph UI — can be planned early in v2.0)
+**Depends on**: v1.1 complete
 **Requirements**: PROV-01, PROV-02, PROV-03, PROV-04
 **Success Criteria** (what must be TRUE):
   1. User can add a `[provider]` section to `llm.toml` specifying `type = "openai"`, `base_url`, and `api_key`, and all graph operations use that provider without restarting
@@ -108,74 +117,59 @@ Plans:
   4. If the configured provider API key is invalid or the endpoint is unreachable, `graphiti health` reports the error at startup rather than failing silently at first use
 **Plans**: TBD
 
-### Strategic questions to answer at planning time
+### Backend options
 
-- What from v1.1 proved genuinely useful in daily use vs theoretically useful?
-- Is the async queue + retention system worth maintaining, or is simpler fire-and-forget enough?
-- Does multi-provider LLM (Phase 12) justify its complexity once used in practice?
-
-### Likely scope (TBD — audit v1.1 first)
-
-- **Storage migration**: replace `graphiti-core` + KuzuDB (archived Oct 2025) with a maintained alternative (see options below). Eliminates all 6 existing workarounds.
-- **Simplification audit**: identify and remove over-engineered subsystems that don't justify their maintenance cost
-- **Optional (containerized path)**: Neo4j via Podman for users who want richer Cypher queries — opt-in, not the default
-
-### Database options evaluated
-
-#### Option A — LadybugDB (recommended starting point)
-Community-driven fork of KuzuDB by ex-Facebook/Google engineers. Direct 1:1 drop-in replacement for Kuzu — same Cypher dialect, same embedded columnar architecture. Migration cost would be lowest: swap the driver, remove our 3 KuzuDB workarounds.
-- **Embedded**: yes — lives in-process, no server
-- **Vector search**: yes — inherited from Kuzu architecture
-- **Graph semantics**: full property graph, typed tables
-- **Maintenance**: active, community-funded, investor interest confirmed
-- **Migration cost**: low — near drop-in for our KuzuDriver
+#### Default path — LadybugDB (embedded, no container)
+Community-driven fork of KuzuDB by ex-Facebook/Google engineers. Same Cypher dialect, same embedded columnar architecture. Near drop-in replacement for our `KuzuDriver` — swapping it removes all 3 Kuzu workarounds.
+- **Embedded**: yes — in-process, no server
+- **graphiti-core compatible**: yes — slots into the existing Kuzu provider path
+- **Maintenance**: active, community-funded
+- **Migration cost**: low — swap driver, delete workarounds
+- **Risk**: needs a spike to confirm no new workarounds surface
 - **Source**: [github.com/LadybugDB/ladybug](https://github.com/LadybugDB/ladybug)
 
-#### Option B — FalkorDBLite
-Embedded Python graph DB running as an isolated subprocess (Unix socket, no network overhead). Actively maintained — v0.8.0 released Feb 2026. Requires Python 3.12+. Full Cypher support. There is already an open issue in graphiti-core to add FalkorDB Lite as a backend ([#1240](https://github.com/getzep/graphiti/issues/1240)) — if that lands, migration could be nearly zero-cost.
-- **Embedded**: yes — isolated subprocess, Unix socket
-- **Vector search**: yes — via parent FalkorDB
-- **Graph semantics**: full property graph + Cypher
-- **Maintenance**: active (FalkorDB team, commercial backing)
-- **Migration cost**: low-medium — depends on graphiti-core issue #1240 landing
-- **Source**: [github.com/FalkorDB/falkordblite](https://github.com/FalkorDB/falkordblite)
-
-#### Option C — sqlite-vec + custom graph tables
-Replace the graph DB entirely. Store entity nodes and relationship edges as plain SQLite tables; use sqlite-vec extension for vector similarity (KNN, SIMD-accelerated, pure C, zero dependencies). Requires reimplementing the graph query layer ourselves — more work but eliminates graphiti-core dependency entirely.
-- **Embedded**: yes — SQLite is already our sidecar DB
-- **Vector search**: yes — sqlite-vec, production-ready, runs anywhere SQLite runs
-- **Graph semantics**: manual — SQL tables for nodes/edges, Python for traversal
-- **Maintenance**: sqlite-vec is actively maintained; SQLite itself is indefinitely stable
-- **Migration cost**: high — must replace graphiti-core graph operations
-- **Best if**: v2.0 simplification audit concludes graphiti-core adds more complexity than value
-- **Source**: [github.com/asg017/sqlite-vec](https://github.com/asg017/sqlite-vec)
-
-#### Option D — Neo4j via Podman (containerized, opt-in)
-Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4j-graphrag-python`), best tooling. Requires Podman or Docker runtime — not zero-dependency. Appropriate as an opt-in for power users, not the default.
-- **Embedded**: no — runs as a container (Podman/Docker)
-- **Vector search**: yes — native in Neo4j 5.23+
-- **Graph semantics**: best-in-class, full Cypher, APOC plugins
+#### Power path — Neo4j via Docker/Podman (opt-in, containerized)
+graphiti-core's primary and best-tested backend. Richest Cypher support, native vector search (5.23+), mature tooling. Requires container runtime — appropriate as opt-in for teams and enterprise users.
+- **Embedded**: no — Docker Compose, single `docker compose up`
+- **graphiti-core compatible**: yes — native/primary backend, zero workarounds
 - **Maintenance**: commercial, indefinitely stable
-- **Migration cost**: medium — Python SDK is clean, but requires container runtime on target machine
-- **Best if**: user explicitly wants richer graph queries and is comfortable with containers
-- **Source**: [neo4j.com](https://neo4j.com) / `podman pull neo4j:latest`
+- **Migration cost**: medium — requires container runtime on target machine
+- **Best for**: teams, enterprise, users who want full Cypher + APOC plugins
+- **Source**: [neo4j.com](https://neo4j.com)
 
-### Decision framework for v2.0
+#### Watch — FalkorDB Lite
+Embedded Python graph DB with full Cypher. Open issue in graphiti-core ([#1240](https://github.com/getzep/graphiti/issues/1240)) to add it as a backend. If merged before v2.0 planning, migration cost drops to near-zero and it becomes a strong default path candidate.
 
-| Priority | Recommendation |
-|----------|---------------|
-| Lowest migration cost | Option A (LadybugDB) — near drop-in for KuzuDriver |
-| Zero new dependencies | Option C (sqlite-vec) — but requires reimplementing graph layer |
-| Best graph semantics, containerized | Option D (Neo4j + Podman) — opt-in only |
-| Watch closely | Option B (FalkorDBLite) — if graphiti-core #1240 merges before v2.0 planning |
+### New features for v2.0
+
+**PostToolUse hook capture** — observe every significant tool call (file writes, bash runs, test results) in real time, not just at session end. Fire-and-forget, async, non-blocking. Richer signal than conversation-only capture.
+
+**Progressive disclosure MCP search** — 3-layer pattern:
+1. `search` → compact entity index (~50–100 tokens)
+2. `timeline` → chronological context for filtered results
+3. `get_entity` → full detail only for final targets (~500–1000 tokens)
+
+**Web viewer** — `graphiti ui` launches a localhost browser view of the live knowledge graph with scope selection. Read-only. (Phase 11 may deliver this — coordinate at planning time.)
+
+**Docker Compose** — single-file `docker-compose.yml` for the Neo4j power path. `docker compose up` brings the full stack. Default embedded path needs zero containers.
 
 ### What stays regardless
 
 - CLI entrypoints (`graphiti` / `gk`)
+- graphiti-core graph engine (entity resolution, typed edges, bi-temporal model)
 - Git post-commit hook + Claude Code conversation hook
-- MCP server (11 tools — core value delivery mechanism)
-- Security filtering layer (non-negotiable)
+- `graphiti index` — git history bootstrap (unique differentiator)
+- MCP server and all existing tools
+- Security filtering layer (non-negotiable, runs before everything)
 - Dual-scope graphs (global + per-project)
+- Async pipeline for LLM calls and graph writes
+
+### Strategic questions to answer at v2.0 planning kickoff
+
+- What from v1.1 proved genuinely useful in daily practice vs theoretically useful?
+- LadybugDB spike: does it slot into graphiti-core's Kuzu provider without new workarounds?
+- FalkorDB Lite graphiti-core #1240: merged yet? If so, evaluate as default path.
+- Is the async queue + retention system worth its complexity, or can it be simplified?
 
 ---
 
@@ -193,24 +187,7 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 7.1. Git Indexing Pivot | v1.0 | 4/4 | Complete | 2026-02-20 |
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
-| 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
-| 10. Configurable Capture Modes | 4/4 | Complete    | 2026-03-08 | — |
+| 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
+| 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
-
-## v2.0 Local Memory (Phase 10 - Research-based)
-
-**Goal:** 100% local memory system using Claude Code hooks, Kuzu native FTS5/HNSW, and Ollama summarization. No database migration needed.
-
-**Key insight from research:** Kuzu has native FTS5 and HNSW - same capabilities as SQLite + ChromaDB combined. No migration required.
-
-### Phase 10: Local Memory System (Research-based)
-
-- [ ] **10-01**: Hook infrastructure expansion (6 lifecycle hooks) — fire-and-forget pattern
-- [ ] **10-02**: Kuzu memory store with FTS5 + HNSW indexes — 3-layer search
-- [ ] **10-03**: Ollama summarization (TDD) — replace external APIs
-- [ ] **10-04**: Context injection at session start — ~8K token budget
-- [ ] **10-05**: Integration testing + human verification
-
-**Plans:** 4/4 plans complete
-**Scope:** Local-only, no external APIs, Claude Code hook integration
