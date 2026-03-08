@@ -262,29 +262,30 @@ class TestConfigSet:
 class TestIndexerCaptureMode:
     """CAPT-01/CAPT-02: graphiti index respects capture_mode via extract_commit_knowledge."""
 
-    @pytest.mark.asyncio
-    async def test_indexer_decisions_only_omits_bugs_and_deps(self):
+    def test_indexer_decisions_only_omits_bugs_and_deps(self):
         """decisions-only mode: free-form prompt does not mention bugs or dependencies."""
+        import asyncio
         from src.indexer.extraction import extract_commit_knowledge
         from unittest.mock import AsyncMock, MagicMock
+        import datetime
 
         mock_graphiti = MagicMock()
         mock_graphiti.add_episode = AsyncMock()
 
-        await extract_commit_knowledge(
+        asyncio.run(extract_commit_knowledge(
             commit_sha="abc1234",
             commit_message="refactor: clean up imports",
             commit_author="dev",
             diff_content="-import os\n+import sys",
             graphiti_instance=mock_graphiti,
             group_id="test-group",
-            reference_time=__import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+            reference_time=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
             capture_mode="decisions-only",
-        )
+        ))
 
         # Collect all episode bodies passed to add_episode
         call_bodies = [
-            call.kwargs.get("episode_body", "") or call.args[1] if call.args else ""
+            call.kwargs.get("episode_body", "") or (call.args[1] if call.args else "")
             for call in mock_graphiti.add_episode.call_args_list
         ]
         freeform_body = next(
@@ -295,25 +296,26 @@ class TestIndexerCaptureMode:
         assert "bugs fixed" not in freeform_body.lower()
         assert "dependencies introduced" not in freeform_body.lower()
 
-    @pytest.mark.asyncio
-    async def test_indexer_decisions_and_patterns_includes_bugs_and_deps(self):
+    def test_indexer_decisions_and_patterns_includes_bugs_and_deps(self):
         """decisions-and-patterns mode: free-form prompt includes bugs and dependencies."""
+        import asyncio
         from src.indexer.extraction import extract_commit_knowledge
         from unittest.mock import AsyncMock, MagicMock
+        import datetime
 
         mock_graphiti = MagicMock()
         mock_graphiti.add_episode = AsyncMock()
 
-        await extract_commit_knowledge(
+        asyncio.run(extract_commit_knowledge(
             commit_sha="def5678",
             commit_message="fix: resolve null pointer in auth",
             commit_author="dev",
             diff_content="+if user is not None:",
             graphiti_instance=mock_graphiti,
             group_id="test-group",
-            reference_time=__import__("datetime").datetime(2026, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+            reference_time=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc),
             capture_mode="decisions-and-patterns",
-        )
+        ))
 
         call_bodies = [
             call.kwargs.get("episode_body", "")
