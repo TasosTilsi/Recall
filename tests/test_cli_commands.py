@@ -545,6 +545,8 @@ def _create_mock_config():
     mock_config.queue_item_ttl_hours = 24
     mock_config.reranking_enabled = False  # FIXED: added missing attribute
     mock_config.reranking_backend = "none"  # FIXED: added missing attribute
+    mock_config.capture_mode = "decisions-only"  # FIXED: added for Phase 10
+    mock_config.retention_days = 90  # FIXED: added for Phase 10
     return mock_config
 
 

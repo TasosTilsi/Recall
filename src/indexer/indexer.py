@@ -24,6 +24,7 @@ from rich.console import Console
 
 from src.capture.git_capture import fetch_commit_diff
 from src.indexer.extraction import extract_commit_knowledge
+from src.llm.config import load_config
 from src.indexer.quality_gate import should_skip_commit
 from src.indexer.state import (
     IndexState,
@@ -116,6 +117,7 @@ class GitIndexer:
               - skipped_reason: str (only present when returning early)
         """
         start_time = time.monotonic()
+        cfg = load_config()
 
         # Cooldown check (skip if recently run, unless full re-index requested)
         if not full and is_within_cooldown(self.project_root):
@@ -246,6 +248,7 @@ class GitIndexer:
                             graphiti_instance=graphiti_instance,
                             group_id=group_id,
                             reference_time=reference_time,
+                            capture_mode=cfg.capture_mode,
                         )
                     )
                     if result.get("passes", 0) > 0:
@@ -263,6 +266,7 @@ class GitIndexer:
                                 graphiti_instance=graphiti_instance,
                                 group_id=group_id,
                                 reference_time=reference_time,
+                                capture_mode=cfg.capture_mode,
                             )
                         )
                         if result.get("passes", 0) > 0:
