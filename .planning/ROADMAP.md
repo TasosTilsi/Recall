@@ -3,8 +3,8 @@
 ## Milestones
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
-- [ ] **v1.1 Advanced Features** — Phases 9–11 (in progress)
-- [ ] **v2.0 Rebuild** — After v1.1 complete: keep graphiti-core (graph engine justified by enterprise use case), replace KuzuDB with maintained backend, add claude-mem-inspired live capture and UX layer
+- [x] **v1.1 Advanced Features** — Phases 9–11 (shipped 2026-03-08)
+- [ ] **v2.0 Rebuild** — Phase 12+ (planning): keep graphiti-core, replace KuzuDB with maintained backend, add claude-mem-inspired live capture and UX layer
 
 ## Phases
 
@@ -196,5 +196,5 @@ Embedded Python graph DB with full Cypher. Open issue in graphiti-core ([#1240](
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
-| 11. Graph UI | 5/5 | Complete    | 2026-03-08 | — |
+| 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |

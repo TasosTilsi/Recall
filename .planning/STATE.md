@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Advanced Features
-status: completed
-stopped_at: Completed 11-05-PLAN.md
-last_updated: "2026-03-08T23:01:18.360Z"
-last_activity: "2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing"
+milestone: v2.0
+milestone_name: Rebuild
+status: planning
+stopped_at: v1.1 complete — Phase 12 (Multi-Provider LLM) moved to v2.0
+last_updated: "2026-03-08T23:30:00.000Z"
+last_activity: "2026-03-08 — Phase 11 (Graph UI) complete, v1.1 shipped, Phase 12 moved to v2.0"
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 19
-  completed_plans: 14
-  percent: 25
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01 after v1.1 milestone start)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Milestone v1.1 Advanced Features — Phase 10: Capture Modes (Phase 9 complete)
+**Current focus:** Milestone v2.0 Rebuild — Phase 12: Multi-Provider LLM (v1.1 shipped 2026-03-08)
 
 ## Current Position
 
-Phase: 9 of 12 (Smart Retention) — COMPLETE
-Plan: 05 complete (5/5 plans done) — human approved
-Status: Phase 9 complete, ready for Phase 10
-Last activity: 2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing
+Phase: 12 of v2.0 (Multi-Provider LLM) — NOT STARTED
+Status: v1.1 milestone shipped (Phases 9–11 complete). Phase 12 moved to v2.0. Ready to plan.
+Last activity: 2026-03-08 — Phase 11 (Graph UI) human-approved, v1.1 complete
 
-Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases complete, 5/5 plans in Phase 9)
+Progress: [░░░░░░░░░░] 0% (v2.0 milestone — 0/1 phases started)
 
 ## Performance Metrics
 
