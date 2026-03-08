@@ -11,6 +11,7 @@ Runs:
     Phase 07: Git Integration     (R8.1)                                 — no Ollama required
     Phase 71: Git Indexing Pivot  (R8.1, R8.2)                           — Ollama optional
     Phase 09: Smart Retention     (RETN-01 … RETN-06)                    — no Ollama required
+    Phase 10: Configurable Capture Modes (CAPT-01 · CAPT-02 · CAPT-03)  — no Ollama required
 """
 
 import subprocess
@@ -32,6 +33,7 @@ SCRIPTS_TO_RUN = [
     ("Phase 07", "verify_phase_07.py", "Git Integration",     "R8.1"),
     ("Phase 71", "verify_phase_71.py", "Git Indexing Pivot",  "R8.1 · R8.2"),
     ("Phase 09", "verify_phase_09.py", "Smart Retention",     "RETN-01 · RETN-02 · RETN-03 · RETN-04 · RETN-05 · RETN-06"),
+    ("Phase 10", "verify_phase_10.py", "Configurable Capture Modes", "CAPT-01 · CAPT-02 · CAPT-03"),
 ]
 
 

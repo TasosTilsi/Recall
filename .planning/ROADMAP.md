@@ -197,3 +197,20 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 10. Configurable Capture Modes | 4/4 | Complete   | 2026-03-08 | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
+
+## v2.0 Local Memory (Phase 10 - Research-based)
+
+**Goal:** 100% local memory system using Claude Code hooks, Kuzu native FTS5/HNSW, and Ollama summarization. No database migration needed.
+
+**Key insight from research:** Kuzu has native FTS5 and HNSW - same capabilities as SQLite + ChromaDB combined. No migration required.
+
+### Phase 10: Local Memory System (Research-based)
+
+- [ ] **10-01**: Hook infrastructure expansion (6 lifecycle hooks) — fire-and-forget pattern
+- [ ] **10-02**: Kuzu memory store with FTS5 + HNSW indexes — 3-layer search
+- [ ] **10-03**: Ollama summarization (TDD) — replace external APIs
+- [ ] **10-04**: Context injection at session start — ~8K token budget
+- [ ] **10-05**: Integration testing + human verification
+
+**Plans:** 4/4 plans complete
+**Scope:** Local-only, no external APIs, Claude Code hook integration
