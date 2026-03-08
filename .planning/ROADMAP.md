@@ -38,7 +38,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 
 - [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
 - [x] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate (completed 2026-03-08)
-- [ ] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning)
+- [x] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning) (completed 2026-03-08)
 
 ## Phase Details
 
@@ -196,5 +196,5 @@ Embedded Python graph DB with full Cypher. Open issue in graphiti-core ([#1240](
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
-| 11. Graph UI | 4/5 | In Progress|  | — |
+| 11. Graph UI | 5/5 | Complete   | 2026-03-08 | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
