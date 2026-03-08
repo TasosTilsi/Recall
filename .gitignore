@@ -39,3 +39,7 @@ Thumbs.db
 # Project-local knowledge graphs and GSD planning
 .graphiti/
 .planning/
+
+# Next.js frontend (ui/out/ is intentionally committed as pre-built static export)
+ui/node_modules/
+ui/.next/
