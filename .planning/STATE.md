@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: completed
-stopped_at: "Completed 10-03-PLAN.md (checkpoint:human-verify pending)"
-last_updated: "2026-03-08T00:27:45.802Z"
+stopped_at: Completed 10-04-PLAN.md
+last_updated: "2026-03-08T00:28:24.947Z"
 last_activity: "2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 25
 ---
 
@@ -61,6 +61,7 @@ Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases co
 | Phase 10-configurable-capture-modes P01 | 8 | 1 tasks | 2 files |
 | Phase 10-configurable-capture-modes P02 | 8 | 2 tasks | 2 files |
 | Phase 10-configurable-capture-modes P03 | 10 | 2 tasks | 4 files |
+| Phase 10-configurable-capture-modes P04 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,7 @@ Key v1.1 architectural decisions from research:
 - [Phase 10-configurable-capture-modes]: Security gate (sanitize_content) runs unconditionally before any capture_mode prompt selection — locked Phase 2 invariant
 - [Phase 10-configurable-capture-modes]: allowed_values enforcement happens after _parse_value() and before _set_nested_value() in --set handler — clean separation of type parsing and domain validation
 - [Phase 10-configurable-capture-modes]: load_config() called once per process_pending_commits() invocation — acceptable disk I/O, no caching needed
+- [Phase 10-configurable-capture-modes]: FREE_FORM_EXTRACTION_PROMPT alias retained pointing to BROAD prompt for backward compatibility; capture_mode='decisions-only' default; load_config() called once at GitIndexer.run() start to minimize disk reads
 
 ### Pending Todos
 
@@ -108,6 +110,6 @@ Key v1.1 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-08T00:27:45.798Z
-Stopped at: Completed 10-03-PLAN.md (checkpoint:human-verify pending)
+Last session: 2026-03-08T00:28:24.942Z
+Stopped at: Completed 10-04-PLAN.md
 Resume file: None

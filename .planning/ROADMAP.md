@@ -37,7 +37,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 ### v1.1 Advanced Features (Phases 9–11)
 
 - [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
-- [ ] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate
+- [x] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate (completed 2026-03-08)
 - [ ] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning)
 
 ## Phase Details
@@ -194,6 +194,6 @@ Full production-grade graph DB. Richest Cypher support, mature Python SDK (`neo4
 | 8. MCP Server | v1.0 | 4/4 | Complete | 2026-02-27 |
 | 8.1–8.9. Gap Closures | v1.0 | 16/16 | Complete | 2026-03-01 |
 | 9. Smart Retention | 5/5 | Complete   | 2026-03-06 | — |
-| 10. Configurable Capture Modes | 3/4 | In Progress|  | — |
+| 10. Configurable Capture Modes | 4/4 | Complete   | 2026-03-08 | — |
 | 11. Graph UI | v1.1 | 0/TBD | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
