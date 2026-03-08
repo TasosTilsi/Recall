@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: completed
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-08T21:43:27.567Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-03-08T22:10:27.825Z"
 last_activity: "2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 19
-  completed_plans: 11
+  completed_plans: 12
   percent: 25
 ---
 
@@ -64,6 +64,7 @@ Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases co
 | Phase 10-configurable-capture-modes P04 | 3 | 2 tasks | 3 files |
 | Phase 11-graph-ui P01 | 2 | 2 tasks | 2 files |
 | Phase 11-graph-ui P02 | 18 | 2 tasks | 6 files |
+| Phase 11-graph-ui P03 | 15 | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Key v1.1 architectural decisions from research:
 - [Phase 11-graph-ui]: Runtime _get_graph_service() in routes.py fetches GraphService via module attribute so unittest.mock.patch takes effect at call time
 - [Phase 11-graph-ui]: _RootMount subclass preserves route.path == '/' after Starlette normalises '/' to '' in newer versions
 - [Phase 11-graph-ui]: fastapi/uvicorn/starlette added to core pyproject.toml dependencies — ui_server is a core deliverable for Phase 11
+- [Phase 11-graph-ui]: SSR guard (dynamic/ssr:false) required for react-force-graph-2d — uses window/canvas which crashes Next.js SSR
+- [Phase 11-graph-ui]: ui/out/ committed to git as pre-built artifact — Python package ships UI without Node.js dependency
 
 ### Pending Todos
 
@@ -117,6 +120,6 @@ Key v1.1 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-08T21:43:27.565Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-08T22:10:27.823Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
