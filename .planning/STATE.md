@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Advanced Features
 status: completed
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-03-08T10:16:33.773Z"
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-03-08T21:43:27.567Z"
 last_activity: "2026-03-06 — 09-05 human-approved: stale/pin/unpin live-verified, 272 tests passing"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 19
-  completed_plans: 10
+  completed_plans: 11
   percent: 25
 ---
 
@@ -63,6 +63,7 @@ Progress: [███░░░░░░░] 25% (v1.1 milestone — 1/4 phases co
 | Phase 10-configurable-capture-modes P03 | 10 | 2 tasks | 4 files |
 | Phase 10-configurable-capture-modes P04 | 3 | 2 tasks | 3 files |
 | Phase 11-graph-ui P01 | 2 | 2 tasks | 2 files |
+| Phase 11-graph-ui P02 | 18 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Key v1.1 architectural decisions from research:
 - [Phase 10-configurable-capture-modes]: FREE_FORM_EXTRACTION_PROMPT alias retained pointing to BROAD prompt for backward compatibility; capture_mode='decisions-only' default; load_config() called once at GitIndexer.run() start to minimize disk reads
 - [Phase 11-graph-ui]: Phase 11-01: Deferred import inside _make_app() helper so pytest collects 4 FAILED tests rather than 1 collection ERROR — cleaner RED scaffold
 - [Phase 11-graph-ui]: Phase 11-01: TestLLMConfigUI uses existing load_config() directly — AttributeError on ui_api_port is the sole RED signal for LLMConfig extension test
+- [Phase 11-graph-ui]: Runtime _get_graph_service() in routes.py fetches GraphService via module attribute so unittest.mock.patch takes effect at call time
+- [Phase 11-graph-ui]: _RootMount subclass preserves route.path == '/' after Starlette normalises '/' to '' in newer versions
+- [Phase 11-graph-ui]: fastapi/uvicorn/starlette added to core pyproject.toml dependencies — ui_server is a core deliverable for Phase 11
 
 ### Pending Todos
 
@@ -113,6 +117,6 @@ Key v1.1 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-08T10:16:33.769Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-03-08T21:43:27.565Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
