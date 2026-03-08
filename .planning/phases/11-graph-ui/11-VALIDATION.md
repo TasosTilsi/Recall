@@ -2,8 +2,8 @@
 phase: 11
 slug: graph-ui
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-08
 ---
 
@@ -38,13 +38,13 @@ created: 2026-03-08
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 11-01-01 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ❌ W0 | ⬜ pending |
-| 11-01-02 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ❌ W0 | ⬜ pending |
-| 11-01-03 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ❌ W0 | ⬜ pending |
-| 11-02-01 | 02 | 1 | UI-02 | unit | `pytest tests/test_ui_server.py -x -q` | ❌ W0 | ⬜ pending |
-| 11-02-02 | 02 | 1 | UI-02 | unit | `pytest tests/test_ui_server.py -x -q` | ❌ W0 | ⬜ pending |
+| 11-01-01 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ✅ | ✅ green |
+| 11-01-02 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ✅ | ✅ green |
+| 11-01-03 | 01 | 1 | UI-01 | unit | `pytest tests/test_ui_server.py -x -q` | ✅ | ✅ green |
+| 11-02-01 | 02 | 1 | UI-02 | unit | `pytest tests/test_ui_server.py -x -q` | ✅ | ✅ green |
+| 11-02-02 | 02 | 1 | UI-02 | unit | `pytest tests/test_ui_server.py -x -q` | ✅ | ✅ green |
 | 11-03-01 | 03 | 2 | UI-01 | manual | See manual verifications | N/A | ⬜ pending |
-| 11-03-02 | 03 | 2 | UI-03 | unit | `pytest tests/test_ui_command.py -x -q` | ❌ W0 | ⬜ pending |
+| 11-03-02 | 03 | 2 | UI-03 | unit | `pytest tests/test_ui_command.py -x -q` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -71,11 +71,11 @@ created: 2026-03-08
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete — 8/8 automated tests GREEN (Plan 11-04)
