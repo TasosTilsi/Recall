@@ -39,6 +39,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 - [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
 - [x] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate (completed 2026-03-08)
 - [x] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning) (completed 2026-03-08)
+- [ ] **Phase 11.1: Gap Closure — Graph UI Retention Wiring** [INSERTED] — Fix 4 integration gaps from v1.1 audit: retention metadata in node detail sidebar (INT-01), archive filter in canvas (INT-02), pin state in canvas (INT-03), UI port in config CLI (INT-04)
 
 ## Phase Details
 
@@ -112,6 +113,19 @@ Plans:
 - **claude-mem-inspired UX layer.** PostToolUse hook for real-time capture, progressive disclosure MCP search (3-layer: index → timeline → full entity), web viewer for live graph introspection.
 - **Async pipeline preserved.** LLM calls and graph writes stay async. The latency lives in Ollama, not the DB layer. No change to the concurrency model.
 - **Git history bootstrap stays.** `graphiti index` is the unique differentiator — no other tool in this space builds a knowledge scaffold from commit history. Non-negotiable.
+
+### Phase 11.1: Gap Closure — Graph UI Retention Wiring [INSERTED]
+**Goal:** Close 4 integration gaps identified in v1.1 audit — Phase 9 retention state not surfaced through Phase 11 Graph UI layer.
+**Depends on:** Phase 11
+**Requirements:** RETN-01, RETN-04, RETN-06, UI-01, UI-02
+**Gap Closure:** Closes INT-01, INT-02, INT-03, INT-04 from v1.1-MILESTONE-AUDIT.md
+
+Plans:
+- [ ] 11.1-01-PLAN.md — Fix routes.py INT-01: replace get_node_metadata() with get_access_record() + is_pinned() + add retention fields test
+- [ ] 11.1-02-PLAN.md — Fix service.py INT-02+INT-03: add archive + pin state to list_entities_readonly()
+- [ ] 11.1-03-PLAN.md — Fix config.py INT-04: add ui.port / ui.api_port to VALID_CONFIG_KEYS
+
+---
 
 ### Phase 12: Multi-Provider LLM (moved from v1.1)
 **Goal**: Users can switch LLM providers (OpenAI, Groq, any OpenAI-compatible endpoint) by editing `llm.toml` — no code changes required — with clear startup feedback on provider reachability.
@@ -207,4 +221,5 @@ Plans:
 | 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
+| 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | 0/3 | Not started | — |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |

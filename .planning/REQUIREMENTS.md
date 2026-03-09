@@ -78,17 +78,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RETN-01 | Phase 9 | Complete |
+| RETN-01 | Phase 11.1 | Pending |
 | RETN-02 | Phase 9 | Complete |
 | RETN-03 | Phase 9 | Complete |
-| RETN-04 | Phase 9 | Complete |
+| RETN-04 | Phase 11.1 | Pending |
 | RETN-05 | Phase 9 | Complete |
-| RETN-06 | Phase 9 | Complete |
+| RETN-06 | Phase 11.1 | Pending |
 | CAPT-01 | Phase 10 | Complete |
 | CAPT-02 | Phase 10 | Complete |
 | CAPT-03 | Phase 10 | Complete |
-| UI-01 | Phase 11 | Complete |
-| UI-02 | Phase 11 | Complete |
+| UI-01 | Phase 11.1 | Pending |
+| UI-02 | Phase 11.1 | Pending |
 | UI-03 | Phase 11 | Complete |
 | PROV-01 | Phase 12 | Pending |
 | PROV-02 | Phase 12 | Pending |
