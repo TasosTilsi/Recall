@@ -39,7 +39,7 @@ See [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md) for full phase deta
 - [x] **Phase 9: Smart Retention** — TTL-based expiry with access-frequency reinforcement scoring, pin/unpin protection, stale preview before deletion (completed 2026-03-06)
 - [x] **Phase 10: Configurable Capture Modes** — Named capture modes (decisions-only vs decisions-and-patterns) selectable via llm.toml with unconditional security gate (completed 2026-03-08)
 - [x] **Phase 11: Graph UI** — `graphiti ui` command for localhost graph visualization with scope selection (visualization approach TBD — discuss before planning) (completed 2026-03-08)
-- [ ] **Phase 11.1: Gap Closure — Graph UI Retention Wiring** [INSERTED] — Fix 4 integration gaps from v1.1 audit: retention metadata in node detail sidebar (INT-01), archive filter in canvas (INT-02), pin state in canvas (INT-03), UI port in config CLI (INT-04)
+- [x] **Phase 11.1: Gap Closure — Graph UI Retention Wiring** [INSERTED] — Fix 4 integration gaps from v1.1 audit: retention metadata in node detail sidebar (INT-01), archive filter in canvas (INT-02), pin state in canvas (INT-03), UI port in config CLI (INT-04) (completed 2026-03-09)
 
 ## Phase Details
 
@@ -221,5 +221,5 @@ Plans:
 | 9. Smart Retention | v1.1 | 5/5 | Complete | 2026-03-06 |
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
-| 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | 0/3 | Not started | — |
+| 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | 3/3 | Complete | 2026-03-09 |
 | 12. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
