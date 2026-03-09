@@ -141,7 +141,7 @@ class TestLLMConfigUI:
         config_file.write_text(textwrap.dedent("""\
             [ui]
             api_port = 9999
-            ui_port = 4000
+            port = 4000
         """))
 
         config = load_config(config_path=config_file)

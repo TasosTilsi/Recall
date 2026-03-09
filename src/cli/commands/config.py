@@ -38,7 +38,7 @@ VALID_CONFIG_KEYS = {
         "desc": "Days before a node is considered stale (min 30)",
     },
     "ui.api_port": {"type": int, "desc": "FastAPI UI server port (default 8765)"},
-    "ui.ui_port": {"type": int, "desc": "UI dev server port (reserved, default 3000)"},
+    "ui.port": {"type": int, "desc": "UI dev server port (reserved, default 3000)"},
 }
 
 
@@ -277,7 +277,7 @@ def config_command(
                 "capture.mode": "capture_mode",
                 "retention.retention_days": "retention_days",
                 "ui.api_port": "ui_api_port",
-                "ui.ui_port": "ui_port",
+                "ui.port": "ui_port",
             }
             attr_name = attr_map.get(get_key)
             if attr_name:
@@ -333,7 +333,7 @@ def config_command(
             },
             "ui": {
                 "api_port": config.ui_api_port,
-                "ui_port": config.ui_port,
+                "port": config.ui_port,
             },
         }
         print_json(config_data)
@@ -377,7 +377,7 @@ def config_command(
         table.add_row("retention.retention_days", str(config.retention_days), VALID_CONFIG_KEYS["retention.retention_days"]["desc"])
         table.add_row("[bold]UI Settings[/bold]", "", "", style="dim")
         table.add_row("ui.api_port", str(config.ui_api_port), VALID_CONFIG_KEYS["ui.api_port"]["desc"])
-        table.add_row("ui.ui_port", str(config.ui_port), VALID_CONFIG_KEYS["ui.ui_port"]["desc"])
+        table.add_row("ui.port", str(config.ui_port), VALID_CONFIG_KEYS["ui.port"]["desc"])
 
         console.print(table)
 

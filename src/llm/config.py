@@ -153,7 +153,7 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         retention_days=raw_days,
         capture_mode=raw_mode,
         ui_api_port=ui.get("api_port", 8765),
-        ui_port=ui.get("ui_port", 3000),
+        ui_port=ui.get("port", 3000),
     )
 
 
