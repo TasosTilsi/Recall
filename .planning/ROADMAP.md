@@ -178,6 +178,16 @@ Embedded Python graph DB with full Cypher. Open issue in graphiti-core ([#1240](
 - FalkorDB Lite graphiti-core #1240: merged yet? If so, evaluate as default path.
 - Is the async queue + retention system worth its complexity, or can it be simplified?
 
+### Phase 13: Graph UI Redesign — shadcn/ui dual-view table and graph
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 13 to break down)
+
 ---
 
 ## Progress

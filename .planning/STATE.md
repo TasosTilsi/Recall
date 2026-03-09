@@ -110,6 +110,10 @@ Key v1.1 architectural decisions from research:
 - [Phase 11-graph-ui]: _REPO_ROOT computed via os.path.dirname chain at module level so Path() calls in function body are patchable by tests; subprocess imported at module level for test patch target despite not being called at runtime
 - [Phase 11-graph-ui]: Phase 11 human-verify checkpoint auto-approved per user directive — autonomous continuation authorized
 
+### Roadmap Evolution
+
+- Phase 13 added: Graph UI Redesign — shadcn/ui dual-view table and graph (depends on Phase 12; placed after simplification + DB migration phases to be added)
+
 ### Pending Todos
 
 1. **Distribution/polish phase** — PATH detection in `graphiti mcp install`, codebase refactor sweep, Claude plugin configuration
