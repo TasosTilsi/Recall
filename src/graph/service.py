@@ -1216,6 +1216,19 @@ class GraphService:
                     "access_count": 0,
                     "pinned": False,
                 })
+
+            # Apply retention filters — mirror list_entities() post-processing
+            try:
+                from src.retention import get_retention_manager
+                retention = get_retention_manager()
+                archived_uuids = retention.get_archive_state_uuids(group_id)
+                pinned_uuids = retention.get_pin_state_uuids(group_id)
+                entities = [e for e in entities if e.get("uuid") not in archived_uuids]
+                for e in entities:
+                    e["pinned"] = e["uuid"] in pinned_uuids
+            except Exception:
+                pass
+
             return entities
         except Exception as e:
             logger.warning("list_entities_readonly failed", error=str(e), scope=str(scope))

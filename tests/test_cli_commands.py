@@ -547,6 +547,8 @@ def _create_mock_config():
     mock_config.reranking_backend = "none"  # FIXED: added missing attribute
     mock_config.capture_mode = "decisions-only"  # FIXED: added for Phase 10
     mock_config.retention_days = 90  # FIXED: added for Phase 10
+    mock_config.ui_api_port = 8765  # FIXED: added for Phase 11.1 INT-04
+    mock_config.ui_port = 3000  # FIXED: added for Phase 11.1 INT-04
     return mock_config
 
 

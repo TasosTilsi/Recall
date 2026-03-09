@@ -64,6 +64,48 @@ class TestAPIRoutes:
         assert "name" in data
         assert "entityType" in data
 
+    def test_node_detail_retention_fields(self):
+        """GET /api/nodes/{uuid} returns retention metadata from get_access_record() + is_pinned().
+
+        Regression test for INT-01: routes.py previously called nonexistent
+        get_node_metadata() — retention fields were always pinned=False,
+        accessCount=0, lastAccessedAt=''.
+        """
+        from fastapi.testclient import TestClient
+
+        from src.ui_server.app import create_app
+
+        mock_retention = MagicMock()
+        mock_retention.get_access_record.return_value = {
+            "last_accessed_at": "2026-01-15T10:00:00",
+            "access_count": 42,
+        }
+        mock_retention.is_pinned.return_value = True
+
+        with (
+            patch("src.ui_server.app.GraphService") as mock_service_cls,
+            patch("src.retention.get_retention_manager", return_value=mock_retention),
+        ):
+            mock_service = MagicMock()
+            mock_service.get_entity_by_uuid.return_value = {
+                "uuid": "test-uuid-456",
+                "name": "PinnedEntity",
+                "labels": ["Decision"],
+                "summary": "An important decision.",
+            }
+            mock_service._get_group_id.return_value = "test-group"
+            mock_service_cls.return_value = mock_service
+
+            app = create_app(scope_label="project", static_dir=None)
+            client = TestClient(app)
+            response = client.get("/api/nodes/test-uuid-456")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["pinned"] is True
+        assert data["accessCount"] == 42
+        assert data["lastAccessedAt"] == "2026-01-15T10:00:00"
+
 
 class TestAppFactory:
     """Tests for the create_app factory function."""

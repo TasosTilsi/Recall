@@ -115,7 +115,12 @@ async def get_node_detail(uuid: str, request: Request):
     try:
         retention = get_retention_manager()
         scope_key = service._get_group_id(graph_scope, proj_root)
-        meta = retention.get_node_metadata(uuid=uuid, scope=scope_key)
+        access = retention.get_access_record(uuid=uuid, scope=scope_key)
+        meta = {
+            "last_accessed_at": access.get("last_accessed_at", ""),
+            "access_count": access.get("access_count", 0),
+            "pinned": retention.is_pinned(uuid=uuid, scope=scope_key),
+        }
     except Exception:
         meta = None
 
