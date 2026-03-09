@@ -1,336 +1,285 @@
-# Stack Research — v1.1 Advanced Features
+# Stack Research — v2.0 DB Backend Replacement
 
-**Domain:** Knowledge graph CLI — Smart retention, graph UI, multi-provider LLM
-**Researched:** 2026-03-01
-**Confidence:** HIGH (core decisions), MEDIUM (version pinning for new packages)
-**Scope:** ADDITIONS ONLY — documents new packages needed for v1.1 features, not the existing v1.0 stack
-
----
-
-## Existing v1.0 Stack (reference only, do not change)
-
-| Technology | Version | Notes |
-|------------|---------|-------|
-| Python | 3.12 | Runtime — do not change |
-| kuzu | 0.11.3 | Graph DB — pinned |
-| graphiti-core[kuzu] | 0.28.1 | KG framework — pinned |
-| ollama | 0.6.1 | Ollama SDK — pinned |
-| mcp[cli] | >=1.26.0,<2.0.0 | FastMCP — pinned range |
-| typer | >=0.15.0 | CLI — keep |
-| httpx | >=0.28.0 | HTTP client — keep |
-| structlog | >=25.5.0 | Logging — keep |
-| tenacity | 9.1.4 | Retry — keep |
-| persist-queue | 1.1.0 | SQLiteAckQueue — keep |
-| python-toon | >=0.1.3 | TOON encoding — keep |
-| detect-secrets | >=1.5.0 | Secret scanning — keep |
-| GitPython | >=3.1.0 | Git integration — keep |
+**Domain:** Embedded graph database backend for graphiti-core (replacing archived KuzuDB)
+**Researched:** 2026-03-09
+**Confidence:** HIGH (all findings verified against installed packages, PyPI, and official sources)
 
 ---
 
-## New Stack Additions for v1.1
+## Context
 
-### Feature 1: Smart Retention (TTL + Reinforcement Scoring)
+KuzuDB was archived by Kuzu Inc on **2025-10-10**. The repository is read-only and receives no bug fixes or security patches. `pip install kuzu==0.11.3` still works but is a dead-end dependency.
 
-**Approach: Pure Python + Kuzu Cypher — no new library needed.**
+This research answers: what are the viable replacements within graphiti-core's driver architecture?
 
-TTL-based expiry and access-frequency reinforcement are implemented as:
-1. New Kuzu node properties: `last_accessed_at TIMESTAMP`, `access_count INT64`, `reinforcement_score FLOAT`
-2. Python-level scheduled cleanup: query Kuzu with `WHERE last_accessed_at < $cutoff` + `DELETE`
-3. Scoring: Python computes `score = (access_count * recency_weight) + base_score` and writes it back
+---
 
-Kuzu's Cypher `DELETE` and `MATCH ... WHERE timestamp < $cutoff` already supports this pattern. No additional database scheduler library is required for a single-process local tool.
+## graphiti-core==0.28.1 Built-In Drivers (Verified)
 
-**If a background scheduler is needed for periodic cleanup:**
+**Source: inspected `/home/tasostilsi/.local/lib/python3.12/site-packages/graphiti_core/driver/`**
 
-| Library | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `apscheduler` | `>=3.10.4` | In-process job scheduler for TTL sweeps | Lightweight cron-style scheduler with no external broker; runs in same Python process; APScheduler 3.x is stable on Python 3.12 with `AsyncIOScheduler`. Alternative to a cron job that would require OS-level setup. |
+graphiti-core 0.28.1 (latest on PyPI as of 2026-03-09) ships exactly four drivers:
 
-APScheduler 3.x (not 4.x — see pitfalls) is the right choice: it runs inside the existing async event loop via `AsyncIOScheduler`, has no daemon or broker dependency, and integrates cleanly with the existing `BackgroundWorker` pattern.
+| Driver Class | `GraphProvider` Enum Value | Install Extra | Embedded |
+|---|---|---|---|
+| `KuzuDriver` | `KUZU` | `graphiti-core[kuzu]` | Yes — in-process |
+| `FalkorDriver` | `FALKORDB` | `graphiti-core[falkordb]` | No — requires server/subprocess |
+| `Neo4jDriver` | `NEO4J` | included by default | No — requires Neo4j server |
+| `NeptuneDriver` | `NEPTUNE` | `graphiti-core[neptune]` | No — AWS cloud only |
 
-**Installation:**
+**No `FalkorLiteDriver` or `LadybugDriver` exists in 0.28.1.** Both are proposed in open GitHub issues but are not merged.
+
+---
+
+## Option 1: LadybugDB
+
+### Identity
+
+LadybugDB is a community-driven fork of KuzuDB, announced in October 2025 by Arun Sharma (ex-Facebook, ex-Google). The first release (v0.12.0, 2025-11-04) was explicitly described as "functionally equivalent to Kuzu v0.11.3 — only the name changed." LadybugDB Inc is the commercial entity providing enterprise support.
+
+### Package Details
+
+| Field | Value |
+|---|---|
+| PyPI package name | `real-ladybug` |
+| Python import module | `lbug` |
+| Latest version | **0.15.1** |
+| Last release date | 2026-03-02 |
+| Source | https://github.com/LadybugDB/ladybug |
+| Maintained | Yes — monthly releases since Oct 2025 |
+| Docker required | No — in-process embedded |
+| Cypher support | Yes — KuzuDB Cypher implementation |
+| FTS support | Yes — inherited from KuzuDB |
+
+Release cadence: v0.12.x (Nov 2025), v0.13.x (Dec 2025), v0.14.x (Jan 2026), v0.15.x (Feb/Mar 2026).
+
+### graphiti-core Compatibility
+
+**Status: Needs a custom driver patch — no built-in support in 0.28.1.**
+
+The KuzuDriver in graphiti-core 0.28.1 begins with `import kuzu` (line 20 of `kuzu_driver.py`, verified). LadybugDB uses `import lbug`. LadybugDB's own documentation states they performed "a global rename from kuzu to lbug" to maintain API parity. The driver code is otherwise structurally identical.
+
+Two viable approaches to compatibility:
+
+1. **Import alias shim (minimal):** `pip install real-ladybug` and add `import lbug as kuzu` at the top of a patched `kuzu_driver.py`. All graphiti-core internal calls to `kuzu.*` route to `lbug.*`.
+2. **Module-level mock (no fork):** Install `real-ladybug`, then in the project's startup code: `import sys; import lbug; sys.modules['kuzu'] = lbug` before importing graphiti-core. This tricks Python's import system into loading `lbug` whenever graphiti-core does `import kuzu`.
+
+**graphiti-core issue #1132** (opened 2026-01-02, open as of 2026-03-09): Community request to officially support LadybugDB. The graphiti maintainers have not acted on this in 0.28.1.
+
+### Risk Assessment
+
+- HIGH confidence on API compatibility for Kuzu 0.11.3 feature set (first release explicitly guaranteed parity).
+- MEDIUM confidence on stability beyond v0.12.0 — the fork adds new features (hypergraph, metagraph support per Feb 2026 blog) that diverge from Kuzu 0.11.3. Ensure the three KuzuDB workarounds in `src/storage/graph_manager.py` are verified at runtime.
+- MEDIUM confidence on long-term maintenance — commercial entity is <6 months old.
+
+---
+
+## Option 2: FalkorDB (built-in graphiti-core driver)
+
+### Identity
+
+FalkorDB is a graph database module for Redis, using GraphBLAS for sparse adjacency matrices. It implements OpenCypher and RedisSearch-style FTS. FalkorDB has a **built-in driver in graphiti-core 0.28.1**. However, FalkorDB itself is server-based (requires a Redis process).
+
+**falkordblite** is a separate package that auto-manages a Redis+FalkorDB subprocess, providing a "zero-config" experience without Docker. It communicates over a Unix domain socket.
+
+### Package Details
+
+| Field | falkordb (server) | falkordblite (subprocess) |
+|---|---|---|
+| PyPI package name | `falkordb` | `falkordblite` |
+| Latest version | **1.6.0** | **0.9.0** |
+| Last release date | 2026 (active) | 2026-02-04 |
+| Source | https://github.com/FalkorDB/FalkorDB | https://github.com/FalkorDB/falkordblite |
+| Maintained | Yes | Yes |
+| Docker required | Yes (standard) / No (falkordblite subprocess) | No |
+| Cypher support | Yes (OpenCypher) | Yes |
+| FTS support | Yes (RediSearch syntax) | Yes |
+| Python 3.12 required | 3.8+ | **3.12+ only** (matches project) |
+| Platforms | Cross-platform | Linux x86-64, macOS x86-64/ARM64 only |
+
+### graphiti-core Compatibility
+
+**Status: Built-in driver (`FalkorDriver`) — no custom code needed.**
+
+`graphiti-core[falkordb]` installs both graphiti-core and the `falkordb` Python client. `FalkorDriver(host, port)` is the constructor.
+
+With falkordblite, the workflow is:
+1. `from falkordblite import FalkorDB as EmbeddedFalkorDB`
+2. Start the managed subprocess: `edb = EmbeddedFalkorDB(path="~/.graphiti/falkor.db")`
+3. Pass the connection to `FalkorDriver(host=edb.host, port=edb.port)`
+
+**graphiti-core issue #1240** (FalkorDB Lite support, open): Proposes a `FalkorLiteDriver(path=...)` thin subclass for clean integration. Not merged in 0.28.1. Manual wiring as above is required today.
+
+### Key Architectural Distinction
+
+falkordblite is **not in-process embedded**. It forks a child process and communicates via Unix socket. This means:
+- One extra process on startup (lightweight Redis+FalkorDB subprocess)
+- IPC overhead per query (negligible for local use)
+- Process isolation: app crash does not corrupt DB process
+- The DB process persists across Python interpreter restarts within the same session
+
+This is architecturally different from KuzuDB/LadybugDB's true in-process embedding.
+
+### Cypher Compatibility Warning
+
+FalkorDB's Cypher dialect has differences from KuzuDB's Cypher. The graphiti-core KuzuDriver and FalkorDriver use **separate query implementations** — the FalkorDB driver in graphiti-core rewrites all queries in FalkorDB's dialect. Migrating from `KuzuDriver` to `FalkorDriver` is a driver swap, not a query translation task (graphiti-core handles the translation internally). No manual Cypher porting needed.
+
+### Risk Assessment
+
+- HIGH confidence on graphiti-core compatibility — FalkorDriver is first-class, actively maintained by graphiti team.
+- MEDIUM confidence on falkordblite subprocess stability — 9 releases in 3 months indicates rapid iteration but also potential churn.
+- The subprocess model increases operational complexity slightly vs. LadybugDB's true embedding.
+
+---
+
+## Option 3: Neo4j
+
+**Status: Built-in driver. Server required. Not viable for embedded use case.**
+
+Requires a running Neo4j server (Docker or Neo4j Desktop). Eliminates the project's zero-infrastructure, local-first design. Not considered for v2.0.
+
+---
+
+## Option 4: Neptune
+
+**Status: Built-in driver. AWS cloud service only. Not viable.**
+
+Neptune Analytics requires AWS credentials and network access. Not a local embedded option.
+
+---
+
+## Option 5: Other Python Graph Libraries
+
+| Library | PyPI | Embedded | Cypher | FTS | graphiti-core Driver | Verdict |
+|---|---|---|---|---|---|---|
+| `igraph` | `igraph` | In-memory only | No | No | None — needs full build | No |
+| `networkx` | `networkx` | In-memory only | No | No | None — needs full build | No |
+| DuckDB graph ext | `duckdb` | Yes | No (SQL) | Partial | None — needs full build | No |
+| SQLite + graph | various | Yes | No | Partial | None — needs full build | No |
+
+Building a complete new graphiti-core `GraphDriver` implementation requires implementing 10+ operation classes (entity nodes, episode nodes, community nodes, saga nodes, entity edges, episodic edges, community edges, has-episode edges, next-episode edges, search ops, graph maintenance ops). This is weeks of engineering work with no existing reference. None of these are viable for v2.0.
+
+---
+
+## Definitive Comparison Table
+
+| Option | pip package | Version | Last Release | Maintained | Docker | Cypher | FTS | graphiti-core Support | Embedded Mode |
+|---|---|---|---|---|---|---|---|---|---|
+| **KuzuDB (current, dead)** | `kuzu` | 0.11.3 | 2025-10-10 (FINAL) | NO — archived | No | Yes | Yes (buggy*) | Built-in (`[kuzu]`) | True in-process |
+| **LadybugDB** | `real-ladybug` | 0.15.1 | 2026-03-02 | Yes | No | Yes | Yes | Needs import shim | True in-process |
+| **FalkorDB (Docker/server)** | `falkordb` | 1.6.0 | 2026 | Yes | Yes | Yes (OpenCypher) | Yes (RediSearch) | Built-in (`[falkordb]`) | No — external server |
+| **FalkorDB via falkordblite** | `falkordb` + `falkordblite` | 1.6.0 / 0.9.0 | 2026-02-04 | Yes | No | Yes (OpenCypher) | Yes | Built-in driver + manual wiring | Subprocess (IPC) |
+| **Neo4j** | `neo4j` | active | active | Yes | Yes | Yes | Yes | Built-in (default) | No — external server |
+| **Neptune** | langchain-aws | active | active | Yes | No (AWS cloud) | Yes | Yes | Built-in (`[neptune]`) | No — cloud |
+| **igraph / networkx / DuckDB** | various | active | active | Yes | No | No | No/Partial | None — full build required | In-memory (no persistence) |
+
+*KuzuDB FTS: required the three workarounds in `src/storage/graph_manager.py`
+
+---
+
+## Recommendation
+
+**Use LadybugDB (`real-ladybug==0.15.1`) as the primary v2.0 backend.**
+
+**Rationale:**
+
+1. **True in-process embedding.** Same architecture as KuzuDB — the database lives inside the Python process with no IPC, no child process management, and no port configuration. Preserves the project's zero-infrastructure design.
+
+2. **Near-zero migration cost.** The three KuzuDB workarounds in `src/storage/graph_manager.py` were written against Kuzu 0.11.3 behavior. LadybugDB v0.12.0 was explicitly guaranteed equivalent to Kuzu 0.11.3. The import alias `import lbug as kuzu` or a `sys.modules['kuzu'] = lbug` shim is the entire migration at the driver level.
+
+3. **Cypher and schema compatibility.** All KuzuDB SCHEMA_QUERIES, FTS index creation, and Cypher patterns in graphiti-core's `KuzuDriver` carry forward unchanged. The graphiti-core queries do not need modification.
+
+4. **Active development.** 8 releases in 5 months with a commercial backer. More actively maintained than KuzuDB ever was in its final year.
+
+**FalkorDB via falkordblite is the fallback** if LadybugDB has runtime incompatibilities (schema divergence, FTS behavior differences, or API drift post-0.12.0). FalkorDB has a first-class built-in graphiti-core driver that is maintained by the Zep team. The tradeoff is subprocess architecture and manual falkordblite wiring.
+
+---
+
+## Installation
+
 ```bash
-pip install "apscheduler>=3.10.4,<4.0"
+# Option A: LadybugDB (recommended)
+pip install "real-ladybug>=0.15.1"
+# Remove: kuzu>=0.11.3
+
+# Option B: FalkorDB embedded via falkordblite (fallback)
+pip install "graphiti-core[falkordb]" "falkordblite>=0.9.0"
+# Use: FalkorDriver (already in graphiti-core)
+# Remove: graphiti-core[kuzu], kuzu
 ```
 
-**Do NOT use APScheduler 4.x:** It was released in 2024 with a completely different API (no `AsyncIOScheduler`, no `add_job`). The 3.x → 4.x migration is a full rewrite. Pin to `<4.0` in pyproject.toml.
-
----
-
-### Feature 2: Configurable Capture Modes (decisions-only vs. decisions-and-patterns)
-
-**No new library needed.** This is a configuration change + filtering logic in Python:
-- `llm.toml` gets a new `[capture]` section with `mode = "decisions"` or `mode = "patterns"`
-- The existing `LLMConfig` dataclass gains a `capture_mode: str` field
-- Filtering logic in `src/capture/summarizer.py` applies mode-specific prompts
-
-No external dependency required.
-
----
-
-### Feature 3: Localhost Graph Visualization (`graphiti ui`)
-
-**Recommended stack: `pyvis` for graph rendering + `streamlit` as the app server.**
-
-#### Graph Rendering: pyvis
-
-| Library | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `pyvis` | `0.3.2` | Interactive graph HTML generation | Renders entity nodes + relationship edges as interactive HTML via vis.js. Pure Python wrapper around vis.js — no JavaScript required. `Network.from_nx()` accepts NetworkX graphs directly. Output is a self-contained HTML file that opens in any browser. |
-| `networkx` | `>=3.3` | Graph data structure intermediate | pyvis accepts NetworkX `Graph` objects natively. The existing system uses Kuzu Cypher for queries — NetworkX is the bridge between Kuzu query results and pyvis. NetworkX 3.x is Python 3.12 compatible and actively maintained. |
-
-pyvis is the right choice over Plotly/Dash because:
-- **Zero JavaScript**: generates self-contained HTML with embedded vis.js
-- **Minimal dependencies**: networkx is the only required dep; no React, no webpack
-- **For tool scale**: this tool has hundreds of nodes max, not millions — pyvis handles this easily
-- **Fast iteration**: `net.show("graph.html")` is 5 lines of code; Dash equivalent is 60+
-
-pyvis last release was January 2025 (v0.3.2). It is in maintenance mode but stable. The vis.js rendering is battle-tested. For a developer tool with dozens to hundreds of nodes, this is not a concern.
-
-#### App Server: streamlit
-
-| Library | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `streamlit` | `>=1.42.0` | Localhost web app framework | Turns a Python script into a web app with `streamlit run src/ui/app.py`. Handles HTTP serving, browser launch, and live reload. 10x less code than Dash for the same result. Python 3.12 supported (verified). Latest stable: 1.52.2 (Jan 2026). |
-
-Streamlit is the right choice over Dash because:
-- **Simplicity**: the UI is a dev tool, not a production dashboard. Streamlit's script-rerun model is perfect — each user interaction reruns the script from the codebase.
-- **No routing/layout boilerplate**: Dash requires defining layout, callbacks, and running a server app object. Streamlit is a script.
-- **Fast development**: `st.components.v1.html(pyvis_html_content)` embeds the pyvis graph directly.
-- **Already supports Python 3.12**: verified (3.9, 3.10, 3.11, 3.12, 3.13 all supported).
-
-Streamlit brings notable dependencies (tornado, watchdog, etc.) but they are non-conflicting with the existing stack. The `[ui]` optional dependency group isolates this to users who run `graphiti ui`.
-
-**Installation (optional group):**
-```bash
-pip install "graphiti-knowledge-graph[ui]"
-# Which installs: pyvis==0.3.2 networkx>=3.3 streamlit>=1.42.0
-```
-
-In `pyproject.toml`:
-```toml
-[project.optional-dependencies]
-ui = [
-    "pyvis==0.3.2",
-    "networkx>=3.3",
-    "streamlit>=1.42.0",
-]
-```
-
----
-
-### Feature 4: Multi-Provider LLM Support
-
-**Recommended approach: openai Python SDK 2.x with `base_url` overrides — NOT litellm.**
-
-#### Why NOT litellm
-
-litellm is the obvious choice but it is wrong for this project:
-
-1. **Dependency explosion**: litellm 1.81+ requires `aiohttp`, `azure-identity`, `grpcio`, `mlflow`, `polars`, `redisvl`, `semantic-router`, `tiktoken`, `tokenizers`, `uvloop`, and many more. This is a massive transitive dependency tree for a local developer tool.
-2. **Version conflicts**: litellm pins `openai>=1.99.5` (in recent versions), which conflicts with other packages pinning older openai. The existing `httpx>=0.28.0` and graphiti-core's own OpenAI dependency may conflict.
-3. **Overkill**: litellm is designed for production AI gateways with load balancing, cost tracking, and logging at scale. This project needs provider switching for a single local user.
-4. **Stability**: As of Jan 2026, litellm has 800+ open issues; one release caused OOM on deployments.
-
-#### The Right Approach: openai SDK 2.x + anthropic SDK + groq SDK
-
-All major providers support the OpenAI-compatible API via `base_url`. The architecture is:
-
-1. **`openai>=2.0.0`** — handles OpenAI, Groq, and any OpenAI-compatible endpoint (via `base_url`)
-2. **`anthropic>=0.84.0`** — handles Anthropic natively (Claude models)
-3. **`groq>=0.33.0`** — optional; Groq is already reachable via openai SDK with `base_url="https://api.groq.com/openai/v1"`
-
-The existing `OllamaClient` pattern (provider-specific client, config-driven) is replicated for a new `ProviderClient` abstraction. The `llm.toml` gains a `[provider]` section:
-
-```toml
-[provider]
-type = "openai"          # "openai" | "anthropic" | "groq" | "openai-compatible"
-api_key = "sk-..."       # or set PROVIDER_API_KEY env var
-base_url = ""            # override for openai-compatible endpoints
-models = ["gpt-4o-mini"] # models to use
-```
-
-The graphiti-core `LLMClient` interface requires `chat()` and `generate()` methods. The new `ProviderClient` implements those using whichever SDK matches the configured provider type.
-
-**Note on Anthropic:** Anthropic exposes an OpenAI-compatible endpoint at `https://api.anthropic.com/v1/` (documented officially). This means `openai` SDK + `base_url="https://api.anthropic.com/v1/"` works for basic use. The native `anthropic` SDK is only needed for Anthropic-specific features (extended thinking, PDF processing, prompt caching). For v1.1, use the openai SDK for Anthropic too — simpler, one less dependency.
-
-| Library | Version | Purpose | Why |
-|---------|---------|---------|-----|
-| `openai` | `>=2.0.0` | OpenAI + OpenAI-compatible provider client | Official SDK, Python 3.9+. Latest: 2.24.0 (Feb 2026). Supports `base_url` override for Groq, Anthropic-compatible, LM Studio, vLLM, etc. Already transitively pulled by graphiti-core in some versions — check for conflicts. |
-| `groq` | `>=0.33.0` | Groq provider — OPTIONAL | Only needed if users want native Groq SDK features. In practice, Groq is fully reachable via openai SDK with `base_url="https://api.groq.com/openai/v1"`. Add to `[provider]` optional group, not core. |
-
-**Installation (optional group):**
-```bash
-pip install "graphiti-knowledge-graph[providers]"
-# Which installs: openai>=2.0.0
-```
-
-```toml
-[project.optional-dependencies]
-providers = [
-    "openai>=2.0.0",
-]
-```
-
-**IMPORTANT — Compatibility check with graphiti-core 0.28.1:**
-graphiti-core may already import `openai` internally (it supports OpenAI and Azure OpenAI backends). Before adding `openai>=2.0.0`, run `pip show graphiti-core | grep -i openai` to verify there is no pinned openai version that conflicts. If graphiti-core pins to openai 1.x, use `openai>=1.50.0,<2.0.0` instead. This MUST be verified during Phase 9 plan creation.
-
----
-
-## Summary: What to Add vs. What to Skip
-
-### Add (as optional groups)
-
-| Package | Version | Group | Feature |
-|---------|---------|-------|---------|
-| `apscheduler` | `>=3.10.4,<4.0` | core | Smart retention periodic cleanup |
-| `pyvis` | `==0.3.2` | `[ui]` | Graph visualization HTML |
-| `networkx` | `>=3.3` | `[ui]` | Graph data bridge for pyvis |
-| `streamlit` | `>=1.42.0` | `[ui]` | Localhost web app server |
-| `openai` | `>=2.0.0` | `[providers]` | Multi-provider LLM |
-
-### Do NOT Add
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `litellm` | 100+ transitive deps, version conflicts, overkill for local tool | openai SDK with `base_url` overrides |
-| `anthropic` | Not needed for v1.1 — openai SDK reaches Anthropic via compatible endpoint | openai SDK + `base_url="https://api.anthropic.com/v1/"` |
-| `apscheduler>=4.0` | Completely different API from 3.x, migration is a rewrite | `apscheduler>=3.10.4,<4.0` |
-| `dash` + `plotly` | 10x more code than streamlit for same result, requires layout/callback/server boilerplate | streamlit |
-| `celery` | Requires Redis/RabbitMQ broker, distributed task system, massive overkill | apscheduler in-process |
-| `neo4j-python-driver` | TTL is Python-level; no Neo4j | native Kuzu Cypher DELETE |
-| `aiocron` | Less maintained, less features than apscheduler | `apscheduler>=3.10.4,<4.0` |
-
----
-
-## Version Compatibility Matrix
-
-| New Package | Existing Package | Status | Notes |
-|-------------|-----------------|--------|-------|
-| `apscheduler>=3.10.4,<4.0` | Python 3.12 | COMPATIBLE | APScheduler 3.10.4 supports Python 3.9+ |
-| `apscheduler>=3.10.4,<4.0` | asyncio (existing) | COMPATIBLE | `AsyncIOScheduler` uses the existing event loop |
-| `pyvis==0.3.2` | networkx>=3.3 | COMPATIBLE | pyvis 0.3.2 uses networkx 3.x API |
-| `pyvis==0.3.2` | Python 3.12 | COMPATIBLE | pure Python, no compiled extensions |
-| `streamlit>=1.42.0` | Python 3.12 | COMPATIBLE | Verified 3.12 support in Streamlit docs |
-| `streamlit>=1.42.0` | httpx>=0.28.0 | VERIFY | Streamlit may pin httpx; check with `pip install --dry-run` |
-| `openai>=2.0.0` | graphiti-core 0.28.1 | VERIFY CRITICAL | graphiti-core may pin openai 1.x internally |
-| `openai>=2.0.0` | httpx>=0.28.0 | COMPATIBLE | openai SDK 2.x uses httpx |
-
-**CRITICAL verify step for Phase 9:** Before adding `openai>=2.0.0`, inspect graphiti-core's requirements:
-```bash
-pip show graphiti-core
-cat .venv/lib/python3.12/site-packages/graphiti_core-*.dist-info/METADATA | grep -i openai
-```
-
----
-
-## Updated pyproject.toml Structure
-
+**pyproject.toml change for Option A:**
 ```toml
 [project]
 dependencies = [
-    # existing v1.0 deps unchanged
-    "detect-secrets>=1.5.0",
-    "GitPython>=3.1.0",
-    "graphiti-core[kuzu]==0.28.1",
-    "httpx>=0.28.0",
-    "kuzu==0.11.3",
-    "mcp[cli]>=1.26.0,<2.0.0",
-    "ollama==0.6.1",
-    "persist-queue==1.1.0",
-    "python-toon>=0.1.3",
-    "structlog>=25.5.0",
-    "tenacity==9.1.4",
-    "typer>=0.15.0",
-    # v1.1 additions (core — no optional group)
-    "apscheduler>=3.10.4,<4.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-]
-reranking = [
-    "sentence-transformers>=2.0.0",
-]
-ui = [
-    "pyvis==0.3.2",
-    "networkx>=3.3",
-    "streamlit>=1.42.0",
-]
-providers = [
-    "openai>=2.0.0",
+    # Replace:
+    #   "graphiti-core[kuzu]==0.28.1",
+    #   "kuzu>=0.11.3",
+    # With:
+    "graphiti-core==0.28.1",   # drop [kuzu] extra
+    "real-ladybug>=0.15.1",    # LadybugDB
 ]
 ```
 
 ---
 
-## Installation Commands
+## Version Compatibility
 
-```bash
-# Core v1.1 (includes apscheduler for retention)
-pip install -e "."
-
-# With graph UI
-pip install -e ".[ui]"
-
-# With multi-provider LLM support
-pip install -e ".[providers]"
-
-# All optional features
-pip install -e ".[ui,providers,reranking]"
-
-# Dev
-pip install -e ".[dev]"
-```
+| Package | Compatible With | Notes |
+|---|---|---|
+| `real-ladybug==0.15.1` | `graphiti-core==0.28.1` | Needs `import lbug as kuzu` shim; not officially tested by graphiti maintainers as of 2026-03-09 |
+| `real-ladybug==0.15.1` | Python 3.12 | Confirmed — LadybugDB targets same Python support as KuzuDB |
+| `falkordblite==0.9.0` | `graphiti-core[falkordb]==0.28.1` | Python 3.12+ required (matches project); FalkorDriver is built-in |
+| `kuzu==0.11.3` | `graphiti-core==0.28.1` | Still works but receives no patches; do not use for v2.0 |
 
 ---
 
-## Architecture Integration Notes
+## What NOT to Use
 
-### Retention: where to hook in
+| Avoid | Why | Use Instead |
+|---|---|---|
+| `kuzu>=0.11.3` | Archived 2025-10-10; no security or bug fix patches | `real-ladybug` |
+| `neo4j` for local use | Requires server process; contradicts zero-infrastructure design | `real-ladybug` |
+| `graphiti-core-falkordb` (separate PyPI package) | Frozen at 0.19.x era (pre-0.20 graphiti-core); incompatible with 0.28.1 | `graphiti-core[falkordb]` |
+| `igraph` / `networkx` as graph DB | No persistence, no Cypher, no FTS; requires writing all 10 graphiti-core operation classes | Any option above |
+| `falkordblite` on Windows | Not supported — Linux and macOS only | Use Docker FalkorDB on Windows |
 
-The TTL sweep belongs in `src/graph/service.py` as a new `expire_stale_nodes(cutoff_days: int)` method. It runs:
-1. On `graphiti ui` startup (sweep before displaying)
-2. Via `apscheduler AsyncIOScheduler` triggered from `BackgroundWorker` startup
-3. On-demand via `graphiti compact --expire`
+---
 
-No new module needed — extend `GraphService`.
+## Open Questions / Phase 1 Verification Required
 
-### Graph UI: new module
+1. **LadybugDB workaround parity at v0.15.1:** The three KuzuDB bugs worked around in `src/storage/graph_manager.py` must be verified against `real-ladybug==0.15.1`:
+   - Missing `_database` attr on driver: does `lbug.KuzuDriver._database` exist after construction?
+   - FTS no-op: does `lbug.KuzuDriver.build_indices_and_constraints()` still skip FTS?
+   - `create_batch()` NotImplementedError in embedder: unrelated to LadybugDB (lives in `OllamaEmbedder`)
+   Verification: `import lbug; d = lbug.Database("/tmp/test"); ...` in a scratch script.
 
-```
-src/
-  ui/
-    __init__.py
-    app.py          # streamlit app: queries Kuzu, builds pyvis graph, st.components.v1.html()
-    graph_builder.py # Kuzu → networkx → pyvis conversion
-```
+2. **`sys.modules` shim feasibility:** Verify that replacing `kuzu` in `sys.modules` with `lbug` before graphiti-core import does not break graphiti-core's internal type checks (it uses `kuzu.Database`, `kuzu.Connection` etc. by name in the driver).
 
-The `graphiti ui` CLI command calls `subprocess.run(["streamlit", "run", str(ui_app_path)])`.
+3. **graphiti-core upgrade path:** If Zep releases 0.29+ with official LadybugDB support before v2.0 ships, the custom shim becomes unnecessary. Monitor https://github.com/getzep/graphiti/issues/1132.
 
-### Multi-provider LLM: extend existing pattern
-
-The existing `OllamaClient` in `src/llm/client.py` is not replaced. It remains for Ollama (cloud + local). A new `ProviderClient` class in `src/llm/provider_client.py` handles OpenAI-compatible providers. `load_config()` reads the `[provider]` section and returns a discriminated union: either `OllamaClient` or `ProviderClient`. The graphiti-core adapters (`OllamaLLMClient`, `OllamaEmbedder`) remain unchanged — they wrap whichever client is active.
+4. **falkordblite lifecycle API:** If FalkorDB fallback is chosen, verify the exact Python API for starting and stopping the subprocess in `src/storage/graph_manager.py`'s `close_all()` method.
 
 ---
 
 ## Sources
 
-- [litellm PyPI](https://pypi.org/project/litellm/) — dependency list, latest version 1.81.x (Feb 2026) — MEDIUM confidence
-- [litellm GitHub releases](https://github.com/BerriAI/litellm/releases) — version history — MEDIUM confidence
-- [LiteLLM Review 2026](https://www.truefoundry.com/blog/a-detailed-litellm-review-features-pricing-pros-and-cons-2026) — stability concerns, 800+ open issues — MEDIUM confidence
-- [openai PyPI](https://pypi.org/project/openai/) — latest 2.24.0 (Feb 2026) — HIGH confidence
-- [anthropic PyPI](https://pypi.org/project/anthropic/) — latest 0.84.0 (Feb 2026) — HIGH confidence
-- [groq PyPI](https://pypi.org/project/groq/) — latest 0.33.0 — HIGH confidence
-- [Anthropic OpenAI SDK compatibility docs](https://docs.anthropic.com/en/api/openai-sdk) — verified openai SDK works with Anthropic endpoint — HIGH confidence
-- [pyvis PyPI](https://pypi.org/project/pyvis/) — latest 0.3.2 (Jan 2025) — HIGH confidence
-- [pyvis GitHub](https://github.com/WestHealth/pyvis) — maintenance status — MEDIUM confidence
-- [streamlit PyPI](https://pypi.org/project/streamlit/) — latest 1.52.2 (Jan 2026), Python 3.12 supported — HIGH confidence
-- [APScheduler PyPI](https://pypi.org/project/APScheduler/) — 3.10.4 stable, 4.x different API — HIGH confidence
-- [Kuzu DELETE docs](https://docs.kuzudb.com/cypher/data-manipulation-clauses/delete/) — native DELETE WHERE timestamp support — HIGH confidence
+- Installed package inspection: `/home/tasostilsi/.local/lib/python3.12/site-packages/graphiti_core/driver/` — HIGH confidence
+- `pip index versions graphiti-core` — 0.28.1 is LATEST as of 2026-03-09 — HIGH confidence
+- `pip index versions real-ladybug` — 0.15.1 confirmed on PyPI — HIGH confidence
+- `pip index versions falkordblite` — 0.9.0 confirmed on PyPI — HIGH confidence
+- `pip index versions falkordb` — 1.6.0 confirmed on PyPI — HIGH confidence
+- KuzuDB archival: https://github.com/kuzudb/kuzu (archived), https://news.ycombinator.com/item?id=45560036 — HIGH confidence
+- LadybugDB GitHub: https://github.com/LadybugDB/ladybug — HIGH confidence
+- LadybugDB v0.12.0 release note ("functionally equivalent to Kuzu v0.11.3"): https://github.com/LadybugDB/ladybug/releases/tag/v0.12.0 — HIGH confidence
+- FalkorDB blog on KuzuDB migration: https://www.falkordb.com/blog/kuzudb-to-falkordb-migration/ — MEDIUM confidence
+- FalkorDBLite architecture (subprocess/Unix socket): https://www.falkordb.com/blog/falkordblite-embedded-python-graph-database/ — HIGH confidence
+- graphiti issue #1132 (KuzuDB archived, LadybugDB): https://github.com/getzep/graphiti/issues/1132 — HIGH confidence (open 2026-03-09)
+- graphiti issue #1240 (FalkorDB Lite feature request): https://github.com/getzep/graphiti/issues/1240 — HIGH confidence (open, not merged 2026-03-09)
+- graphiti-core extras verified: `graphiti_core-0.28.1.dist-info/METADATA` — HIGH confidence
 
 ---
-*Stack research for: Graphiti Knowledge Graph v1.1 Advanced Features*
-*Researched: 2026-03-01*
-*Confidence: HIGH for approach decisions, MEDIUM for exact version pinning of new packages*
+
+*Stack research for: graphiti-knowledge-graph v2.0 — DB backend replacement*
+*Researched: 2026-03-09*
+*Confidence: HIGH for all findings — verified against locally installed packages and PyPI*

@@ -1,148 +1,286 @@
 # Pitfalls Research
 
-**Domain:** Python CLI knowledge graph tool — v1.1 feature additions (retention, capture modes, UI, multi-provider LLM)
-**Researched:** 2026-03-01
-**Confidence:** HIGH — all critical pitfalls verified against codebase inspection, graphiti-core source, and upstream GitHub issues
+**Domain:** Python CLI knowledge graph tool — v2.0 DB backend migration (KuzuDB replacement)
+**Researched:** 2026-03-09
+**Confidence:** HIGH — all pitfalls verified against codebase inspection, graphiti-core 0.28.1 source, upstream GitHub issues, and current package state
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Node.delete_by_uuids Leaves Orphaned RelatesToNode_ and Episodic References
+### Pitfall 1: Three Application-Layer Kuzu Calls Will Not Port Transparently
 
 **What goes wrong:**
-TTL-based retention deletes `Entity` nodes using `Node.delete_by_uuids(driver, uuids)` (the pattern already used in `service.delete_entities()` and `service.compact()`). In the Kuzu backend, `RelatesToNode_` nodes act as reified edges — they are separate graph nodes connecting `Entity` pairs. Deleting an `Entity` without first deleting its associated `RelatesToNode_` nodes leaves orphaned edge-nodes in the graph. Graphiti also has a confirmed upstream bug (issue #1083) where `remove_episode()` leaves `Entity` nodes with no `MENTIONS` relationships, meaning a TTL pass that only queries for `last_accessed` timestamps will never enumerate these orphans.
+`src/graph/service.py` contains three methods that bypass graphiti-core entirely and call Kuzu's Python API directly:
+- `list_edges_readonly()` (line 1143) — opens `kuzu.Database(path, read_only=True)` and executes `MATCH (a:Entity)-[:RELATES_TO]->(rel:RelatesToNode_)-[:RELATES_TO]->(b:Entity)` raw Cypher.
+- `list_entities_readonly()` (line 1185) — same pattern, different query.
+- `get_entity_by_uuid_readonly()` (line 1247) — same pattern for single-entity fetch.
+
+These methods import `kuzu` directly, open their own database handle, and use Kuzu-specific result iteration (`result.has_next()`, `result.get_next()`). After migration:
+- `kuzu.Database` and `kuzu.Connection` do not exist for Neo4j or FalkorDB.
+- The `RelatesToNode_` intermediate node pattern is Kuzu-only. In Neo4j/FalkorDB, `RELATES_TO` is a direct relationship between Entity nodes — this query returns nothing.
+- The result iteration API (`has_next()`, `get_next()`) is Kuzu-specific; Neo4j returns `Result` objects; FalkorDB returns its own record format.
 
 **Why it happens:**
-Two distinct problems compound:
-1. Kuzu uses reified edges (`RelatesToNode_`) that are not automatically cascade-deleted when their target entities are deleted. The deletion responsibility falls on the caller.
-2. `Node.delete_by_uuids()` deletes the `Entity` node rows but does not run a companion `DETACH DELETE` or pre-delete of associated edge nodes — that logic would need to be added explicitly.
-3. The upstream orphan-entity bug (open PR #1130, unmerged as of 2026-03-01) means the graph already accumulates entities with zero MENTIONS edges; retention queries filtering by `last_accessed` won't see these.
+These methods were added as a performance bypass for the UI server — they avoid the overhead of initializing a full Graphiti instance just to read nodes for visualization. The bypass trades correctness guarantees for speed but creates hard Kuzu dependencies invisible to tests (tests mock `_get_graphiti()` and never exercise these paths with a real DB).
 
 **How to avoid:**
-For TTL deletion, issue two queries before deleting Entity nodes:
-1. `MATCH (n:Entity {uuid: $uuid})-[:RELATES_TO]->(e:RelatesToNode_) DETACH DELETE e` — clear edge nodes first.
-2. Then `Node.delete_by_uuids(driver, uuids)` for the entity itself.
-Additionally, run a sweep for zero-MENTIONS orphans after every retention pass: `MATCH (n:Entity) WHERE NOT EXISTS { (:Episodic)-[:MENTIONS]->(n) } RETURN n.uuid` and delete those too.
-Wrap both in a single transaction (Kuzu supports `BEGIN TRANSACTION`) to avoid partial-delete corruption.
+Before choosing a replacement backend, audit every direct `import kuzu` call. These three methods must be rewritten to either:
+(a) use graphiti-core's official query interface (`driver.execute_query()` or the operations interfaces), or
+(b) abstract the read-only query into a `GraphDriver` method on the new driver.
+Write integration tests that exercise `list_edges_readonly()` and `list_entities_readonly()` against a live database — these will fail immediately after migration if not fixed.
 
 **Warning signs:**
-- `graphiti stats` shows `entity_count` decreasing but `relationship_count` stays flat or grows after retention runs.
-- `RelatesToNode_` count query returns more nodes than `entity_count * avg_degree` suggests.
-- Repeated `compact()` calls don't reduce graph size significantly — orphaned edge-nodes bloat the DB.
+- `grep -rn "import kuzu" src/` returns results outside `storage/graph_manager.py`.
+- UI server visualization returns empty graph after backend switch.
+- No test in `tests/` exercises `list_edges_readonly()` with a real database handle.
 
-**Phase to address:** Smart Retention (Phase 9) — retention is the first feature to delete nodes at scale. Build deletion cleanup into the retention sweep from day one. Do not defer orphan cleanup to a later compaction step.
+**Phase to address:** DB Migration Phase — cannot mark migration complete until all three methods are rewritten and integration-tested against the new backend.
 
 ---
 
-### Pitfall 2: Kuzu Database Is Archived — Upgrading graphiti-core May Force a Backend Migration
+### Pitfall 2: graphiti-core Has 50+ Kuzu-Specific Branches That Are Automatically Bypassed by Driver Swap — But Not All Are
 
 **What goes wrong:**
-KuzuDB was archived in October 2025 and is no longer actively maintained. graphiti-core (issue #1132, opened 2026-01-02) opened discussion of switching to LadybugDB (a Kuzu fork) or another backend. If graphiti-core releases a version that drops the `graphiti-core[kuzu]` extra or changes the `KuzuDriver` interface, upgrading to fix other bugs (e.g., the orphan entity bug #1083) could require migrating the entire storage backend.
+graphiti-core 0.28.1 contains over 50 `if driver.provider == GraphProvider.KUZU:` branches across `search_utils.py`, `nodes.py`, `edges.py`, `edge_db_queries.py`, `node_db_queries.py`, `bulk_utils.py`, `graph_data_operations.py`, and `community_operations.py`. When you replace `KuzuDriver` with `Neo4jDriver` or `FalkorDriver`, graphiti-core automatically routes all these branches to the Neo4j/FalkorDB code paths — that part works correctly because `driver.provider` changes.
+
+The critical exception: `src/storage/graph_manager.py` manually calls `get_fulltext_indices(GraphProvider.KUZU)` in `_create_fts_indices()`. This call is hardcoded to `GraphProvider.KUZU`, not to `driver.provider`. After migration, `_create_fts_indices()` will generate Kuzu FTS DDL and attempt to execute it against Neo4j or FalkorDB, which do not understand Kuzu's `CALL db.index.fulltext.createNodeIndex(...)` syntax. The error will surface as `DatabaseError` at startup, before any data is written.
 
 **Why it happens:**
-The project depends on `graphiti-core[kuzu]==0.28.1` pinned exactly. Three existing workarounds are tightly coupled to this version's internal structure (`driver._database`, `build_indices_and_constraints()` being a no-op, `get_fulltext_indices(GraphProvider.KUZU)`). Upgrading to address graphiti-core bugs risks breaking these workarounds silently.
+The `_create_fts_indices()` method was a workaround specific to `KuzuDriver.build_indices_and_constraints()` being a no-op. Neo4j and FalkorDB both implement `build_indices_and_constraints()` properly — the entire `_create_fts_indices()` method and its call sites become dead code after migration, but it fails before the driver can tell it to stop.
 
 **How to avoid:**
-- Keep graphiti-core pinned at `==0.28.1` throughout v1.1. Do not bump the version without a dedicated research spike.
-- If a bump is needed, run the full test suite and explicitly verify: (a) `driver._database` attribute still missing (if fixed upstream, remove workaround), (b) FTS indices still not created by `build_indices_and_constraints()` (if fixed, remove manual `_create_fts_indices()`), (c) `get_fulltext_indices(GraphProvider.KUZU)` query strings still match the installed Kuzu schema.
-- Track the upstream issue #1132. If graphiti-core drops Kuzu in a future release, plan a migration to FalkorDB (official migration guide exists) as a dedicated milestone, not a mid-feature change.
+The migration diff for `graph_manager.py` should be exactly:
+1. Remove `import kuzu`, `from graphiti_core.driver.kuzu_driver import KuzuDriver, GraphProvider`, and `from graphiti_core.graph_queries import get_fulltext_indices`.
+2. Delete `_create_fts_indices()` entirely.
+3. Remove the two `self._create_fts_indices(self._global_driver.db)` call sites.
+4. Remove the `self._global_driver._database = str(GLOBAL_DB_PATH)` workaround (Neo4j/FalkorDB set `_database` in their constructors).
+5. Replace `KuzuDriver(db=str(GLOBAL_DB_PATH))` with the new driver constructor.
+
+The `build_indices_and_constraints()` method on the new driver is called by `_get_graphiti()` via `await graphiti.build_indices_and_constraints()` — this already works correctly in `service.py`. No additional FTS creation code is needed.
 
 **Warning signs:**
-- `pip install` dependency resolver tries to upgrade graphiti-core when installing a new provider library (e.g., `openai`, `anthropic`). Pin hard in `pyproject.toml`.
-- `build_indices_and_constraints()` starts creating indices where it previously did nothing — workaround may now run twice, causing harmless but confusing errors.
-- `KuzuDriver` constructor signature changes — `KuzuDriver(db=str(db_path))` pattern breaks.
+- Import errors at startup: `ImportError: No module named 'kuzu'` if kuzu is uninstalled before `graph_manager.py` is updated.
+- `DatabaseError` with "CALL db.index.fulltext.createNodeIndex" in traceback — FTS DDL being sent to the wrong backend.
+- `AttributeError: 'Neo4jDriver' object has no attribute 'db'` — the `_create_fts_indices(self._global_driver.db)` call treats the driver as a KuzuDriver.
 
-**Phase to address:** Multi-Provider LLM (Phase 11) — that phase adds new Python dependencies (openai, anthropic). Dependency resolver must be guarded. Add explicit check: `assert graphiti_core.__version__ == "0.28.1"` in test suite startup before implementing multi-provider.
+**Phase to address:** DB Migration Phase — `graph_manager.py` must be the first file touched. Rewrite it completely before testing any other component.
 
 ---
 
-### Pitfall 3: OllamaLLMClient Is the Only Concrete Adapter — Multi-Provider Abstraction Breaks graphiti-core Wiring
+### Pitfall 3: The "Rebuild From Git History" Migration Strategy Loses Pinned Entities, Retention Metadata, and Access History
 
 **What goes wrong:**
-`GraphService.__init__()` hardcodes `OllamaLLMClient()` and `OllamaEmbedder()` as the adapters wired to `Graphiti(graph_driver=driver, llm_client=self._llm_client, embedder=self._embedder, ...)`. Adding OpenAI, Anthropic, or Groq providers requires either (a) creating parallel adapter classes per provider, or (b) making `OllamaLLMClient` a routing hub that forwards to the selected provider. If done naively — e.g., by creating `OpenAILLMClient` that directly wraps `openai.OpenAI()` — developers discover that graphiti-core's `LLMClient` ABC has internal retry logic, caching, and prompt injection hooks that differ subtly from the Ollama path, causing structured output parsing failures for non-Ollama providers.
+The planned migration strategy is: delete old Kuzu files, run `graphiti index` to re-populate the graph from git history. This strategy recovers:
+- Entities and facts extracted from git commits (anything in git history).
 
-The known upstream issue: `format=response_model.model_json_schema()` passed to Ollama for constrained generation is stripped for cloud calls in `chat()` (line 440 of `client.py`). New providers that natively support structured output (OpenAI's `response_format=`, Anthropic's tool-use JSON mode) need their own stripping and injection logic — the `_strip_schema_suffix()` and `_inject_example()` methods in `OllamaLLMClient` are only calibrated for Ollama behavior.
+This strategy irrecoverably loses:
+- **All manually added episodes** (`graphiti add --content "..."`) not associated with a git commit. These live only in the Kuzu database, not in any recoverable source.
+- **All pinned entities** (`graphiti pin <uuid>`). Pin state is stored in `~/.graphiti/retention.db` (SQLite sidecar, unaffected by migration). However, the UUIDs in `retention.db` will not match new UUIDs after reindexing — graphiti generates UUIDs deterministically from content, but if the entity resolution produces different merge results on a fresh run (due to different LLM outputs), UUIDs diverge. Old pins become orphaned references.
+- **All access history and staleness scores** in `retention.db`. The SQLite sidecar persists, but the UUIDs it references no longer exist.
+- **Community clusters** computed by `graphiti compact`. These are expensive to recompute and not guaranteed to produce the same clustering on the same data (LLM-dependent).
 
 **Why it happens:**
-The `OllamaLLMClient._generate_response()` method has Ollama-specific logic baked in:
-- `format=` kwarg injection for constrained generation
-- `_strip_schema_suffix()` that matches graphiti-core's exact prompt suffix format
-- `_inject_example()` for cloud models that ignore `format=`
-- `_normalize_field_names()` for dot-prefix key normalization (cloud Ollama-specific behavior)
+Graph data has two tiers:
+1. Content derived from source material (git history) — recoverable by reindexing.
+2. Metadata and manually-added content — not stored in any source, only in the Kuzu files being deleted.
 
-None of these apply cleanly to OpenAI or Anthropic SDKs, which have entirely different structured output APIs (`response_format={"type": "json_schema", ...}` for OpenAI; tool-use JSON extraction for Anthropic).
+The reindex strategy treats the graph as a cache of source material, but it is not: it accumulates knowledge that has no other home.
 
 **How to avoid:**
-Implement multi-provider as a new `ProviderFactory` class that selects and instantiates the correct adapter at startup based on `[provider]` section in `llm.toml`. Each provider gets its own concrete adapter class (e.g., `OpenAILLMClient`, `AnthropicLLMClient`) inheriting from graphiti-core's `LLMClient` ABC — not from `OllamaLLMClient`. The existing `OllamaLLMClient` is not modified; it remains the default path. `GraphService._create_adapters()` is refactored to call `ProviderFactory.create()` instead of directly instantiating Ollama adapters. This is surgical — no existing code path changes.
+Do not use the rebuild strategy as the default migration path. Instead, treat it as a fallback. The primary path should be data export/import:
+1. Before deleting Kuzu files, export all entities and episodes to JSON using `graphiti list --format json` and `graphiti search --all`.
+2. After installing the new backend, reimport using `graphiti add` for each exported episode.
+3. If the export volume is too large for manual reimport, implement a one-shot migration script: open the old Kuzu database (still installable as `kuzu==0.11.3` even if deprecated), read all nodes/edges, write them to the new backend via graphiti-core's standard `add_episode()`.
+
+For users who cannot preserve data, be explicit: document in release notes that v2.0 requires a data reset and list exactly what is lost.
 
 **Warning signs:**
-- Structured output calls return `{"content": raw_text}` fallback instead of parsed Pydantic dicts — indicates the new provider's response isn't being parsed correctly.
-- `validate_response_model` errors in graphiti-core logs — means the adapter returned the wrong dict structure.
-- Embedding calls fail with `NotImplementedError` — a new provider's `EmbedderClient` subclass forgot to implement `create_batch()`.
+- Migration guide says "run `graphiti index`" without mentioning what is lost.
+- `retention.db` still contains UUIDs after reindex — stale references will silently fail PIN checks.
+- `graphiti list` after reindex returns fewer entities than before — unrecovered content.
 
-**Phase to address:** Multi-Provider LLM (Phase 11) — introduce `ProviderFactory` and keep `OllamaLLMClient` untouched. New adapters are additions, not modifications to existing adapter code.
+**Phase to address:** DB Migration Phase — the migration documentation must be written before the code. Identify the data loss surface before shipping.
 
 ---
 
-### Pitfall 4: TTL Retention Deletes Nodes That the Background Queue Has Pending Episodes For
+### Pitfall 4: Neo4j Requires Docker; "Docker Not Running" Is a Hard Failure With No Fallback
 
 **What goes wrong:**
-The background queue (`SQLiteAckQueue` + `BackgroundWorker`) processes capture jobs asynchronously. A node for "Python async patterns" might be created at `T=0`, a new episode captured at `T=80 days` (just before TTL), and the processing job queued but not yet executed when the TTL sweep at `T=90 days` deletes the node. The queue job then runs and calls `graphiti.add_episode()`, which tries to resolve or merge the entity — but the entity was deleted 30 seconds ago. This causes a silent partial write: the episode body is stored but the entity cannot be re-linked correctly, producing a dangling episodic node.
+Unlike KuzuDB (embedded, zero startup dependency), Neo4j requires a running server process — typically via Docker. If `graphiti add "..."` is run and Docker is not running, or the Neo4j container is not started, the Neo4j Python driver throws `ServiceUnavailable: Failed to establish connection to ('127.0.0.1', 7687)` immediately. There is no retry, no fallback, and no clear error message from graphiti-core — the exception propagates through `run_graph_operation()` as a generic exception, and the CLI prints a cryptic traceback.
+
+Specific failure modes:
+- Docker daemon not running: `socket.error: [Errno 111] Connection refused` — driver instantiation fails.
+- Container not started: same error, same UX.
+- Container still initializing (race condition on Docker startup): `ServiceUnavailable` raised during `build_indices_and_constraints()`, before any data operation.
+- Wrong password: `AuthError: The client is unauthorized` — confusable with connection failure.
+- `Neo4jDriver.__init__()` schedules `build_indices_and_constraints()` as an `asyncio.loop.create_task()` — the connection error surfaces asynchronously, not at construction time, making it harder to catch at startup.
 
 **Why it happens:**
-The queue (`src/queue/`) is decoupled from the graph layer by design — jobs are CLI replays or structured payloads, not transactions. There is no lock or coordination mechanism between the retention sweep and the queue processing. The retention sweep runs synchronously inside `asyncio.run()`, while the queue is processed in a background thread by `BackgroundWorker`. These run independently.
+The embedded model of KuzuDB set user expectations: the database just works. Neo4j is a client/server database designed for always-on server environments. Its Python driver was not designed for environments where the server may not be running at all.
 
 **How to avoid:**
-Use a pessimistic window: when computing the 90-day TTL, subtract the queue's maximum item TTL (default 24 hours, configured as `queue_item_ttl_hours`). Only delete nodes with `last_accessed < now - 90days - 24hours`. This guarantees any queued episode for a node will have either been processed or expired from the queue before the node is deleted.
-Additionally: retention should run as a scheduled CLI command (`graphiti retain`), not as part of any hot path. Schedule it for off-hours (e.g., cron at 3am) so it doesn't race with normal capture traffic.
+- Implement a `neo4j_health_check()` function that calls `driver.verify_connectivity()` with a 5-second timeout before any graph operation. Run this in `graphiti health` and surface a clear error: "Neo4j is not reachable at bolt://localhost:7687. Is Docker running? Run: docker compose up -d neo4j".
+- Add a `docker-compose.yml` to the repository with a pre-configured Neo4j service. Users should never manually configure Neo4j.
+- In `GraphManager._get_global_driver()`, catch `ServiceUnavailable` and raise a custom `BackendUnavailableError` with a user-facing message, not a raw traceback.
+- The `Neo4jDriver` constructor schedules `build_indices_and_constraints()` async — test that this failure propagates correctly and does not get silently swallowed by the background task.
 
 **Warning signs:**
-- `graphiti stats` shows `episode_count` growing while `entity_count` is stable or declining — episodic nodes with no linked entities accumulating.
-- Background worker logs show `capture_git_commits_complete` followed by graphiti errors about missing entities.
-- Dead letter queue fills up with `capture_git_commits` jobs after a retention run.
+- `graphiti add "test"` raises an unhandled exception with a bolt:// URI in the traceback.
+- `graphiti health` passes but `graphiti add` fails — health check is not actually testing the connection.
+- Docker container restarts and graphiti CLI starts getting `ServiceUnavailable` mid-session — no reconnect logic.
 
-**Phase to address:** Smart Retention (Phase 9) — the TTL window calculation must account for queue depth from the start. Do not implement retention without reviewing the queue TTL config.
+**Phase to address:** DB Migration Phase — the health check and fallback error handling must be implemented before any other feature that uses the new backend.
 
 ---
 
-### Pitfall 5: MCP Server stdio Transport Gets Corrupted by a Localhost UI Server on the Same Process
+### Pitfall 5: FalkorDB (falkordblite Embedded) Is Not Yet Supported by graphiti-core 0.28.1
 
 **What goes wrong:**
-The MCP server uses FastMCP with stdio transport — Claude Code sends JSON-RPC over stdout, the MCP server reads from stdin. Any write to stdout from the MCP server process corrupts the protocol. If `graphiti ui` starts a web server (FastAPI + Uvicorn) in the same process as the MCP server, there are two failure modes: (a) Uvicorn's startup banner and access logs write to stdout if not explicitly redirected, and (b) the `signal.SIGTERM` handler from Uvicorn conflicts with FastMCP's own shutdown handler, causing the MCP server to exit mid-session when the UI server is stopped.
+FalkorDB is an attractive replacement because `falkordblite` is embedded (like Kuzu), requiring no Docker. However, as of 2026-03-09, the `FalkorLiteDriver` that wraps falkordblite is not yet merged into graphiti-core — it exists as draft PR #1250 in the graphiti repo. The existing `FalkorDriver` in graphiti-core 0.28.1 requires a running FalkorDB server (Redis-based, client/server protocol), which defeats the embedded advantage.
+
+If the team assumes falkordblite "just works" with the existing `FalkorDriver`, they will discover that:
+- `FalkorDriver.__init__(host="localhost", port=6379)` connects via Redis protocol to a TCP socket — falkordblite uses Unix domain sockets internally and is not accessible via host/port.
+- falkordblite requires Python 3.12+ and is unavailable on Windows entirely.
+- falkordblite spawns a subprocess on import — incompatible with the MCP server's stdio process model (subprocess stdout may interfere).
 
 **Why it happens:**
-Python's Uvicorn binds log handlers at startup. The default Uvicorn config writes access logs to stdout unless explicitly set to stderr. When `graphiti ui` is implemented as a subcommand of the Typer CLI, developers may be tempted to start the web server in the same process for simplicity. The MCP server (`graphiti mcp serve`) already uses `sys.executable` to resolve the CLI binary path, meaning MCP tools run as subprocess calls — but if the UI server is started inside the MCP server's process tree (e.g., via a new MCP tool `graphiti_ui`), the stdio corruption risk is immediate.
+FalkorDB markets falkordblite as an embedded, zero-config option, which creates the impression that dropping it in as a Kuzu replacement is straightforward. The graphiti-core driver gap is not obvious until you try to wire it up.
 
 **How to avoid:**
-The UI server MUST run as a fully separate process: `graphiti ui` starts Uvicorn as a subprocess with `stdout=subprocess.DEVNULL` and `stderr` routed to a log file. The UI command is a standalone Typer subcommand that spawns Uvicorn via `subprocess.Popen(..., start_new_session=True)` — the same pattern used by `graphiti_capture()` in `tools.py`. Never embed Uvicorn in-process with MCP server. Use port 7437 (or configurable) with explicit check for port availability before binding.
+- Do not plan the migration around falkordblite unless PR #1250 has merged and been released in a stable graphiti-core version.
+- If falkordblite is desired as the target backend, the migration must be sequenced as: (a) implement the LadybugDB or Neo4j migration first to remove Kuzu dependency, then (b) revisit falkordblite once the graphiti-core driver exists.
+- Verify falkordblite's subprocess-spawning behavior does not conflict with MCP stdio transport before committing to this option.
 
 **Warning signs:**
-- Claude Code MCP tool calls return `json.JSONDecodeError` on responses that look like HTTP access log entries.
-- `graphiti mcp serve` exits unexpectedly when `graphiti ui` is stopped.
-- MCP server logs contain Uvicorn startup banners mixed with JSON-RPC frames.
+- `pip install graphiti-core[falkordb]` succeeds but importing `FalkorLiteDriver` raises `ImportError`.
+- `FalkorDriver(host="localhost")` raises `ConnectionRefusedError` when falkordblite is the only FalkorDB running.
+- MCP server stdio produces garbled output after falkordblite import (subprocess startup noise).
 
-**Phase to address:** Graph UI (Phase 10) — the `graphiti ui` command architecture must be subprocess-based from the design, not refactored after the fact. This is a non-negotiable constraint: never inline the UI server.
+**Phase to address:** DB Migration Phase — verify the chosen backend has a working graphiti-core driver before writing any migration code. Run the graphiti-core example notebooks locally with the target driver.
 
 ---
 
-### Pitfall 6: Configurable Capture Modes Bypass the Security Filter If Mode-Checking Happens Before Sanitization
+### Pitfall 6: LadybugDB Is the Closest Drop-in but Is Version 0.11.x — Pre-Production Maturity
 
 **What goes wrong:**
-The current capture pipeline always runs `sanitize_content()` before any LLM call (enforced in `summarizer.py` and `service.add()`). Configurable capture modes (decisions-only vs decisions-and-patterns) require filtering content at the capture stage — deciding what content to capture at all. If the mode check is implemented as "filter before sanitize" (i.e., check if content matches the capture mode, then only sanitize what passes), a bug in the mode filter could allow raw content with secrets to bypass the security gate. The "decisions-and-patterns" mode captures more content including code patterns — higher surface area for accidental secret exposure.
+LadybugDB is a Kuzu fork positioned as a direct replacement: "the only change is to rename kuzu to the correct package name." In practice, the `ladybug` Python package wraps the same core database engine as Kuzu 0.11.3, so the graphiti-core `KuzuDriver` should work with it by swapping the import. However:
+- LadybugDB version history is very short (first stable release early 2026). It has not been battle-tested at scale.
+- graphiti-core 0.28.1 does not formally support LadybugDB — the Migrate kuzu → ladybug PR (#1296) is open but not yet merged as of research date.
+- If LadybugDB diverges from the Kuzu 0.11.3 API (renamed classes, changed query syntax), the `KuzuDriver` in graphiti-core will silently fail or produce wrong results — not raise import errors.
+- The migration strategy of `import ladybug as kuzu` (aliasing) will work for the driver module but will fail for any code that calls `kuzu.Database`, `kuzu.Connection`, or `kuzu.AsyncConnection` directly — which includes three methods in `service.py`.
 
 **Why it happens:**
-Developers implement the mode filter as a pre-filter to avoid wasting sanitizer cycles on content that won't be captured anyway. The optimization is logical but inverts the security invariant: sanitize-then-filter is safe, filter-then-sanitize is risky.
+The "rename the import" story is compelling but incomplete. LadybugDB may expose an identical API for the happy path while having subtle differences in error handling, connection lifecycle, or transaction behavior that only surface under load or with specific queries.
 
 **How to avoid:**
-Lock the order: sanitize first, filter mode second — always. Even in decisions-only mode, the security gate runs on all candidate content before the mode filter decides whether to keep or discard it. Add a comment in `summarizer.py` and `capture/conversation.py` marking this order as a security invariant. Write a test that passes a string with a secret through the decisions-only filter path and asserts the secret is `[REDACTED]` in anything stored.
+- Treat LadybugDB as a provisional target, not a final one. Run the full test suite against LadybugDB before committing.
+- Check the graphiti-core issue #1296 — only proceed with LadybugDB as the backend if this PR has merged into graphiti-core and been released.
+- Specifically test: FTS index creation, vector cosine similarity queries, `DETACH DELETE`, and the `RelatesToNode_` intermediate node pattern — the four areas where Kuzu required workarounds.
+- Do not assume the three `service.py` Kuzu-direct methods will "just work" with LadybugDB even if the API matches — write explicit integration tests.
 
 **Warning signs:**
-- A code review shows `if mode == "decisions_only": ... else: sanitize_content(...)` branching — the sanitization is not unconditional.
-- Test coverage for capture mode changes doesn't include a secret-containing content fixture.
-- `git diff` after adding mode support shows changes to `src/security/` — the security layer should not need changes for capture mode.
+- `import ladybug` succeeds but `ladybug.Database` raises `AttributeError`.
+- FTS index creation raises a different error from LadybugDB than expected.
+- graphiti-core PR #1296 is still open or reverted — upstream hasn't blessed the migration.
 
-**Phase to address:** Configurable Capture Modes (Phase 9 or Phase 10) — add an explicit integration test: `test_capture_modes_always_sanitize_before_filter()` as a gating requirement before mode selection ships.
+**Phase to address:** DB Migration Phase (pre-implementation) — verify PR #1296 status before writing any code. If not merged, use Neo4j as the primary target.
+
+---
+
+### Pitfall 7: `graphiti.kuzu` File Extension in paths.py Will Confuse Users and Tooling
+
+**What goes wrong:**
+`src/config/paths.py` sets `GLOBAL_DB_PATH = GLOBAL_DB_DIR / "graphiti.kuzu"` and `PROJECT_DB_NAME = "graphiti.kuzu"`. After migration:
+- Existing user installations have `~/.graphiti/global/graphiti.kuzu` directories.
+- New installations will have (e.g.) `~/.graphiti/global/graphiti.db` or `neo4j/`.
+- Both the old and new paths may exist simultaneously on a user's machine, causing confusion about which is the active database.
+- `graphiti health` may report the old Kuzu path as "not found" while simultaneously showing the new backend as healthy — masking the fact that all old data was abandoned.
+
+**Why it happens:**
+The `.kuzu` suffix was chosen to make the database type obvious. But it now becomes a migration artifact: the file extension outlasts the database it named.
+
+**How to avoid:**
+- Rename the database path to a backend-agnostic name at migration time: `graphiti.db` for embedded backends, or remove the path constant entirely for client/server backends (Neo4j has no local file path).
+- Add migration detection: at startup, check if `~/.graphiti/global/graphiti.kuzu` exists but the new path does not — print a clear warning: "Found legacy KuzuDB data at ~/.graphiti/global/graphiti.kuzu. This data is not accessible with the current backend. Run `graphiti migrate` to export it or `graphiti reset` to start fresh."
+- Update `.gitignore` patterns in newly initialized project repositories: the current pattern likely ignores `.graphiti/*.kuzu`.
+
+**Warning signs:**
+- `GLOBAL_DB_PATH` still ends in `.kuzu` in `paths.py` after migration.
+- `os.path.exists(GLOBAL_DB_PATH)` returns True on old installs pointing to a Kuzu database the new driver cannot open.
+- `.gitignore` in new projects excludes `.graphiti/graphiti.kuzu` but not `.graphiti/graphiti.db`.
+
+**Phase to address:** DB Migration Phase — update `paths.py` as part of the driver swap. Add startup migration detection before writing any new data.
+
+---
+
+### Pitfall 8: Tests Mock KuzuDriver — They Will Pass After Migration But Provide No Coverage
+
+**What goes wrong:**
+The existing test suite mocks `_get_graphiti()` using `MagicMock()` and patches `GraphService._graph_manager`. Tests in `test_graph_service_retention.py` never touch a real database. `test_storage.py` imports `kuzu` directly and creates real Kuzu databases in temp directories. After migration:
+- Tests that mock the driver will continue to pass regardless of whether the new backend works — they prove nothing about the migration.
+- `test_storage.py` will fail immediately on `import kuzu` if the kuzu package is uninstalled as part of migration.
+- There are zero integration tests that exercise the full path: CLI command → GraphService → Driver → actual database query → result assertion.
+
+A common mistake is to declare migration complete because the mock-based test suite still passes. The graph does not actually work until tested against a live database.
+
+**Why it happens:**
+Mock-based testing was appropriate during initial development when a real Kuzu database was heavy to set up. But over time the mocks accumulated until they cover all database interaction, making the test suite provide no migration safety net.
+
+**How to avoid:**
+- Add a test fixture (`conftest.py`) that starts a real database instance for the chosen backend:
+  - LadybugDB/KuzuDB: create a temp directory, initialize `KuzuDriver(db=tmpdir)` — already done in `test_storage.py`.
+  - Neo4j: use `testcontainers-python` to start a Neo4j Docker container in the test session.
+  - FalkorDB server: use `testcontainers-python` for FalkorDB.
+- Write one integration test per critical operation: `add_episode()`, `search()`, `list_entities()`, `delete_entities()`. These must run against the real backend, not a mock.
+- Tag these as `@pytest.mark.integration` and ensure CI runs them on every PR.
+- Before declaring migration complete, the following must pass against a live backend: FTS search returns results, vector similarity search returns results, entity deletion cascades correctly.
+
+**Warning signs:**
+- `pytest tests/` passes with 100% success rate but `graphiti add "test"` crashes.
+- No `conftest.py` fixture provides a database connection — all fixtures return `MagicMock()`.
+- CI pipeline has no Docker service configured — Neo4j tests cannot run in CI.
+
+**Phase to address:** DB Migration Phase — write integration tests first, before changing any application code. Red tests confirm what is broken; green tests confirm migration is done.
+
+---
+
+### Pitfall 9: CI Without the New Backend Service — Migration "Works" Locally But Breaks in CI
+
+**What goes wrong:**
+If Neo4j is chosen as the backend, CI must run a Neo4j container as a service alongside the test runner. GitHub Actions and similar CI platforms support this via `services:` blocks. A common mistake: the migration is developed locally with Docker running, tests pass, the PR is merged, and then CI starts failing on every subsequent push because the CI pipeline has no Neo4j service configured.
+
+For embedded backends (LadybugDB, falkordblite), this is less of a concern — the database starts in-process. But falkordblite spawns a subprocess, which may fail in CI environments with restricted process namespaces.
+
+**Why it happens:**
+CI configuration is treated as a secondary concern and updated after the code is merged. Developers verify locally and assume CI will match.
+
+**How to avoid:**
+- Update CI configuration (`.github/workflows/`) as part of the migration PR, not after.
+- For Neo4j: add the services block:
+  ```yaml
+  services:
+    neo4j:
+      image: neo4j:5.26
+      env:
+        NEO4J_AUTH: neo4j/test
+      ports:
+        - 7687:7687
+      options: >-
+        --health-cmd "cypher-shell -u neo4j -p test 'RETURN 1'"
+        --health-interval 10s
+        --health-timeout 5s
+        --health-retries 5
+  ```
+- For embedded backends: no service needed, but verify the CI runner has write access to the temp directory used by the database.
+- Add a CI-specific environment variable `GRAPHITI_TEST_BACKEND=neo4j|ladybug` and use it in `conftest.py` to pick the right driver.
+
+**Warning signs:**
+- CI workflow YAML has no `services:` section after migration.
+- Integration tests are marked `@pytest.mark.skip("requires Neo4j")` — they are excluded from CI, defeating their purpose.
+- Local `pytest` passes, remote CI fails with `ConnectionRefusedError` on bolt://localhost:7687.
+
+**Phase to address:** DB Migration Phase — update CI in the same commit as the driver swap. Do not merge a migration PR with a broken CI pipeline.
 
 ---
 
@@ -150,12 +288,11 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `process_queue()` returning `(0, 0)` | Unblocked Phase 5 | Retention phases can't inspect queue health before deciding to delete | Fix before retention ships — retention needs real queue metrics |
-| `asyncio.run()` in `GraphManager.reset_project()` called from sync context | Avoids async threading complexity | Crashes if called from within a running event loop (e.g., from an async test) | Acceptable until async tests are added; fix in Phase 10 at latest |
-| `service._get_graphiti()` called as a private method by `indexer.py` | Avoids duplicating initialization logic | Fragile — any rename of `_get_graphiti` silently breaks indexer | Acceptable as tech debt; document with a `# FRAGILE` comment |
-| `GraphSelector` dead export in `src/storage/` | None — it's dead code | Confuses future developers adding providers | Remove during multi-provider phase as cleanup |
-| Hardcoded `OllamaLLMClient()` in `GraphService.__init__()` | Simple, no config needed | Multi-provider requires refactoring the constructor | Acceptable until Phase 11; document the coupling explicitly |
-| Retention scoring stored as metadata vs. separate tracking table | Simpler — no new table | If graphiti-core changes node schema, retention metadata is lost on upgrade | Use a separate SQLite tracking file alongside the graph DB, not node attributes |
+| Using `kuzu.Database(path, read_only=True)` in `service.py` directly | Avoids full Graphiti initialization for read-heavy UI queries | Hard Kuzu dependency outside the driver layer; breaks on any backend swap | Never — move to driver interface methods |
+| Aliasing `import ladybug as kuzu` | Zero code changes to import statements | Silent failures if LadybugDB API diverges; confusing for future readers | Never for production code; only as a temporary spike |
+| Keeping `graphiti.kuzu` file extension after migration | No user migration needed | Confuses tooling, masks stale data, breaks `.gitignore` patterns | Never — rename at migration time |
+| Skipping data export and using rebuild-from-git as migration | Fast migration | Irrecoverable loss of manually-added episodes, pins, and access history | Only if user explicitly consents to data loss |
+| Mocking the driver in all tests after migration | Fast tests | Zero confidence in actual backend behavior | Never for critical paths like `add`, `search`, `delete` |
 
 ---
 
@@ -163,14 +300,12 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Kuzu `DETACH DELETE` | Using `DELETE` without `DETACH` on nodes that have edges — Kuzu raises a runtime error | Always use `DETACH DELETE` for node deletion, or delete edges first then `DELETE` node |
-| graphiti-core `LLMClient` ABC | Subclassing and forgetting to implement `_generate_response` (async, not `generate`) | Check the ABC: the required method is `_generate_response(messages, response_model, max_tokens, model_size)` |
-| Anthropic embeddings | Anthropic does not offer an embedding API — pairing `AnthropicLLMClient` with `AnthropicEmbedder` is impossible | For Anthropic LLM provider, keep `OllamaEmbedder` for embeddings; embeddings remain local-only |
-| OpenAI structured output | Passing `format=json_schema_dict` (Ollama pattern) to OpenAI SDK — OpenAI uses `response_format={"type": "json_schema", "json_schema": {...}}` | New provider adapters must implement provider-specific structured output, not reuse the Ollama `format=` pattern |
-| FastAPI static file serving | `StaticFiles` mounts must be added after all API routes — mounting at "/" too early shadows all routes | Mount static files last; use `app.mount("/", StaticFiles(...), name="static")` as the final line |
-| SQLiteAckQueue multithreading | Creating `SQLiteAckQueue` with `multithreading=False` (default) when accessing from background threads | Always set `multithreading=True` when queue is accessed from worker threads (existing decision, must be preserved for new retention use) |
-| Uvicorn in background thread | `uvicorn.run()` installs its own signal handlers which override the main thread's handlers | Use `uvicorn.Server` + `uvicorn.Config` directly with `server.serve()` in an asyncio task, or use subprocess — never `uvicorn.run()` in a secondary thread |
-| graphiti-core `Graphiti` constructor | Passing `llm_client=openai_client` where `openai_client` is a raw `openai.OpenAI()` object — graphiti-core expects an `LLMClient` subclass | Always wrap raw provider clients in a graphiti-core-compatible adapter class |
+| Neo4j FTS | Assuming Neo4j uses Lucene syntax like `name:"foo*"` — it does, but the query must be wrapped in `CALL db.index.fulltext.queryNodes(...)` not the Kuzu `QUERY_FTS_INDEX` form | Use `Neo4jSearchOperations` from graphiti-core; do not hand-write fulltext queries |
+| Neo4j RELATES_TO schema | Querying `(Entity)-[:RELATES_TO]->(RelatesToNode_)-[:RELATES_TO]->(Entity)` — Neo4j stores `RELATES_TO` as a direct relationship, no intermediate node | The three `service.py` read-only methods must use `(n:Entity)-[e:RELATES_TO]->(m:Entity)` for Neo4j |
+| FalkorDB build_indices_and_constraints | FalkorDB's implementation schedules index creation as a background asyncio task in `__init__()` — if the event loop is not running yet, the task is silently dropped | Call `await graphiti.build_indices_and_constraints()` explicitly, like the current Graphiti init flow does |
+| Neo4j driver lazy connection | `Neo4jDriver.__init__()` schedules `build_indices_and_constraints()` as `loop.create_task()` — if called from sync context (e.g., during app startup before asyncio.run()), the task never executes | Ensure `Neo4jDriver` is always created inside an async context; use `await graphiti.build_indices_and_constraints()` explicitly |
+| retention.db UUID references | SQLite sidecar stores entity UUIDs from the Kuzu database — after migration and reindex, new UUIDs will not match old pin/access records | Clear `retention.db` at migration time or implement a UUID remapping pass |
+| `asyncio.run()` in `GraphManager` | `GraphManager.reset_project()` and `close_all()` call `asyncio.run(driver.close())` — this works for KuzuDriver (whose `close()` is a no-op) but Neo4jDriver's `close()` actually closes connections and raises if called from within an event loop | Replace with `asyncio.get_event_loop().run_until_complete()` or make callers async |
 
 ---
 
@@ -178,11 +313,11 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Retention sweep doing N+1 Kuzu queries (one `last_accessed` query per node) | Retention takes minutes for a 500-node graph | Batch query: `MATCH (n:Entity) WHERE n.last_accessed < $cutoff RETURN n.uuid` — single query returns all expired UUIDs | At 100+ nodes with per-node queries |
-| Graph visualization loading all nodes/edges at once | UI freezes on graphs with 300+ nodes (vis.js force layout with >200 nodes is sluggish) | Always paginate: load top-50 by `created_at` DESC, add "load more" button | At 200+ nodes |
-| `OllamaEmbedder.create_batch()` sequential loop | Batch embedding of 100 episodes takes 100x single-embed time | For retention scoring (access frequency calculation), pre-compute scores during add/search, not during retention sweep | At 50+ items in a batch |
-| PyVis generating HTML on every visualization request | 2-5 second delay on every UI page refresh | Generate HTML once at startup; expose a websocket or SSE endpoint for incremental updates | Immediately — static HTML generation is expensive |
-| `compact()` loading all 1000 entities into memory for deduplication | OOM risk on large graphs | Add `LIMIT` to the entity load query; process duplicates in pages of 100 | At 500+ entities with long summaries |
+| Neo4j connection pool exhausted by dual-scope GraphManager | Two KuzuDriver instances (global + project) are cheap — two Neo4j connection pools are not | Configure Neo4j driver with `max_connection_pool_size=5` per scope; or share a single driver with `with_database()` for scope switching | From first use — Neo4j default pool size is 100 connections |
+| Full-graph load for UI visualization against Neo4j | Query returning all nodes/edges performs a full scan with no index on `group_id` | Add a range index on `group_id` — Neo4j's `build_indices_and_constraints()` already does this; verify it ran | At 100+ nodes |
+| LadybugDB/Kuzu single-file access contention | LadybugDB (like Kuzu) allows only one writer at a time — if two CLI invocations open the database concurrently, the second blocks or errors | The existing `GraphManager` singleton pattern prevents this within a process; add a lockfile check for multi-process access | Two simultaneous `graphiti add` invocations |
+| Neo4j container cold start | `graphiti add` fails if executed immediately after `docker compose up` — Neo4j takes 10-30 seconds to fully initialize | Implement a startup health-check retry loop (5 retries, 2s sleep) in `GraphManager` for Neo4j only | Every time Docker is restarted |
+| falkordblite subprocess spawning in test | Each test that imports falkordblite spawns a subprocess, adding 1-3s overhead per test | Use a session-scoped fixture for falkordblite initialization; do not re-initialize per test | When test suite has 50+ tests |
 
 ---
 
@@ -190,38 +325,41 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Storing `access_count` and `last_accessed` as entity node attributes in Kuzu | These fields may be logged by graphiti-core's PII removal pass (v0.28.0 added PII stripping) — access metadata is not PII but the stripping logic may corrupt numeric fields it misidentifies | Store retention metadata in a separate SQLite file (`~/.graphiti/retention.db`) keyed by `entity_uuid` — not as node attributes |
-| UI server exposing graph search endpoint without scope isolation | A request to `/api/search?q=password` against the global scope could return redacted content that still hints at secret structure | UI API must enforce the same scope-scoped `group_id` filtering that the CLI uses; never expose an unrestricted cross-scope search |
-| Multi-provider API key in `llm.toml` stored without file permissions check | If `llm.toml` is world-readable, OpenAI/Anthropic keys are exposed | At startup, check `stat(config_path).st_mode & 0o077 == 0` and warn if group/world readable |
-| `decisions-and-patterns` mode capturing code snippets verbatim | Code patterns may contain hardcoded credentials, test keys, or internal URLs | The security gate already handles this — the mistake is implementing mode switching before verifying the gate is hit unconditionally (see Pitfall 6) |
-| New provider adapter logging API responses at DEBUG level | Responses may contain PII or sensitive content from user queries | Log only response length and model name at DEBUG; never log response content |
+| Storing Neo4j credentials in `llm.toml` in plaintext | `llm.toml` may be committed to git or world-readable | Use environment variables `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`; check file permissions at startup |
+| Neo4j default password `neo4j` in docker-compose.yml | Committed `docker-compose.yml` with hardcoded credentials exposes defaults | Use `NEO4J_AUTH: none` for local-only dev or environment variable substitution |
+| falkordblite database file in project directory | Embedded database file in `.graphiti/graphiti.db` may be committed to project git | Ensure `.gitignore` patterns cover both `.graphiti/*.kuzu` and `.graphiti/*.db` |
+| Multi-process access to embedded database | Two processes writing to LadybugDB/Kuzu simultaneously cause corruption | Add PID lockfile at `~/.graphiti/global/graphiti.lock`; error if lock is held |
 
 ---
 
-## UX Pitfalls
+## v2.0 Phase Regression Risk Assessment
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| `graphiti retain` running synchronously and blocking the terminal for minutes | User kills the process mid-retention, leaving graph in partially deleted state | Run retention as background job with `--background` flag; show progress via `graphiti queue status` |
-| Graph UI opening at `localhost:7437` without detecting whether port is in use | Two `graphiti ui` instances conflict; second silently fails | Check port availability before starting; print clear error "Port 7437 in use — stop the existing UI or use --port" |
-| Capture mode change taking effect immediately on existing captured content | User switches to decisions-only but all existing decisions-and-patterns content remains | Mode only affects new captures; make this explicit in the CLI output: "Capture mode set to decisions-only. Existing knowledge not affected." |
-| Multi-provider config error (missing API key) only discovered at first LLM call | User writes knowledge, gets cryptic error 60 seconds into an add operation | Validate provider config at `graphiti health` time: check API key is set, provider endpoint reachable, before any graph operation |
-| TTL expiry deleting a node the user manually added | User added a critical decision node 91 days ago; it disappears without warning | Show expiry dates in `graphiti show` output; warn 7 days before expiry via `graphiti health`; never auto-delete nodes tagged `pinned` |
+Which phases have highest regression risk from a DB backend change:
+
+| Phase | Risk | Why | Mitigation |
+|-------|------|-----|------------|
+| DB Migration | CRITICAL | This is the change itself | Integration tests against live DB before shipping |
+| Graph UI Redesign | HIGH | UI server uses three Kuzu-direct read methods in `service.py` — these break immediately | Fix all three methods as part of DB migration, before UI redesign phase |
+| LLM Provider (Multi-Provider) | LOW | LLM adapters are fully decoupled from the graph driver — `OllamaLLMClient` and `OllamaEmbedder` do not touch the DB | No DB-related regression expected |
+| Local Memory | MEDIUM | Entity persistence depends on correct FTS and vector indexing — if the new backend's FTS is not wired correctly, entity resolution quality degrades silently | Validate FTS and vector search return expected results after migration before Local Memory work begins |
+
+**Recommended phase ordering:** DB Migration must land before Graph UI Redesign (the UI reads break), and before Local Memory (depends on FTS quality). It can be sequenced before or after LLM Provider work with no coupling.
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **TTL Retention:** `Node.delete_by_uuids()` called without first deleting associated `RelatesToNode_` nodes — verify with a Kuzu query count of `RelatesToNode_` before and after deletion.
-- [ ] **TTL Retention:** Zero-MENTIONS orphan sweep not implemented — verify with `MATCH (n:Entity) WHERE NOT EXISTS { (:Episodic)-[:MENTIONS]->(n) }` returns 0 after retention.
-- [ ] **Capture Mode:** Security sanitization runs unconditionally before mode filter — verify with a test that injects a secret into both mode paths.
-- [ ] **Multi-Provider:** `OllamaEmbedder` is still used for embeddings even when LLM provider is switched to OpenAI/Anthropic — verify `graphiti health` with Anthropic provider shows embeddings as "local Ollama".
-- [ ] **UI Server:** `graphiti ui` subprocess redirects stdout to DEVNULL — verify MCP server still responds correctly while UI is running.
-- [ ] **UI Server:** Graph visualization only loads nodes in the active `group_id` scope — verify global scope shows only global nodes, not project nodes.
-- [ ] **Retention + Queue:** TTL window accounts for `queue_item_ttl_hours` (default 24h) — verify no entity is deleted with pending queue items by checking dead letter queue is empty after a retention run.
-- [ ] **Multi-Provider Config:** `graphiti health` validates provider API key at startup, not at first use — verify a bad API key produces an immediate `health` error, not a silent delayed failure.
-- [ ] **graphiti-core version:** Pin is still `==0.28.1` in `pyproject.toml` after all new dependencies added — verify `pip show graphiti-core | grep Version`.
-- [ ] **Reinforcement Scoring:** Access events during `search` and `show` update the retention metadata — verify a searched entity's `access_count` increments and `last_accessed` timestamp updates.
+- [ ] **Driver swap:** `import kuzu` no longer appears in any file under `src/` — verify with `grep -rn "import kuzu" src/`.
+- [ ] **Workarounds removed:** `_create_fts_indices()` deleted from `graph_manager.py` — verify method does not exist.
+- [ ] **Workarounds removed:** `driver._database = str(db_path)` hack removed — new driver sets `_database` in its constructor.
+- [ ] **Readonly methods:** `list_edges_readonly()`, `list_entities_readonly()`, `get_entity_by_uuid_readonly()` rewritten to use driver-agnostic API — verify UI visualization shows correct data.
+- [ ] **File paths:** `GLOBAL_DB_PATH` no longer ends in `.kuzu` — verify `paths.py`.
+- [ ] **Schema migration detected:** Startup warns if old `graphiti.kuzu` files exist alongside new database — verify warning appears on a machine with old data.
+- [ ] **retention.db cleared or remapped:** Old UUID references do not cause silent pin failures — verify `graphiti pin` and `graphiti stale` still function correctly.
+- [ ] **Integration tests:** At least one test in `tests/` opens a real database connection and performs `add_episode()` + `search()` — verify `grep -n "real_db\|live_backend\|testcontainers" tests/`.
+- [ ] **CI configured:** `.github/workflows/` service block matches the chosen backend — verify CI passes on a fresh branch.
+- [ ] **FTS working:** `graphiti search "test entity"` returns results for a known entity — verify after migration with a smoke test.
+- [ ] **Vector search working:** `graphiti search --semantic "concept"` returns results — verify cosine similarity index is active.
 
 ---
 
@@ -229,12 +367,13 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Orphaned RelatesToNode_ after retention run | MEDIUM | Run `graphiti compact` to dedup, then manual Kuzu query `MATCH (e:RelatesToNode_) WHERE NOT (()-[:RELATES_TO]->(e)) DETACH DELETE e` to purge orphan edges |
-| graphiti-core upgrade breaks workarounds | HIGH | Revert to `==0.28.1` pin via `pip install graphiti-core[kuzu]==0.28.1`; audit `graph_manager.py` workarounds one by one against new version's source |
-| MCP stdio corrupted by UI server | LOW | Kill `graphiti ui` process; restart MCP server (`graphiti mcp serve`); verify MCP tools respond correctly |
-| Provider adapter returns wrong structured output format | LOW | Fall back to Ollama provider in `llm.toml`; debug adapter's `_generate_response` in isolation with a unit test |
-| Retention deleted a pinned node | MEDIUM | Reindex from git history (`graphiti index --full`) to recover project knowledge; add `pinned` label support to prevent future deletion |
-| Capture mode misconfigured — decisions-and-patterns capturing secrets | HIGH | Run `graphiti compact` to deduplicate; audit recent captures with `graphiti list --limit 100`; delete affected entities; add `pinned` label to safe nodes |
+| Kuzu-direct calls in `service.py` return empty after migration | MEDIUM | Identify which of the three methods is failing; rewrite to use driver's `execute_query()` with backend-appropriate Cypher |
+| FTS indices not created (wrong DDL sent to new backend) | LOW | Call `await graphiti.build_indices_and_constraints()` manually; check `Neo4jDriver` or `FalkorDriver` implementation of this method |
+| Neo4j not reachable at startup | LOW | `docker compose up -d neo4j`; wait 30 seconds; retry |
+| Data loss from rebuild strategy | HIGH | Reindex from git history gets project knowledge back; manually-added knowledge cannot be recovered |
+| retention.db UUID mismatch after migration | MEDIUM | Delete `~/.graphiti/retention.db`; access history and pin state are reset; rebuild from user actions |
+| CI failing due to missing backend service | LOW | Add `services:` block to CI YAML; push a fix commit |
+| LadybugDB API divergence from Kuzu | HIGH | Revert to Kuzu 0.11.3 while LadybugDB stabilizes, or switch to Neo4j; do not patch around API differences |
 
 ---
 
@@ -242,29 +381,33 @@ Lock the order: sanitize first, filter mode second — always. Even in decisions
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Orphaned RelatesToNode_ and Episodic nodes after deletion | Phase 9 (Smart Retention) | `MATCH (e:RelatesToNode_) WHERE NOT (()-[:RELATES_TO]->(e)) RETURN count(e)` returns 0 after retention run |
-| Kuzu archived — graphiti-core upgrade risk | Phase 11 (Multi-Provider) — dependency resolver guard | `assert graphiti_core.__version__ == "0.28.1"` in test suite; `pip check` passes |
-| OllamaLLMClient tightly coupled — multi-provider breaks adapters | Phase 11 (Multi-Provider) | New provider passes graphiti-core's own integration test suite for structured output |
-| TTL deletes nodes with pending queue items | Phase 9 (Smart Retention) | No dead letter queue entries after retention run; queue depth checked before deletion window |
-| MCP stdio corrupted by UI server | Phase 10 (Graph UI) | MCP tool calls succeed while `graphiti ui` is running in parallel |
-| Capture mode bypasses security sanitization | Phase 9 or 10 (Capture Modes) | `test_capture_modes_always_sanitize_before_filter()` passes; secrets are `[REDACTED]` in all mode paths |
-| Retention metadata stored as node attributes (upgrade-fragile) | Phase 9 (Smart Retention) | Retention metadata in `~/.graphiti/retention.db` SQLite, not Kuzu node properties |
-| Multi-provider API key not validated at startup | Phase 11 (Multi-Provider) | `graphiti health` returns non-zero exit with clear error if configured provider key is invalid |
+| Three Kuzu-direct calls in service.py | DB Migration Phase (day 1) | `grep -rn "import kuzu" src/` returns zero results |
+| 50+ graphiti-core Kuzu branches + hardcoded `_create_fts_indices` | DB Migration Phase (day 1) | `_create_fts_indices` method deleted; startup creates indices via `build_indices_and_constraints()` |
+| Data loss from rebuild strategy | DB Migration Phase (pre-code) | Migration guide documents exactly what is lost; export script available |
+| Neo4j Docker not running = hard failure | DB Migration Phase | `graphiti health` prints clear, actionable error when Neo4j unreachable |
+| falkordblite not yet supported in graphiti-core | DB Migration Phase (backend selection) | Chosen backend has a merged, released graphiti-core driver |
+| LadybugDB pre-production maturity | DB Migration Phase (backend selection) | PR #1296 merged into graphiti-core before LadybugDB is chosen |
+| `graphiti.kuzu` path naming | DB Migration Phase | `paths.py` uses backend-agnostic name; startup detects stale `.kuzu` files |
+| Mocked tests provide no coverage | DB Migration Phase | Integration test with real backend exists; CI runs it |
+| CI misconfigured for new backend | DB Migration Phase | CI passes on a fresh branch without local Docker |
+| Graph UI Redesign breaks on service.py methods | DB Migration Phase (prerequisite to UI) | UI endpoints return correct data from new backend |
 
 ---
 
 ## Sources
 
-- graphiti-core GitHub issue #1083: Orphaned entities not cleaned up during episode deletion (open, PR #1130 unmerged) — https://github.com/getzep/graphiti/issues/1083
+- Codebase inspection: `src/graph/service.py` (lines 1143, 1185, 1247 — direct Kuzu calls), `src/storage/graph_manager.py` (all three workarounds), `src/config/paths.py` (`.kuzu` extension)
+- graphiti-core 0.28.1 source inspection: `driver/kuzu_driver.py` (schema, no `_database` set), `driver/neo4j_driver.py` (constructor, `build_indices_and_constraints()`), `search/search_utils.py` (50+ KUZU branches), `driver/falkordb_driver.py` (server-only, host/port constructor)
 - graphiti-core GitHub issue #1132: Kuzu is archived — https://github.com/getzep/graphiti/issues/1132
+- graphiti-core GitHub issue #1240: FalkorDB Lite (embedded) support — https://github.com/getzep/graphiti/issues/1240 (PR #1250 in draft as of 2026-03-09)
+- graphiti-core GitHub PR #1296: Migrate kuzu → ladybug (open, not yet merged as of 2026-03-09)
 - KuzuDB archived October 2025 — https://www.theregister.com/2025/10/14/kuzudb_abandoned/
-- FalkorDB KuzuDB migration guide — https://www.falkordb.com/blog/kuzudb-to-falkordb-migration/
-- graphiti-core LLM Configuration (multi-provider) — https://help.getzep.com/graphiti/configuration/llm-configuration
-- Kuzu driver datetime timezone bug — https://github.com/getzep/graphiti/issues/893
-- graphiti-core pypi releases page — https://pypi.org/project/graphiti-core/
-- Codebase inspection: `src/graph/service.py` (delete_entities, compact), `src/storage/graph_manager.py` (workarounds), `src/graph/adapters.py` (OllamaLLMClient), `src/llm/client.py` (OllamaClient), `src/queue/worker.py` (BackgroundWorker), `src/capture/summarizer.py` (security gate order)
-- graphiti-core DeepWiki provider configuration — https://deepwiki.com/getzep/graphiti/9.3-provider-configuration
+- LadybugDB v0.12.0: "functionality is equivalent to kuzu v0.11.3" — https://blog.ladybugdb.com/post/ladybug-release/
+- falkordblite PyPI: Python 3.12+ only, Linux x86-64 + macOS x86-64/ARM64, no Windows — https://pypi.org/project/falkordblite/
+- falkordblite docs: libomp.dylib required on macOS — https://docs.falkordb.com/operations/falkordblite/falkordblite-py.html
+- Neo4j Python driver: `verify_connectivity()` usage, `ServiceUnavailable` exception — https://neo4j.com/docs/python-manual/current/connect/
+- Neo4j Docker startup race condition — https://github.com/neo4j/neo4j/issues/12908
 
 ---
-*Pitfalls research for: Python knowledge graph CLI — v1.1 Smart Retention, Capture Modes, Graph UI, Multi-Provider LLM*
-*Researched: 2026-03-01*
+*Pitfalls research for: graphiti-knowledge-graph v2.0 — DB backend migration (KuzuDB replacement)*
+*Researched: 2026-03-09*

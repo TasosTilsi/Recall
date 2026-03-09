@@ -1,279 +1,382 @@
-# Feature Research — v1.1 Advanced Features
+# Feature Research — v2.0 DB Backend Selection
 
-**Domain:** Knowledge Graph Developer Tools (CLI + Hooks + MCP) — v1.1 extension
-**Researched:** 2026-03-01
-**Confidence:** MEDIUM-HIGH
+**Domain:** Embedded Graph Database Backend for graphiti-core — replacing KuzuDB (archived Oct 2025)
+**Researched:** 2026-03-09
+**Confidence:** HIGH (graphiti-core driver interface derived from direct source inspection; backend capabilities verified against official docs and GitHub issues)
 
-## Scope
+---
 
-This document covers only the **four new feature areas** targeted for v1.1. v1.0 features
-(16+ CLI commands, MCP server, dual-scope storage, security filtering, git hooks, background
-queue, context injection) are shipped and not re-researched here.
+## Context
 
-**v1.1 targets:**
-1. Smart retention — TTL + reinforcement scoring for knowledge freshness
-2. Configurable capture modes — what gets captured and at what detail level
-3. Localhost graph visualization UI — node/edge browser + monitoring dashboard
-4. Multi-provider LLM support — switch providers via `llm.toml` without code changes
+KuzuDB was archived by Kùzu Inc on October 10, 2025. The company announced "We will no longer be actively supporting KuzuDB." The GitHub repo is read-only. No new releases will be published. This project currently depends on `kuzu==0.11.3` and `graphiti-core[kuzu]==0.28.1`.
+
+The replacement backend must satisfy every capability that graphiti-core's KuzuDriver currently provides, without requiring the application code to change its GraphService or adapter layers.
+
+Sources: [The Register](https://www.theregister.com/2025/10/14/kuzudb_abandoned/), [graphiti issue #1132](https://github.com/getzep/graphiti/issues/1132)
+
+---
+
+## What graphiti-core Requires From a Backend Driver
+
+This section is derived from direct inspection of the installed graphiti-core 0.28.1 source at `.venv/lib/python3.12/site-packages/graphiti_core/`.
+
+### 1. The GraphDriver ABC
+
+Every backend must subclass `GraphDriver` (in `driver/driver.py`) and implement:
+
+| Method | Required | Notes |
+|--------|----------|-------|
+| `execute_query(cypher, **kwargs)` | YES | Core async query method. Returns `(list[dict], None, None)`. |
+| `session(database)` | YES | Returns a `GraphDriverSession` context manager |
+| `close()` | YES | Async cleanup |
+| `delete_all_indexes()` | YES | Index teardown |
+| `build_indices_and_constraints()` | YES | Called on startup. For Kuzu this is a no-op (see workarounds below). |
+| `_database: str` | YES | String attribute. Kuzu never sets this — the project patches it manually. |
+
+Plus all the operation-specific property accessors:
+`entity_node_ops`, `episode_node_ops`, `community_node_ops`, `saga_node_ops`, `entity_edge_ops`, `episodic_edge_ops`, `community_edge_ops`, `has_episode_edge_ops`, `next_episode_edge_ops`, `search_ops`, `graph_ops`.
+
+Each returns a typed operations class instance. For a new driver, every operations class must be implemented (currently ~11 operation classes for Kuzu, same count for Neo4j and FalkorDB).
+
+### 2. Schema Requirements
+
+Kuzu's schema defines node and relationship tables. The equivalent must exist in any replacement:
+
+**Nodes:** `Episodic`, `Entity`, `Community`, `RelatesToNode_`, `Saga`
+
+**Relationships:** `RELATES_TO`, `MENTIONS`, `HAS_MEMBER`, `HAS_EPISODE`, `NEXT_EPISODE`
+
+**Embedding columns:** `Entity.name_embedding FLOAT[]`, `Community.name_embedding FLOAT[]`, `RelatesToNode_.fact_embedding FLOAT[]`
+
+Note: `RelatesToNode_` exists because Kuzu cannot create FTS indices on relationship properties directly. This is a Kuzu-specific workaround. A backend with native relationship FTS could store edges as actual relationships.
+
+### 3. Full-Text Search (FTS) Requirements
+
+**This is the hardest requirement to satisfy.** graphiti-core's Kuzu search operations call FTS indices on 4 labels:
+
+| Index Name | Label | Fields Indexed | Query Mechanism |
+|------------|-------|----------------|-----------------|
+| `node_name_and_summary` | `Entity` | `name`, `summary` | `CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', $query, TOP := $limit)` |
+| `community_name` | `Community` | `name` | same pattern |
+| `episode_content` | `Episodic` | `content`, `source`, `source_description` | same pattern |
+| `edge_name_and_fact` | `RelatesToNode_` | `name`, `fact` | same pattern |
+
+FTS is called from `search_ops`:
+- `node_fulltext_search()` — entity search by name/summary
+- `edge_fulltext_search()` — relationship search by fact text
+- `episode_fulltext_search()` — episode search by content
+- `community_fulltext_search()` — community search by name
+
+**What breaks without FTS:** All search operations return empty results. `graphiti search <query>` stops working. Entity deduplication during `add_episode()` also calls FTS to find existing matching entities. Without FTS, every re-add creates duplicate entities.
+
+### 4. Vector (Embedding) Similarity Search Requirements
+
+Used in `search_ops` via `array_cosine_similarity(n.name_embedding, CAST($vec AS FLOAT[N]))`:
+- `node_similarity_search()` — cosine similarity on `Entity.name_embedding`
+- `edge_similarity_search()` — cosine similarity on `RelatesToNode_.fact_embedding`
+- `community_similarity_search()` — cosine similarity on `Community.name_embedding`
+
+The vector dimension is dynamic (determined at query time from the embedding length). Kuzu uses `CAST($search_vector AS FLOAT[{len(search_vector)}])` inline in the query — the dimension is baked into the query string.
+
+**What breaks without vector search:** Semantic search stops working. The system falls back to FTS-only results, which are lower quality. Entity deduplication quality degrades significantly.
+
+### 5. Graph Traversal Requirements
+
+BFS traversal queries used in `node_bfs_search()` and `edge_bfs_search()`:
+- Variable-length relationship patterns: `RELATES_TO*2..{depth*2}`
+- Cross-label traversal: `Episodic → MENTIONS → Entity → RELATES_TO → RelatesToNode_ → Entity`
+- Kuzu-specific: each logical graph hop is 2 physical hops because edges are materialized as `RelatesToNode_` intermediate nodes
+
+### 6. Transaction Support
+
+Kuzu has no real transaction support. `GraphDriver.transaction()` falls back to a `_SessionTransaction` wrapper that executes queries immediately. ACID transactions are not required — graphiti-core is designed to work without them.
+
+### 7. Cypher Dialect
+
+graphiti-core's Kuzu driver uses Cypher with Kuzu-specific extensions:
+- `CALL QUERY_FTS_INDEX(...)` — Kuzu FTS syntax
+- `CALL CREATE_FTS_INDEX(...)` — Kuzu FTS creation syntax
+- `array_cosine_similarity(vec1, vec2)` — Kuzu vector cosine function
+- `CAST($vec AS FLOAT[N])` — typed vector cast
+- No `UNWIND` support (Kuzu limitation, worked around with per-UUID loops)
+- No relationship FTS (workaround: `RelatesToNode_` intermediate node)
+
+A replacement backend must either: (a) support the same Kuzu Cypher dialect, or (b) have its own driver implementation with operations classes rewritten for the new dialect.
 
 ---
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These)
+### Table Stakes (Required Capabilities)
 
-Features users assume exist in each category. Missing these makes the feature feel incomplete.
+Features the replacement backend must support to maintain existing functionality.
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Retention: configurable TTL value** | Users expect to control when nodes expire, not just get a hardcoded 90-day default | LOW | Single `retention_days` field in `llm.toml`. Already has `queue_item_ttl_hours` pattern to follow. |
-| **Retention: dry-run before purge** | Users will not trust automatic deletion without being able to preview what gets removed | LOW | `graphiti compact --dry-run` pattern; list nodes scheduled for deletion |
-| **Retention: manual keep/pin** | Users need to mark knowledge that should never auto-expire (personal preferences, stable decisions) | LOW | `graphiti pin <uuid>` — sets `pinned=True` on entity, exempts from TTL sweep |
-| **Capture modes: named modes, not just flags** | Users expect `--mode decisions` or `--mode full`, not arbitrary flag combinations | LOW | Config field + CLI override. Two modes sufficient: `decisions` (default) and `full`. |
-| **Capture modes: security must stay stricter in decisions mode** | Decisions-only mode must filter harder, not just capture less. Users expect this is the safe default. | LOW | Already implicit in summarizer prompt. Make it explicit in mode config. |
-| **Capture modes: mode visible in `graphiti config`** | Users expect `graphiti config show` to display the active capture mode | LOW | Extend existing `config` command output |
-| **UI: nodes and edges browsable** | The minimum viable graph UI must show entities and their relationships, not just a node list | MEDIUM | Pyvis/Vis.js renders both. No UI that shows only nodes is acceptable. |
-| **UI: search from browser** | Users expect to type a query in the UI and see matching nodes highlighted | MEDIUM | FastAPI endpoint for search; JS frontend calls it and highlights results |
-| **UI: launch via CLI command** | `graphiti ui` starts the server and opens the browser | LOW | `typer` command + `webbrowser.open()` |
-| **Multi-provider: no code change to switch** | Switching from Ollama to OpenAI must require only `llm.toml` edits | MEDIUM | Provider abstraction layer in `src/llm/client.py`. OpenAI SDK covers most providers. |
-| **Multi-provider: Ollama remains default** | Existing users must not have their config broken by v1.1 update | LOW | Backward-compatible: if no `[provider]` section, use Ollama as before |
-| **Multi-provider: health check shows active provider** | `graphiti health` must show which provider is configured and reachable | LOW | Extend existing health command |
+| Capability | Why Required | Complexity to Implement | Evidence |
+|------------|--------------|------------------------|---------|
+| **Cypher query execution** | All graphiti-core ops use Cypher strings | LOW if backend supports Cypher natively; HIGH if not | Source: `driver/driver.py` `execute_query()` abstract method |
+| **FTS on 4 node/edge labels** | Required by all 4 `*_fulltext_search()` operations | HIGH — not all graph DBs support this natively | Source: `driver/kuzu/operations/search_ops.py` |
+| **Vector cosine similarity** | Required by all 3 `*_similarity_search()` operations | MEDIUM — widely supported now | Source: `graph_queries.py` `get_vector_cosine_func_query()` |
+| **Variable-depth graph traversal** | BFS search for related entities | LOW with Cypher, HIGH without | Source: `search_ops.py` `node_bfs_search()` |
+| **Embedded operation (no server)** | Project requirement: `~/.graphiti/` file path, no daemon | HIGH — eliminates most graph DBs | Milestone context |
+| **Dual-scope isolation** | Two separate DB instances per session (global + project) | MEDIUM — must support multiple open DBs simultaneously | Source: `graph_manager.py` |
+| **Python async API** | graphiti-core is fully async | MEDIUM | Source: `kuzu.AsyncConnection` usage |
+| **Schema management** | Node/relationship table creation on first run | LOW with Cypher DDL | Source: `kuzu_driver.py` `SCHEMA_QUERIES` |
+| **Active maintenance** | Security patches, Python version support | LOW to verify | Non-negotiable requirement given Kuzu's fate |
 
-### Differentiators (Competitive Advantage)
+### Differentiators (Capability Improvements Over KuzuDB)
 
-Features that go beyond expectations. Not required, but high value.
+Capabilities that would improve the system beyond what Kuzu provided.
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Retention: access-frequency scoring** | Frequently-searched nodes get their TTL extended automatically; unused nodes expire faster | MEDIUM | Requires tracking `last_accessed_at` + `access_count` in a sidecar store (EntityNode schema in graphiti-core 0.26.3 has no `last_accessed` field — must be tracked externally in SQLite or a metadata JSON file) |
-| **Retention: importance tiers** | Nodes tagged `pinned`, `reinforced`, or `expiring` visible in `graphiti list` with age indicators | LOW | Adds value to browsing; implementation is just metadata annotation on existing display |
-| **Retention: stale preview command** | `graphiti stale` lists nodes within 7 days of expiry so user can pin or prune intentionally | LOW | High usefulness for low complexity. Output: table of node name, age, last search hit |
-| **Capture modes: per-scope mode config** | Global captures in `decisions` mode, project captures optionally in `full` mode | MEDIUM | Separate config key per scope: `capture.global_mode` and `capture.project_mode` |
-| **Capture modes: token budget enforcement** | `full` mode sets a max token limit per capture event to prevent runaway LLM costs | MEDIUM | Add `capture_max_tokens` config field; truncate input before LLM call |
-| **UI: scope selector** | Switch between global and per-project graph views without restarting the server | MEDIUM | Dropdown in UI that changes the active graph endpoint; FastAPI route parameter |
-| **UI: monitoring dashboard tab** | Capture stats: last N captures, queue depth, error count, node count over time | MEDIUM | Separate `/dashboard` route; reads from SQLiteAckQueue stats + graph node count |
-| **UI: node detail panel** | Click a node to see its full content, tags, age, access count, and linked edges | MEDIUM | Side panel in Pyvis via JS click callback + FastAPI `/node/<uuid>` endpoint |
-| **Multi-provider: embeddings provider separation** | Embeddings always use a separate provider config (local Ollama) even when chat switches to OpenAI | LOW | Already architecturally correct (embeddings always local); just expose in config explicitly |
-| **Multi-provider: failover chain** | Configure a fallback chain: `[openai, groq, local_ollama]` — tried in order | MEDIUM | Extend existing cloud/local failover logic to support N-provider chain |
-| **Multi-provider: cost-aware routing** | Route cheap/fast tasks (classify, summarize) to Groq; complex tasks (entity extraction) to OpenAI | HIGH | DEFER — not v1.1 scope. Requires per-task cost modeling. |
+| Capability | Value | Complexity | Notes |
+|------------|-------|------------|-------|
+| **Native relationship FTS** | Eliminates `RelatesToNode_` workaround; simplifies schema | HIGH (requires driver rewrite) | Kuzu had no rel FTS; this was the root cause of the intermediate node pattern |
+| **ACID transactions** | Safer concurrent writes from multiple CLI invocations | LOW (transparent to app) | Neo4j supports; FalkorDB partial; Kuzu had none |
+| **UNWIND support** | Eliminates per-UUID loop workarounds in reranker queries | LOW (transparent to app) | Kuzu lacked UNWIND; Neo4j and FalkorDB support it |
+| **Built-in vector index (HNSW)** | Faster approximate nearest-neighbor vs exact cosine scan | MEDIUM (query rewrite needed) | Kuzu used exact scan; Neo4j/FalkorDB have vector indexes |
+| **Official graphiti-core driver** | No custom driver maintenance burden for this project | HIGH (waiting for FalkorDB Lite) | FalkorDB Lite driver proposed in graphiti issue #1240 (draft PR) |
+| **Graph UI compatibility** | Visual inspection without custom UI | LOW | FalkorDB has browser UI; Neo4j has Neo4j Browser |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features (What to Explicitly Avoid)
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Retention: automatic silent deletion** | "Just clean it up without asking" | Users lose trust when knowledge disappears without notice. Debugging broken context injection becomes impossible. | Always log deletions to a retention log; `graphiti stale` previews before any sweep runs. |
-| **UI: force-directed graph as default** | Looks impressive in demos | Force-directed layouts become unreadable above ~80 nodes. Dev knowledge graphs routinely exceed 200 nodes after one month. | Hierarchical or cluster layout by default; force-directed as an opt-in toggle. |
-| **UI: real-time streaming updates** | "Show new nodes as they're captured" | WebSocket complexity for marginal value. Capture happens async; user is coding, not watching the UI. | Manual refresh button + auto-refresh on 60s interval. No sockets needed. |
-| **UI: edit nodes inline** | "Fix a wrong label from the UI" | Two write paths (CLI + UI) diverge. UI edits bypass security filtering and audit logging. | CLI is the single write path. UI is read-only. |
-| **Capture modes: third "silent" mode** | "I want hooks to run but nothing gets stored" | Silent mode is indistinguishable from broken hooks. Creates debugging confusion. | `hooks_enabled = false` in config already handles this. No third mode needed. |
-| **Capture modes: per-file capture rules** | "Only capture decisions from src/, ignore tests/" | Rule complexity grows unbounded. File exclusions already handle secrets; capture-level file routing is premature optimization. | `decisions` mode's LLM prompt already filters out test/scaffolding content implicitly. |
-| **Multi-provider: LiteLLM as dependency** | "One library handles all providers" | LiteLLM has >500µs overhead per call, 3+ second cold start (import time), memory leaks at scale, and 40+ transitive dependencies. For a CLI tool calling ~5 LLM ops per session, this is disproportionate weight. | Direct OpenAI SDK (`openai` package covers OpenAI, Anthropic via compatibility, Groq, any OpenAI-compatible base_url). Thin provider adapter per provider. |
-| **Multi-provider: provider marketplace UI** | "Let me browse and switch providers in the browser UI" | Provider config is a one-time setup, not a runtime choice. A UI for it adds maintenance with no value. | `llm.toml` with clear documentation. `graphiti health` shows active provider. |
-| **Retention: ML-based importance scoring** | "Train a model on my access patterns" | Training data cold start problem — no signal on day 1. Model needs retraining. Storage overhead. | Simple heuristics: pinned > access_count > age. Good enough for 95% of cases. Implement RL scoring in v2 if needed. |
-| **UI: graph editing (add/delete nodes)** | "I want to curate my graph visually" | Bypasses CLI security layer, creates dual write paths, breaks audit trail | `graphiti add`, `graphiti delete` — CLI is already fast and scriptable |
+| Anti-Feature | Why Requested | Why Problematic | Alternative |
+|--------------|---------------|-----------------|-------------|
+| **Server-mode graph DB (Docker required)** | "Neo4j is mature and well-supported" | Breaks the embedded use case. Users cannot install Docker just to use a CLI tool. MCP clients would need Docker compose to start. | Use FalkorDB Lite (embedded subprocess) or wait for another embedded Cypher DB. Neo4j is server-only. |
+| **Custom Python graph library (e.g., NetworkX)** | "Simple, no server" | No Cypher support. Would require complete rewrite of all 11 operation classes + query translator. FTS and vector search would need separate integrations. | Not viable for this scope. |
+| **LanceDB as graph backend** | "It's embedded and has vector search" | LanceDB is a vector database, not a graph database. No Cypher, no relationship traversal, no FTS on graph nodes. Used alongside Kuzu in some stacks, not as a replacement for it. | LanceDB does not implement GraphDriver ABC and cannot without a full graph layer above it. |
+| **Apache AGE (PostgreSQL extension)** | "PostgreSQL is mature" | Requires PostgreSQL server running. Not embedded. Python client requires `psycopg2` + PostgreSQL installation. No graphiti-core driver exists. | Server requirement eliminates it for the embedded use case. |
+| **Forking KuzuDB** | "We know the codebase" | The community fork (LadybugDB/bighorn) has unknown stability and no graphiti-core driver commitment. Maintains the same risks Kuzu had. | Wait for FalkorDB Lite or migrate to Neo4j for the server case. |
+| **Dual-engine approach (FTS via SQLite FTS5, graph via custom store)** | "Mix best-of-breed" | Would require writing a GraphDriver that proxies two separate stores. Every search operation becomes a cross-store join. Maintenance nightmare. | A single DB that supports both graph traversal and FTS is the correct solution. |
+
+---
+
+## Candidate Backend Comparison
+
+### Backend 1: FalkorDB (server mode)
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| graphiti-core driver | YES — `FalkorDriver` shipped in 0.28.1 | Source: `.venv/.../falkordb_driver.py` |
+| FTS support | YES — `db.idx.fulltext.createNodeIndex()`, RediSearch syntax | [FalkorDB FTS docs](https://docs.falkordb.com/cypher/indexing/fulltext-index.html) |
+| FTS on relationships | YES — `CREATE FULLTEXT INDEX FOR ()-[e:RELATES_TO]-() ON (e.name, e.fact)` | Source: `graph_queries.py` line 119; removes need for `RelatesToNode_` workaround |
+| Vector search | YES — `vec.cosineDistance()`, vector indexes | [FalkorDB Vector Index](https://docs.falkordb.com/cypher/indexing/vector-index.html) |
+| Embedded (no server) | NO — Redis-based, requires server process | Source: `falkordb.com`, Docker requirement |
+| Active maintenance | YES — last commit within days, commercial backing | [FalkorDB GitHub](https://github.com/FalkorDB/FalkorDB) |
+| Cypher compatibility | YES — OpenCypher with FalkorDB extensions | Confirmed in graphiti-core driver |
+| Driver migration effort | LOW — drop-in swap of `KuzuDriver` → `FalkorDriver` | graphiti-core already ships this driver |
+| Known issues | Edge FTS causes full graph scan (O(n×m)), reported in [#1272](https://github.com/getzep/graphiti/issues/1272) | MEDIUM confidence |
+
+**Verdict:** Fully capable, officially supported, but requires Docker/server. Not embedded.
+
+### Backend 2: FalkorDB Lite (`falkordblite`)
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| graphiti-core driver | NOT YET — draft PR #1250 exists, not merged as of 2026-03-09 | [graphiti issue #1240](https://github.com/getzep/graphiti/issues/1240) |
+| FTS support | UNVERIFIED — "requires validation against embedded engine" | Issue #1240 text; falkordblite README does not document FTS |
+| Vector search | UNVERIFIED — same caveat as FTS | Issue #1240 text |
+| Embedded (no server) | YES — subprocess with Unix socket, file-based storage | [falkordblite repo](https://github.com/FalkorDB/falkordblite) |
+| Platform support | Linux x86-64, macOS x86-64 + ARM64 ONLY | falkordblite README |
+| Active maintenance | YES — v0.8.0 released Feb 4, 2026 | PyPI release history |
+| Python requirement | 3.12+ (matches this project) | falkordblite README |
+| Driver migration effort | LOW once driver ships — same FalkorDriver subclass | Issue #1240: "thin subclass of existing FalkorDriver" |
+| Risk | HIGH — FTS/vector unverified, driver not merged | LOW confidence on search capabilities |
+
+**Verdict:** Ideal embedded solution but NOT ready. FTS and vector search support unverified. No graphiti-core driver merged. Requires monitoring for v0.28.x+ driver support.
+
+### Backend 3: Neo4j Community Edition
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| graphiti-core driver | YES — `Neo4jDriver` is the primary/reference driver in 0.28.1 | Source: `.venv/.../neo4j_driver.py` |
+| FTS support | YES — `CREATE FULLTEXT INDEX ... FOR ()-[e:RELATES_TO]-() ON EACH [e.name, e.fact]` — native rel FTS | Source: `graph_queries.py` lines 132-139 |
+| Vector search | YES — `vector.similarity.cosine()`, ANN indexes available in Neo4j 5.x | Official Neo4j docs |
+| Embedded (no server) | NO — JVM process required, no pure-Python embedded mode | Neo4j docs; confirmed no Python embedded option |
+| Active maintenance | YES — Neo4j 5.x actively maintained, commercial company | neo4j.com |
+| Cypher compatibility | YES — Neo4j created Cypher; fullest implementation | Official |
+| ACID transactions | YES — full ACID with `async with driver.transaction()` | Neo4j Driver ABC in graphiti-core |
+| Driver migration effort | LOW — reference implementation, most complete | graphiti-core's Neo4j driver is the primary target |
+| Docker requirement | YES — `docker run neo4j` or install Neo4j locally | neo4j.com |
+| graphiti-core issue count | Fewest open bugs vs FalkorDB | GitHub issues comparison |
+
+**Verdict:** Most capable and best-tested driver in graphiti-core. Server-only. Acceptable for developer workflow (Docker once, stays running). Not truly embedded.
+
+### Backend 4: Apache AGE (PostgreSQL extension)
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| graphiti-core driver | NO — no driver exists | PyPI, GitHub search |
+| FTS support | YES — via PostgreSQL `pg_trgm` or `tsvector` | PostgreSQL docs |
+| Vector search | YES — via `pgvector` extension | pgvector |
+| Embedded (no server) | NO — requires PostgreSQL server | Architecture requirement |
+| Active maintenance | YES — Apache Top Level Project | apache/age GitHub |
+| Cypher compatibility | PARTIAL — openCypher via PostgreSQL paths | Apache AGE docs |
+| Driver migration effort | VERY HIGH — full driver + operations classes from scratch | No existing driver |
+
+**Verdict:** No driver exists. Server-only. Not a viable migration path without months of custom driver work.
+
+### Backend 5: LanceDB
+
+| Criterion | Status | Evidence |
+|-----------|--------|---------|
+| graphiti-core driver | NO — not a graph database | Architecture |
+| Graph traversal | NO — vector store only, no relationship model | LanceDB docs |
+| FTS support | YES — BM25 full-text search | [LanceDB FTS docs](https://docs.lancedb.com/search/full-text-search) |
+| Vector search | YES — primary feature | LanceDB |
+| Embedded (no server) | YES — file-based, embedded | LanceDB |
+| Active maintenance | YES — active development 2025-2026 | LanceDB GitHub |
+| Role in ecosystem | Used as vector layer alongside Kuzu, not a Kuzu replacement | kuzudb/graph-rag-workshop README |
+
+**Verdict:** Not a graph database. Cannot replace KuzuDB for graphiti-core. LanceDB + a graph DB is a complementary architecture, not a replacement.
+
+---
+
+## Capability Requirements Matrix
+
+Required capabilities to maintain all existing features, mapped to each candidate:
+
+| Capability | FalkorDB (server) | FalkorDB Lite | Neo4j | Apache AGE | LanceDB |
+|------------|:-----------------:|:-------------:|:-----:|:----------:|:-------:|
+| GraphDriver ABC implementation | YES | NOT YET | YES | NO | NO |
+| FTS on node labels | YES | UNVERIFIED | YES | YES (via pg) | YES |
+| FTS on relationship properties | YES | UNVERIFIED | YES | YES (via pg) | N/A |
+| Vector cosine similarity | YES | UNVERIFIED | YES | YES (pgvector) | YES |
+| Variable-depth graph traversal | YES | UNVERIFIED | YES | PARTIAL | NO |
+| Embedded / no server | NO | YES | NO | NO | YES |
+| Dual-scope (multiple open DBs) | YES (multi-graph) | YES | YES (multi-db) | YES | YES |
+| Python async API | YES | YES | YES | NO driver | YES |
+| Active maintenance (2026) | YES | YES | YES | YES | YES |
+| Drop-in swap (no app code change) | YES | YES (future) | YES | NO | NO |
+
+**Key insight:** Only Neo4j and FalkorDB (server mode) satisfy ALL requirements today. FalkorDB Lite satisfies them architecturally but is not yet proven for FTS + vector in embedded mode.
 
 ---
 
 ## Feature Dependencies
 
 ```
-[Smart Retention]
-    └──requires──> [EntityNode metadata sidecar]  (no last_accessed in graphiti-core schema)
-    └──requires──> [search() instrumentation]     (must track access on every search call)
-    └──enables──>  [graphiti stale]               (depends on access metadata being present)
-    └──enables──>  [graphiti pin]                 (depends on sidecar metadata store)
-    └──conflicts-> [graphiti compact]             (both modify entity lifecycle — must coordinate)
+[Embedded operation]
+    └──conflicts──> [Neo4j]          (server only)
+    └──conflicts──> [FalkorDB server] (server only)
+    └──compatible─> [FalkorDB Lite]  (embedded subprocess)
 
-[Configurable Capture Modes]
-    └──requires──> [existing summarizer.py]       (already exists — extend, don't replace)
-    └──requires──> [LLMConfig extension]          (add capture_mode field to llm.toml)
-    └──enables──>  [per-scope mode config]        (global_mode vs project_mode)
-    └──enhances--> [security filtering]           (decisions mode requires stricter LLM prompt)
+[FTS on 4 labels]
+    └──requires──> [Backend native FTS] OR [custom FTS implementation]
+    └──enables──>  [node_fulltext_search]
+    └──enables──>  [edge_fulltext_search]
+    └──enables──>  [episode_fulltext_search]
+    └──enables──>  [community_fulltext_search]
+    └──if missing──> [entity dedup breaks] + [graphiti search stops working]
 
-[Localhost Graph UI]
-    └──requires──> [FastAPI or similar web server]     (new dependency)
-    └──requires──> [Pyvis or Cytoscape.js]             (new dependency)
-    └──requires──> [graphiti search() as API endpoint] (expose existing search via HTTP)
-    └──enhances--> [Smart Retention]                   (UI can show stale/pinned node status)
-    └──conflicts-> [MCP stdio transport]               (UI server must NOT share process with MCP server)
+[Vector similarity search]
+    └──requires──> [Backend cosine similarity] OR [external vector store]
+    └──enables──>  [node_similarity_search]
+    └──enables──>  [edge_similarity_search]
+    └──enables──>  [community_similarity_search]
+    └──if missing──> [semantic search degrades to FTS-only]
 
-[Multi-Provider LLM]
-    └──requires──> [openai SDK]                   (new dependency — covers OpenAI, Groq, Anthropic-compat)
-    └──requires──> [LLMConfig extension]          (add [provider] section to llm.toml)
-    └──requires──> [LLMClient refactor]           (src/llm/client.py dispatcher by provider type)
-    └──enhances--> [health command]               (show active provider + reachability)
-    └──conflicts-> [ollama SDK hardcoding]        (existing ollama.Client() calls must be behind adapter)
+[graphiti-core driver]
+    └──requires──> [11 operations classes implemented]
+    └──requires──> [FTS integration]
+    └──requires──> [vector similarity integration]
+    └──requires──> [Cypher dialect support]
 ```
 
 ### Dependency Notes
 
-- **Retention metadata is the key unknown:** graphiti-core 0.26.3 `EntityNode` has only `created_at` on nodes (`expired_at`, `valid_at`, `invalid_at` are on edges only). To track `last_accessed_at` and `access_count`, a sidecar SQLite or JSON store is required. This must be designed before implementing retention scoring.
-- **UI must be a separate process/port:** The MCP server uses stdio transport and cannot share a process with an HTTP server. `graphiti ui` spawns a separate FastAPI process.
-- **Multi-provider does not touch embeddings:** Embeddings always use local Ollama (`nomic-embed-text`). Cloud providers are chat/generate only. This constraint is already established in v1.0.
-- **Capture modes extend, not replace:** The existing `summarizer.py` `BATCH_SUMMARIZATION_PROMPT` already captures decisions. Mode config changes the prompt strictness and optionally increases token budget in `full` mode.
-- **LLMConfig is the integration point for both capture modes and multi-provider:** Both features add fields to `llm.toml` and `LLMConfig`. Coordinate their additions to avoid schema conflicts.
+- **FTS is the hardest dependency:** It is called inside `add_episode()` for entity deduplication, not just in search. Missing FTS causes data corruption (duplicate entities), not just degraded search.
+- **FalkorDB Lite FTS is the critical unknown:** The entire case for an embedded migration rests on whether FalkorDB Lite supports `db.idx.fulltext.createNodeIndex()` inside its embedded subprocess. This must be empirically verified.
+- **The `RelatesToNode_` workaround disappears with FalkorDB:** FalkorDB supports `CREATE FULLTEXT INDEX FOR ()-[e:RELATES_TO]-() ON EACH [e.name, e.fact]`. A FalkorDB migration could simplify the schema by replacing `RelatesToNode_` with a real relationship. This is a driver-level change, not an application-level change.
+- **Neo4j removes ALL Kuzu workarounds:** The Neo4j driver in graphiti-core is the reference implementation. It has real ACID, real relationship FTS, UNWIND support. None of the three `graph_manager.py` workarounds are needed.
 
 ---
 
-## MVP Definition for v1.1
+## Migration Risk Matrix
 
-### Must Ship (v1.1 core)
+| Migration Path | FTS Risk | Vector Risk | Schema Risk | Driver Risk | Embedded Risk | Overall Risk |
+|----------------|----------|-------------|-------------|-------------|---------------|--------------|
+| Kuzu → FalkorDB (server) | LOW | LOW | MEDIUM (RelatesToNode_ → real edge) | LOW (driver ships) | HIGH (breaks embedded) | MEDIUM |
+| Kuzu → FalkorDB Lite | HIGH (unverified FTS) | HIGH (unverified) | MEDIUM | HIGH (driver not merged) | LOW | HIGH |
+| Kuzu → Neo4j | LOW | LOW | MEDIUM (schema dialect changes) | LOW (reference impl) | HIGH (breaks embedded) | MEDIUM |
+| Kuzu → Apache AGE | HIGH (no driver) | MEDIUM | HIGH | VERY HIGH | HIGH | VERY HIGH |
+| Kuzu → LanceDB | BLOCKER (not a graph DB) | N/A | BLOCKER | BLOCKER | LOW | BLOCKER |
 
-The minimum set that makes each feature area usable.
+---
 
-- [ ] **Retention: TTL sweep** — `graphiti compact` prunes nodes older than `retention_days` (default: 90) from configured date. Log all deletions. MEDIUM complexity.
-- [ ] **Retention: pin command** — `graphiti pin <uuid>` exempts a node from TTL sweep. LOW complexity.
-- [ ] **Retention: stale command** — `graphiti stale` lists nodes within 7 days of TTL expiry. LOW complexity.
-- [ ] **Capture modes: two modes** — `decisions` (current behavior, stricter prompt) and `full` (captures patterns + code rationale). `capture_mode` field in `llm.toml`. LOW complexity.
-- [ ] **UI: node + edge browser** — Pyvis-rendered graph served by FastAPI at `localhost:7474`. `graphiti ui` launches. MEDIUM complexity.
-- [ ] **UI: text search** — Search box queries existing `graphiti search` and highlights matching nodes. MEDIUM complexity.
-- [ ] **Multi-provider: OpenAI-compatible adapter** — `[provider] type = "openai"` in `llm.toml` routes chat through `openai.OpenAI(base_url=..., api_key=...)`. Groq and Anthropic-compatible endpoints work with same adapter. MEDIUM complexity.
-- [ ] **Multi-provider: backward compat** — No `[provider]` section means existing Ollama behavior unchanged. LOW complexity.
+## MVP Definition for v2.0 Backend Migration
 
-### Add After Core Works (v1.1.x)
+### Launch With (v2.0 — minimum to restore all v1.1 capabilities)
 
-- [ ] **Retention: access-frequency scoring** — Track `last_accessed_at` per search hit in sidecar store; extend TTL on access. Trigger: retention sweep works correctly.
-- [ ] **UI: monitoring dashboard** — Capture stats tab. Trigger: UI core is stable.
-- [ ] **UI: scope selector** — Switch global vs project graph. Trigger: UI core is stable.
-- [ ] **Multi-provider: N-provider failover chain** — Configure ordered fallback list. Trigger: single provider works.
+- [ ] **Backend choice confirmed** — empirically verify FalkorDB Lite FTS + vector in embedded mode. If passes: FalkorDB Lite. If fails: Neo4j with Docker.
+- [ ] **Driver swap** — replace `KuzuDriver` with the chosen backend driver in `graph_manager.py`. Remove three Kuzu-specific workarounds from `graph_manager.py`.
+- [ ] **Schema migration** — export existing Kuzu graphs and import to new backend. FalkorDB has a [KuzuDB migration guide](https://www.falkordb.com/blog/kuzudb-to-falkordb-migration/).
+- [ ] **FTS validation** — confirm all 4 FTS indices are created on first run and queries return results.
+- [ ] **Vector validation** — confirm cosine similarity queries work with Ollama embedding dimensions.
+- [ ] **Dual-scope validation** — global and project graphs operate independently.
+- [ ] **Update pyproject.toml** — remove `kuzu==0.11.3` and `graphiti-core[kuzu]`, add chosen backend dep.
 
-### Defer to v2+
+### Add After Validation (v2.0.x)
 
-- [ ] **Retention: RL-based importance scoring** — Needs access pattern training data that doesn't exist until 6+ months of usage.
-- [ ] **Capture modes: per-scope mode config** — Adds config complexity before simpler global mode is validated.
-- [ ] **UI: real-time streaming** — WebSocket complexity without proportional value.
-- [ ] **Multi-provider: cost-aware routing** — Requires per-task cost modeling; premature for v1.1.
+- [ ] **Schema simplification (FalkorDB path only)** — if on FalkorDB, replace `RelatesToNode_` with real RELATES_TO edges. Requires driver-level change to `search_ops.py`. Improves query performance and removes a confusing schema artifact.
+- [ ] **Migration tooling** — `graphiti migrate` command to export existing Kuzu graph and re-import to new backend for users upgrading from v1.1.
+
+### Future Consideration (v2.1+)
+
+- [ ] **FalkorDB Lite (if not ready for v2.0)** — revisit when graphiti-core FalkorLiteDriver is merged and FTS/vector are confirmed in embedded mode.
+- [ ] **HNSW vector index** — replace exact cosine scan with approximate nearest-neighbor index for better performance on large graphs.
 
 ---
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Retention: TTL sweep + log | HIGH | MEDIUM | P1 |
-| Retention: pin command | HIGH | LOW | P1 |
-| Retention: stale preview | HIGH | LOW | P1 |
-| Capture modes: decisions vs full | MEDIUM | LOW | P1 |
-| Multi-provider: OpenAI-compat adapter | HIGH | MEDIUM | P1 |
-| Multi-provider: backward compat | HIGH | LOW | P1 |
-| UI: node + edge browser | MEDIUM | MEDIUM | P1 |
-| UI: text search in browser | MEDIUM | MEDIUM | P1 |
-| Retention: access-frequency scoring | MEDIUM | MEDIUM | P2 |
-| Capture modes: per-scope config | LOW | MEDIUM | P2 |
-| UI: monitoring dashboard tab | MEDIUM | MEDIUM | P2 |
-| UI: scope selector | MEDIUM | MEDIUM | P2 |
-| Multi-provider: N-provider failover | MEDIUM | MEDIUM | P2 |
-| Retention: RL scoring | LOW | HIGH | P3 |
-| UI: real-time streaming | LOW | HIGH | P3 |
-| Multi-provider: cost routing | LOW | HIGH | P3 |
-
-**Priority key:**
-- P1: Must have for v1.1 milestone
-- P2: Should have, add once P1 is stable
-- P3: Defer to v2+
+| Feature/Capability | User Value | Implementation Cost | Priority |
+|--------------------|------------|---------------------|----------|
+| Confirm FTS works in chosen backend | HIGH | LOW (1-day spike) | P1 |
+| Drop-in driver swap in graph_manager.py | HIGH | LOW (if driver ships) | P1 |
+| Remove Kuzu workarounds | HIGH | LOW (3 patches, all in graph_manager.py) | P1 |
+| Schema migration tool | HIGH | MEDIUM | P1 |
+| Validate all search operations end-to-end | HIGH | LOW (existing test suite) | P1 |
+| FalkorDB Lite FTS/vector spike | HIGH | LOW (experimental branch) | P1 |
+| RelatesToNode_ removal (FalkorDB) | MEDIUM | HIGH (driver rewrite) | P2 |
+| HNSW vector index | LOW | MEDIUM | P3 |
 
 ---
 
-## Implementation Notes by Feature
+## Recommendation
 
-### Smart Retention
+**Primary path (if FalkorDB Lite FTS/vector verified):** Migrate to FalkorDB Lite.
+- Preserves embedded operation
+- graphiti-core FalkorDriver is a thin subclass (expected low effort once driver merges)
+- FalkorDB is actively maintained with commercial backing focused on LLM/GraphRAG use cases
+- Same Cypher dialect as FalkorDB server; if embedded limits appear, drop-in swap to FalkorDB server
 
-**Key constraint:** graphiti-core 0.26.3 `EntityNode` schema: `{uuid, name, group_id, labels, created_at, name_embedding, summary, attributes}`. There is no `last_accessed_at`, `access_count`, or `pinned` field. These must live in a sidecar store.
+**Fallback path (if FalkorDB Lite FTS/vector fails):** Migrate to FalkorDB (server mode).
+- Adds Docker dependency but eliminates all other risks
+- Driver ships with graphiti-core 0.28.1 today
+- Preferred over Neo4j because FalkorDB is the embedded-first direction the graphiti team is pursuing
 
-**Recommended sidecar:** A single SQLite table `~/.graphiti/retention.db`:
-```sql
-CREATE TABLE node_metadata (
-    uuid TEXT PRIMARY KEY,
-    scope TEXT,
-    project_path TEXT,
-    last_accessed_at DATETIME,
-    access_count INTEGER DEFAULT 0,
-    pinned BOOLEAN DEFAULT 0
-);
-```
+**Do not use:** Neo4j as primary path (server + JVM overhead for a CLI tool is disproportionate), Apache AGE (no driver, server required), LanceDB (not a graph DB).
 
-**TTL sweep logic:** `created_at < now - retention_days AND pinned = 0 AND access_count = 0 OR last_accessed_at < now - retention_days`. Use existing `graphiti.remove_episode()` or direct KuzuDriver `execute_query()` for deletion.
-
-**Integration point:** `GraphService.search()` must write to retention.db after every successful search. Non-blocking write (separate thread or fire-and-forget coroutine).
-
-### Configurable Capture Modes
-
-**Simple approach:** Two named prompt templates in `summarizer.py`:
-- `DECISIONS_PROMPT` — current `BATCH_SUMMARIZATION_PROMPT` (extracts decisions, rationale, architecture, bug fixes)
-- `FULL_PROMPT` — adds "Patterns & Idioms" and "Code Structure Changes" sections to extracted content
-
-**Config field addition to `LLMConfig`:**
-```toml
-[capture]
-mode = "decisions"          # "decisions" | "full"
-max_tokens = 4096           # cap input tokens per capture event
-```
-
-**No new code paths needed:** `summarize_batch()` selects prompt template based on config. Security filtering runs identically in both modes (SECURITY GATE is non-negotiable, per CLAUDE.md).
-
-### Localhost Graph UI
-
-**Stack recommendation:** FastAPI (already in transitive deps via MCP) + Pyvis (new dep, ~200KB, pure Python wrapper over vis.js).
-
-**Architecture:**
-- `graphiti ui` Typer command spawns `uvicorn` on port 7474, opens browser
-- `/` route serves interactive Pyvis HTML (generated from KuzuDriver query)
-- `/api/search?q=<query>` proxies to existing `GraphService.search()`
-- `/api/node/<uuid>` returns full node detail JSON
-- UI is **read-only** — no write routes
-
-**Port 7474:** Convention borrowed from Neo4j Browser (7474). Recognizable to graph developers.
-
-**Node limit for rendering:** Cap at 500 nodes for Pyvis performance. Show "Showing top 500 nodes by recency" notice. Force-directed layout fails above ~300 nodes in browser — use hierarchical layout by default.
-
-### Multi-Provider LLM
-
-**Provider abstraction pattern:** Replace `ollama.Client()` instantiation in `src/llm/client.py` with a factory:
-
-```toml
-# llm.toml — new [provider] section
-[provider]
-type = "openai"              # "ollama" (default) | "openai" | "groq" | "openai_compatible"
-api_key = "sk-..."          # or set OPENAI_API_KEY env var
-base_url = "https://api.openai.com/v1"   # for openai_compatible, point to any endpoint
-models = ["gpt-4o-mini"]
-```
-
-**Implementation:** `openai` Python SDK supports any OpenAI-compatible endpoint via `base_url`. Groq uses `https://api.groq.com/openai/v1`. This means a single `openai.OpenAI(base_url=..., api_key=...)` adapter covers OpenAI, Groq, LM Studio, vLLM, and most self-hosted options.
-
-**Anthropic:** Not OpenAI-compatible natively. Requires separate `anthropic` SDK adapter. Defer to v1.1.x if no demand.
-
-**Embeddings stay local:** `_is_cloud_available("embed")` pattern from v1.0 is preserved. Embeddings always use local Ollama. New provider section only controls chat/generate routing.
-
----
-
-## Competitor Feature Analysis
-
-| Feature Area | Zep (graphiti-core's parent) | Mem0 | MemGPT/Letta | Our Approach |
-|--------------|------------------------------|------|---------------|--------------|
-| **Retention** | Bi-temporal model, manual expiry | Per-user TTL | Archival tiers | TTL + access scoring, automatic sweep |
-| **Capture modes** | Manual add only | Structured memory types | Memory compiler | Decisions-only default, full mode opt-in |
-| **Visualization** | No built-in UI | No UI | Web UI (complex) | Minimal Pyvis browser, read-only |
-| **Multi-provider** | OpenAI + Anthropic hardcoded | OpenAI + Anthropic | Any via LiteLLM | Config-driven, OpenAI-compat covers most |
-
-**Key differentiation vs Zep/Mem0:** Those are cloud-hosted services with per-user billing. This project is a local-first personal developer tool — no server, no billing, no data leaving the machine.
+**Critical pre-condition before v2.0 planning:** Run a FalkorDB Lite spike test — create an FTS index and execute a `db.idx.fulltext.queryNodes()` call inside falkordblite. If it raises an error or returns empty results, switch immediately to the FalkorDB server fallback path. Do not design the v2.0 roadmap around FalkorDB Lite without this confirmation.
 
 ---
 
 ## Sources
 
-- [graphiti-core EntityNode schema](https://help.getzep.com/graphiti/core-concepts/custom-entity-and-edge-types) — confirmed `created_at` on nodes, `expired_at`/`valid_at`/`invalid_at` on edges only (MEDIUM confidence, web verified)
-- [Neo4j APOC TTL documentation](https://neo4j.com/labs/apoc/4.1/graph-updates/ttl/) — TTL pattern using node property + index (MEDIUM confidence, official docs)
-- [LiteLLM performance analysis](https://www.truefoundry.com/blog/litellm-alternatives) — 500µs overhead, 3s cold start, memory leak concerns (MEDIUM confidence, multiple sources agree)
-- [Pyvis GitHub](https://github.com/WestHealth/pyvis) — Python wrapper over vis.js, outputs interactive HTML (HIGH confidence, official source)
-- [LiteLLM OpenAI-compatible endpoint docs](https://docs.litellm.ai/docs/providers/openai_compatible) — `openai/` prefix pattern for any compatible endpoint (HIGH confidence, official docs)
-- [OpenAI Python SDK base_url pattern](https://platform.openai.com/docs/api-reference/introduction) — `openai.OpenAI(base_url=..., api_key=...)` enables any compatible endpoint (HIGH confidence, official)
-- [Knowledge graph visualization libraries comparison](https://memgraph.com/blog/you-want-a-fast-easy-to-use-and-popular-graph-visualization-tool) — Pyvis/vis.js suitable up to ~300 nodes, Cytoscape.js for larger graphs (MEDIUM confidence, single source)
-- [Content freshness and knowledge lifecycle](https://kminsider.com/blog/knowledge-lifecycle/) — Retire criteria: unused 24+ months, superseded (MEDIUM confidence, domain expertise)
-- Local codebase inspection: `graphiti-core==0.26.3` installed (not 0.28.1 as in pyproject.toml — version mismatch to watch), `EntityNode.model_fields` confirmed via `python3 -c` (HIGH confidence, direct inspection)
+- Direct source inspection: `graphiti-core==0.28.1` installed at `.venv/lib/python3.12/site-packages/graphiti_core/` (HIGH confidence)
+- [KuzuDB archived — The Register](https://www.theregister.com/2025/10/14/kuzudb_abandoned/) (HIGH confidence)
+- [graphiti issue #1132 — Kuzu is archived](https://github.com/getzep/graphiti/issues/1132) (HIGH confidence)
+- [graphiti issue #1240 — FalkorDB Lite support proposal](https://github.com/getzep/graphiti/issues/1240) (HIGH confidence — Feb 18, 2026, draft PR)
+- [graphiti issue #1272 — FalkorDB edge FTS full scan bug](https://github.com/getzep/graphiti/issues/1272) (MEDIUM confidence)
+- [falkordblite GitHub](https://github.com/FalkorDB/falkordblite) — v0.8.0 released Feb 4, 2026 (HIGH confidence)
+- [FalkorDB FTS documentation](https://docs.falkordb.com/cypher/indexing/fulltext-index.html) (HIGH confidence, official docs)
+- [FalkorDB Vector Index documentation](https://docs.falkordb.com/cypher/indexing/vector-index.html) (HIGH confidence, official docs)
+- [FalkorDB KuzuDB migration guide](https://www.falkordb.com/blog/kuzudb-to-falkordb-migration/) (MEDIUM confidence)
+- `graphiti_core/graph_queries.py` — FTS index creation strings for all three backends (HIGH confidence, direct source)
+- `graphiti_core/driver/kuzu/operations/search_ops.py` — FTS and vector query patterns (HIGH confidence, direct source)
+- `graphiti_core/driver/kuzu_driver.py` — SCHEMA_QUERIES, operations class registration (HIGH confidence, direct source)
 
 ---
 
-*Feature research for: v1.1 Advanced Features — Smart Retention, Capture Modes, Graph UI, Multi-Provider LLM*
-*Researched: 2026-03-01*
-*Confidence: MEDIUM-HIGH (critical schema facts verified via direct codebase inspection; visualization and LLM provider patterns verified via official docs)*
+*Feature research for: v2.0 DB Backend Selection — KuzuDB replacement*
+*Researched: 2026-03-09*
+*Confidence: HIGH for graphiti-core requirements (source-derived); MEDIUM for FalkorDB Lite capabilities (FTS/vector unverified in embedded mode)*

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: planning
-stopped_at: v1.1 milestone archived — ready for v2.0 planning
+stopped_at: roadmap created — ready for phase planning starting at Phase 12
 last_updated: "2026-03-09"
-last_activity: 2026-03-09 — v1.1 archived, v2.0 planning begins
+last_activity: 2026-03-09 — v2.0 roadmap created (4 phases: 12 DB Migration, 13 Multi-Provider LLM, 14 Graph UI Redesign, 15 Local Memory System)
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 0
-  total_plans: 5
+  total_plans: 0
   completed_plans: 0
   percent: 0
 ---
@@ -21,98 +21,80 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Milestone v2.0 Rebuild — begin with `/gsd:new-milestone` to research DB backend options and define requirements
+**Current focus:** Milestone v2.0 Rebuild — roadmap created, next: `/gsd:plan-phase 12`
 
 ## Current Position
 
-Phase: v2.0 not yet started — next action is `/gsd:new-milestone`
-Status: v1.1 complete and archived. Ready to plan v2.0.
-Last activity: 2026-03-09 — v1.1 archived (4 phases, 14 plans, 8 days)
+Phase: Not started (roadmap defined, ready to plan Phase 12)
+Status: Roadmap created. 4 phases, 15 requirements, 100% coverage. Next action: `/gsd:plan-phase 12`
+Last activity: 2026-03-09 — v2.0 roadmap created (4 phases: 12 DB Migration, 13 Multi-Provider LLM, 14 Graph UI Redesign, 15 Local Memory System)
 
-Progress: [░░░░░░░░░░] 0% (v2.0 milestone — 0/1 phases started)
+Progress: [░░░░░░░░░░] 0% (v2.0 milestone — 0/4 phases started)
+
+## v2.0 Phase Summary
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 12. DB Migration | Replace KuzuDB with LadybugDB (embedded default) + Neo4j opt-in; remove all 3 Kuzu workarounds | DB-01, DB-02 | Not started |
+| 13. Multi-Provider LLM | Switch LLM providers via `llm.toml` `[provider]` section; backward compatible with Ollama | PROV-01, PROV-02, PROV-03, PROV-04 | Not started |
+| 14. Graph UI Redesign | shadcn/ui dual-view table + graph replacing react-force-graph-2d; driver-agnostic reads | UI-01, UI-02, UI-03, UI-04 | Not started |
+| 15. Local Memory System | All 6 Claude Code hooks, Ollama summarization, 3-layer progressive disclosure MCP, SessionStart injection | MEM-01, MEM-02, MEM-03, MEM-04, MEM-05 | Not started |
 
 ## Performance Metrics
 
-**Velocity (v1.0 reference):**
-- Total plans completed: 62 (v1.0)
-- Average duration: ~12 min/plan
-- Total execution time: ~27 days
+**Velocity (v1.1 reference):**
+- Total plans completed: 14 (v1.1)
+- Average duration: ~9 min/plan
+- Total execution time: 8 days
 
-**By Phase (v1.0 summary):**
+**By Phase (v1.1 summary):**
 
 | Phase | Plans | Status |
 |-------|-------|--------|
-| 01–08.9 (all v1.0 phases) | 62/62 | Complete |
 | 09. Smart Retention | 5/5 | Complete (human approved 2026-03-06) |
-| 10. Capture Modes | 0/TBD | Not started |
-| 11. Graph UI | 0/TBD | Not started |
-| 12. Multi-Provider LLM | 0/TBD | Not started |
+| 10. Configurable Capture Modes | 4/4 | Complete (2026-03-08) |
+| 11. Graph UI | 5/5 | Complete (2026-03-08) |
+| 11.1. Gap Closure — Graph UI Retention Wiring | commits-only | Complete (2026-03-09) |
 
-*Updated after each plan completion*
+**v2.0 (in progress):**
 
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
-| Phase 09-smart-retention P01 | 3 min | 2 tasks | 5 files |
-| Phase 09-smart-retention P02 | 22 | 3 tasks | 4 files |
-| Phase 09-smart-retention P03 | 2 | 2 tasks | 2 files |
-| Phase 09-smart-retention P04 | 3 | 2 tasks | 2 files |
-| Phase 09-smart-retention P05 | ~8 (incl. verify) | 3 tasks | 6 files |
-| Phase 10-configurable-capture-modes P01 | 8 | 1 tasks | 2 files |
-| Phase 10-configurable-capture-modes P02 | 8 | 2 tasks | 2 files |
-| Phase 10-configurable-capture-modes P03 | 10 | 2 tasks | 4 files |
-| Phase 10-configurable-capture-modes P04 | 3 | 2 tasks | 3 files |
-| Phase 11-graph-ui P01 | 2 | 2 tasks | 2 files |
-| Phase 11-graph-ui P02 | 18 | 2 tasks | 6 files |
-| Phase 11-graph-ui P03 | 15 | 2 tasks | 11 files |
-| Phase 11-graph-ui P04 | 15 | 3 tasks | 4 files |
-| Phase 11-graph-ui P05 | 3 | 2 tasks | 0 files |
+| — | — | — | — |
+
+*Updated after each plan completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Key v1.1 architectural decisions from research:
+Key v2.0 architectural decisions from research:
 
-- [v1.1 research]: SQLite sidecar (`~/.graphiti/retention.db`) for retention metadata — graphiti-core EntityNode has no TTL fields
-- [v1.1 research]: APScheduler 3.x (pinned `<4.0`) for in-process TTL sweeps — v4 API is a complete rewrite
-- [v1.1 research]: Docker Kuzu Explorer (`kuzudb/explorer`) for graph UI — zero custom UI code, read-only volume mount
-- [v1.1 research]: openai SDK 2.x with `base_url` overrides for multi-provider — covers OpenAI, Groq, compatible endpoints; rejects LiteLLM
-- [v1.1 research]: Sanitize-then-filter invariant for capture modes — security gate unconditional regardless of mode
-- [v1.1 research]: Phase 12 deferred last — highest regression risk (client.py decomposition touches every graph operation)
-- [Phase 09-smart-retention]: stdlib sqlite3 only for RetentionManager — no additional dependencies
-- [Phase 09-smart-retention]: retention_days minimum 30 enforced in load_config() with structlog warning, default 90
-- [Phase 09-smart-retention]: Lazy imports of get_retention_manager inside method bodies to avoid circular import from src.graph.service to src.retention
-- [Phase 09-smart-retention]: uuid field added to list_entities() and get_entity() result dicts — required for archive filter via e.get('uuid')
-- [Phase 09-smart-retention]: Reactivation fast path in add(): skip EntityNode.get_by_group_ids() when archive_state is empty (most add() calls are a no-op)
-- [Phase 09-smart-retention]: stale_command capped at 25 rows by default with summary line when more exist
-- [Phase 09-smart-retention]: compact --expire branch returns early before existing dedup logic — zero risk to dedup path
-- [Phase 09-smart-retention]: Use get_service()._get_group_id() in pin.py to guarantee scope_key matches retention sidecar values
-- [Phase 09-smart-retention]: graphiti_stale MCP tool uses --format json --all for full parseable stale list without display cap
-- [Phase 09-smart-retention]: Patch test targets at src.cli.commands.X.get_service not src.graph.get_service — modules bind import at load time
-- [Phase 09-smart-retention]: Auto-fix compact.py: except typer.Exit: raise before except Exception — typer.Exit extends RuntimeError
-- [Phase 09-smart-retention]: list_stale() capping is CLI responsibility — stale_command had erroneous show_all kwarg removed
-- [Phase 09-smart-retention]: graphiti-core exposes .driver (public) not ._driver (private) — use graphiti.driver in service.py
-- [Phase 10-configurable-capture-modes]: Wave 0 TDD: test scaffold written first, NARROW/BROAD prompts added to summarizer.py, 4 CLI tests remain RED for Plan 10-03
-- [Phase 10-configurable-capture-modes]: capture_mode default is 'decisions-only' — narrower scope is the safe default; users opt into broader capture
-- [Phase 10-configurable-capture-modes]: BATCH_SUMMARIZATION_PROMPT alias points to BROAD prompt for backward compatibility — preserves pre-Phase-10 behavior
-- [Phase 10-configurable-capture-modes]: Security gate (sanitize_content) runs unconditionally before any capture_mode prompt selection — locked Phase 2 invariant
-- [Phase 10-configurable-capture-modes]: allowed_values enforcement happens after _parse_value() and before _set_nested_value() in --set handler — clean separation of type parsing and domain validation
-- [Phase 10-configurable-capture-modes]: load_config() called once per process_pending_commits() invocation — acceptable disk I/O, no caching needed
-- [Phase 10-configurable-capture-modes]: FREE_FORM_EXTRACTION_PROMPT alias retained pointing to BROAD prompt for backward compatibility; capture_mode='decisions-only' default; load_config() called once at GitIndexer.run() start to minimize disk reads
-- [Phase 11-graph-ui]: Phase 11-01: Deferred import inside _make_app() helper so pytest collects 4 FAILED tests rather than 1 collection ERROR — cleaner RED scaffold
-- [Phase 11-graph-ui]: Phase 11-01: TestLLMConfigUI uses existing load_config() directly — AttributeError on ui_api_port is the sole RED signal for LLMConfig extension test
-- [Phase 11-graph-ui]: Runtime _get_graph_service() in routes.py fetches GraphService via module attribute so unittest.mock.patch takes effect at call time
-- [Phase 11-graph-ui]: _RootMount subclass preserves route.path == '/' after Starlette normalises '/' to '' in newer versions
-- [Phase 11-graph-ui]: fastapi/uvicorn/starlette added to core pyproject.toml dependencies — ui_server is a core deliverable for Phase 11
-- [Phase 11-graph-ui]: SSR guard (dynamic/ssr:false) required for react-force-graph-2d — uses window/canvas which crashes Next.js SSR
-- [Phase 11-graph-ui]: ui/out/ committed to git as pre-built artifact — Python package ships UI without Node.js dependency
-- [Phase 11-graph-ui]: _REPO_ROOT computed via os.path.dirname chain at module level so Path() calls in function body are patchable by tests; subprocess imported at module level for test patch target despite not being called at runtime
-- [Phase 11-graph-ui]: Phase 11 human-verify checkpoint auto-approved per user directive — autonomous continuation authorized
+- [v2.0 research]: LadybugDB (`real-ladybug>=0.15.1`) is primary embedded path — community KuzuDB fork with near-identical API, lowest migration effort
+- [v2.0 research]: Vendor `LadybugDriver` locally (~280 lines) if graphiti-core PR #1296 not yet merged — replace with official driver when released
+- [v2.0 research]: Neo4j via Docker Compose is opt-in power path — `graphiti-core[neo4j]` already ships a first-class driver
+- [v2.0 research]: Phase 12 plan MUST start with spike — install LadybugDB, verify 3 workarounds still needed, check PR #1296 status before writing plan tasks
+- [v2.0 research]: Three `service.py` direct `import kuzu` calls (`list_edges_readonly`, `list_entities_readonly`, `get_entity_by_uuid_readonly`) must be rewritten to `driver.execute_query()` in Phase 12
+- [v2.0 research]: `_create_fts_indices()` in `graph_manager.py` hardcoded to `GraphProvider.KUZU` — first change: delete method and all call sites
+- [v2.0 research]: Integration tests against real (non-mocked) backend required in Phase 12 — mock-based tests provide zero migration coverage
+- [v2.0 research]: openai SDK `base_url` overrides for multi-provider (Phase 13) — decision locked from v1.1 research; no LiteLLM
+- [v2.0 research]: Phase 14 (Graph UI) must follow Phase 12 — UI reads via `service.py` methods being rewritten in Phase 12
+- [v2.0 research]: Phase 15 (Local Memory) must follow Phase 12 — entity deduplication quality depends on FTS correctness validated in Phase 12
+
+### Phase 12 Pre-checks Required at Plan Start
+
+1. Check graphiti-core PR #1296 status — merged+released → use official driver; not merged → vendor locally
+2. Install `real-ladybug==0.15.1` and empirically verify all 3 KuzuDB workarounds (each may be fixed or still needed)
+3. If LadybugDB fails verification (API drift, missing FTS/vector) → pivot to FalkorDB server path (built-in driver in graphiti-core 0.28.1)
+4. Do NOT write Phase 12 plan tasks until spike resolves the backend choice
 
 ### Roadmap Evolution
 
-- Phase 13 added: Graph UI Redesign — shadcn/ui dual-view table and graph (depends on Phase 12; placed after simplification + DB migration phases to be added)
+- Phase 12 added: DB Migration — LadybugDB default + Neo4j opt-in (must be first; unblocks all other v2.0 phases)
+- Phase 13 renumbered: Multi-Provider LLM (was Phase 12 in pre-roadmap STATE.md)
+- Phase 14 renumbered: Graph UI Redesign (was Phase 13 in pre-roadmap STATE.md)
+- Phase 15 renumbered: Local Memory System (was Phase 14 in pre-roadmap STATE.md)
 
 ### Pending Todos
 
@@ -121,12 +103,11 @@ Key v1.1 architectural decisions from research:
 
 ### Blockers/Concerns
 
-- **Phase 12 pre-check required**: Verify graphiti-core 0.28.1 internal openai version pin (`pip show graphiti-core` + inspect METADATA) before writing Phase 12 plan — pin conflict could block openai SDK 2.x addition
-- **Phase 11 pre-check required**: Verify `kuzudb/explorer` Docker image version compatible with Kuzu 0.11.3 schema during Phase 11 plan creation
-- ~~**Phase 9 pre-check required**: Confirm installed graphiti-core version matches `==0.28.1` pin~~ — Phase 9 complete
+- **Phase 12 spike required before planning**: LadybugDB v0.15.1 may have diverged from Kuzu 0.11.3 API post-v0.12.0 — empirical verification mandatory before writing plan tasks
+- **retention.db UUID remapping**: After Phase 12 migration, old pin UUIDs will not match new entity UUIDs — either clear `retention.db` at migration time or implement a UUID remapping pass (decide during Phase 12 planning)
 
 ## Session Continuity
 
-Last session: 2026-03-08T22:44:52.585Z
-Stopped at: Completed 11-05-PLAN.md
-Resume file: None
+Last session: 2026-03-09T00:00:00.000Z
+Stopped at: ROADMAP.md created for v2.0 (4 phases, 15 requirements)
+Resume with: `/gsd:plan-phase 12`

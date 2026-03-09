@@ -61,6 +61,10 @@ A local knowledge graph system with persistent graph storage, defense-in-depth s
 - [ ] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
 - [ ] **MEM-04**: SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext`
 - [ ] **MEM-05**: Memory features are additive — existing installs with no memory data continue working unchanged
+- [ ] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
+- [ ] **UI-02**: User can toggle between project and global scope in the redesigned UI
+- [ ] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
+- [ ] **UI-04**: UI reads entity data via driver-agnostic API (no direct Kuzu reads) — works with any v2.0 backend
 
 ### Out of Scope
 
@@ -131,4 +135,4 @@ LLM: Cloud Ollama (chat-only) + local Ollama (gemma2:9b, llama3.2:3b, nomic-embe
 | graphiti-core stays for v2.0 | Entity resolution, typed relationship edges, bi-temporal model — these justify the dependency | ✓ Good — confirmed at v2.0 planning |
 
 ---
-*Last updated: 2026-03-09 after v1.1 milestone complete*
+*Last updated: 2026-03-09 after v2.0 requirements defined*
