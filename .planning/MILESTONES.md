@@ -1,5 +1,19 @@
 # Milestones
 
+## v1.1 Advanced Features (Shipped: 2026-03-09)
+
+**Phases completed:** 4 phases (9–11.1), 14 plans | **Codebase delta:** ~14,585 lines Python + 341 lines TypeScript (UI) | 92 commits
+**Git range:** v1.0 → 1a4a745 | **Timeline:** 2026-03-01 → 2026-03-09 (8 days)
+
+**Key accomplishments:**
+
+1. Smart retention (Phase 9): TTL-based 90-day expiry with reinforcement scoring — `graphiti stale` previews candidates, `graphiti compact --expire` deletes stale nodes with no dangling edges, `graphiti pin/unpin` protects critical knowledge permanently
+2. Configurable capture modes (Phase 10): `decisions-only` (narrow, default) and `decisions-and-patterns` (broad) selectable via `[capture] mode` in `llm.toml`; security sanitization gate is unconditional regardless of mode
+3. Graph UI (Phase 11): `graphiti ui` launches FastAPI + pre-built Next.js static export at `http://localhost:8765` — ForceGraph2D visualization, entity type color legend, node sidebar with retention metadata, scope toggle (project/global), read-only Kuzu mount
+4. Retention wiring gap closure (Phase 11.1): 4 integration gaps from audit closed — retention fields (access_count, last_accessed_at, pinned, archived) surfaced in Graph UI sidebar and canvas filters; ui.port key normalized in config CLI
+
+---
+
 ## v1.0 MVP (Shipped: 2026-03-01)
 
 **Phases completed:** 18 phases (Phases 1–8.9), 62 plans, 27 days (2026-02-02 → 2026-03-01)

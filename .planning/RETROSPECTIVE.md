@@ -63,22 +63,75 @@
 
 ---
 
+## Milestone: v1.1 — Advanced Features
+
+**Shipped:** 2026-03-09
+**Phases:** 4 (Phases 9–11.1, including 1 decimal gap-closure insertion) | **Plans:** 14 | **Timeline:** 8 days
+
+### What Was Built
+
+- Smart retention: TTL-based 90-day expiry + reinforcement scoring; `graphiti stale/compact --expire/pin/unpin`; SQLite sidecar for retention metadata
+- Configurable capture modes: `decisions-only` / `decisions-and-patterns` selectable via `llm.toml`; sanitize-before-mode invariant enforced unconditionally
+- Graph UI: FastAPI backend + Next.js 16 static export; ForceGraph2D visualization; scope toggle; entity sidebar with retention metadata; read-only Kuzu mount
+- Gap closure (Phase 11.1): 4 integration gaps from audit closed — retention fields in UI, archive/pin canvas filters, ui.port config key normalization
+
+### What Worked
+
+- **Shorter milestone, tighter scope**: 8 days vs 27 days for v1.0. Fewer phases means each phase is more focused and integration gaps are fewer.
+- **Audit-then-gap pattern again**: Phase 11.1 was created directly from the v1.1 audit. The pattern from v1.0 confirmed: run audit, create decimal gap phase, close before declaring done.
+- **SQLite sidecar for retention**: Keeping retention metadata separate from graphiti-core's schema avoided a schema fork. Clean boundary between graphiti-core concerns and our extensions.
+- **Sanitize-before-mode invariant**: Establishing this as an explicit non-negotiable in Phase 10 (not just an implicit ordering) paid off — it was referenced in audit checks and Phase 14 design.
+- **Graph UI as static export**: Pre-building Next.js to `ui/out/` and committing to git means zero build step at runtime. FastAPI serves pre-built files. No node_modules in production.
+
+### What Was Inefficient
+
+- **Phase 11.1 executed as direct commits**: The gap closure work was done in git commits without GSD plan files, leaving the phase directory empty. Made GSD tooling report the phase as unplanned. A minimal PLAN.md + SUMMARY.md would have kept tooling consistent.
+- **Ghost phase 10-local-memory**: A substantial set of plans was created (5 plans) for a "Local Memory System" milestone that was never wired into the roadmap. Plans sat dormant and confused GSD progress tracking until cleaned up. Research and planning artifacts should be committed to the roadmap before building the plan files.
+- **PROV-01–04 in v1.1 requirements**: Multi-provider LLM was never realistic for v1.1 scope given the complexity of decomposing `client.py`. It was moved to v2.0 early but the requirements remained in REQUIREMENTS.md creating a false "incomplete" signal. Remove requirements from the active list when they're formally deferred.
+
+### Patterns Established
+
+- **Sanitize-before-mode invariant**: Security gate runs unconditionally before any capture mode filter. Established as non-negotiable architectural rule in v1.1.
+- **Static UI export committed to git**: Pre-built `ui/out/` directory committed to repo — zero build step at runtime, works offline.
+- **SQLite sidecar for schema extension**: When graphiti-core's schema lacks fields (e.g., TTL, access tracking), use a SQLite sidecar rather than forking graphiti-core's models.
+- **APScheduler 3.x pin**: Pin `>=3.10.4,<4.0` for in-process schedulers — v4 is a breaking API rewrite.
+- **Ghost phase detection**: Phases planned outside the roadmap should be wired in immediately or archived. Orphan plan directories confuse GSD init/routing.
+
+### Key Lessons
+
+1. **Wire phases into roadmap immediately**: The 10-local-memory ghost phase sat for weeks undetected. Any research/planning artifact should be in ROADMAP.md before creating plan files.
+2. **Keep plan files for all executed work**: Phase 11.1 executed as direct commits without PLAN.md/SUMMARY.md files, breaking GSD tooling consistency. Even quick gap closure needs minimal GSD artifacts.
+3. **Remove deferred requirements promptly**: PROV-01–04 deferred to v2.0 but remained in REQUIREMENTS.md until milestone completion. Defer cleanly — remove from active list and note in Phase Details.
+4. **8-day milestone rhythm is achievable**: 4 phases, 14 plans, 8 days. Tight scope + established patterns = fast iteration. Keep milestones this size going forward.
+
+### Cost Observations
+
+- Model mix: ~85% sonnet, ~15% opus (research/architecture phases)
+- Sessions: ~6-8 sessions over 8 days
+- Notable: Much faster than v1.0. Established patterns (CLI-first, async queue, security gate) meant less architectural decision-making per phase.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
-| Milestone | Phases | Plans | Key Change |
-|-----------|--------|-------|------------|
-| v1.0 MVP | 18 | 62 | First milestone; established baseline patterns |
+| Milestone | Phases | Plans | Timeline | Key Change |
+|-----------|--------|-------|----------|------------|
+| v1.0 MVP | 18 | 62 | 27 days | First milestone; established baseline patterns |
+| v1.1 Advanced Features | 4 | 14 | 8 days | Shorter scope, faster; ghost phase discovery |
 
 ### Cumulative Quality
 
-| Milestone | Tests | Gap-Closure Phases | Architecture Pivots |
-|-----------|-------|--------------------|---------------------|
-| v1.0 | 56+ | 10 (8.1–8.9, 7.1) | 1 (journal → local-first) |
+| Milestone | Gap-Closure Phases | Architecture Pivots | Notes |
+|-----------|--------------------|---------------------|-------|
+| v1.0 | 10 (7.1, 8.1–8.9) | 1 (journal → local-first) | Pivot cost ~2 phases |
+| v1.1 | 1 (11.1) | 0 | Clean execution; ghost phase cleanup needed |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Architecture decisions before building avoids expensive mid-milestone pivots
-2. Implement real integrations in original plans — mock stubs defer debt, not eliminate it
-3. Write VERIFICATION.md during phase execution, not as retroactive gap closure
+1. Architecture decisions before building avoids expensive mid-milestone pivots (v1.0 lesson — confirmed not an issue in v1.1 due to smaller scope)
+2. Implement real integrations in original plans — mock stubs defer debt, not eliminate it (v1.0)
+3. Write VERIFICATION.md during phase execution, not as retroactive gap closure (v1.0)
+4. Wire phases into roadmap immediately — orphan plan directories break GSD tooling and hide work (v1.1)
+5. Keep plan files even for quick gap closure — direct commits without GSD artifacts create tooling gaps (v1.1)
