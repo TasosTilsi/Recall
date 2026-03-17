@@ -106,3 +106,67 @@ def test_startup_validation_passes():
 
     assert result is None
     mock_exit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Adapter factory routing tests (Task 1 of Plan 13-02 — TDD RED)
+# These will fail with ImportError until Task 2 adds make_llm_client/make_embedder
+# ---------------------------------------------------------------------------
+
+
+from src.graph.adapters import make_llm_client, make_embedder, OllamaLLMClient, OllamaEmbedder
+from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
+from graphiti_core.embedder.openai import OpenAIEmbedder
+from src.llm.config import LLMConfig
+
+
+def _provider_config(primary_url, embed_url=None):
+    """Build a LLMConfig in provider mode for factory tests."""
+    return LLMConfig(
+        llm_mode="provider",
+        llm_primary_url=primary_url,
+        llm_primary_api_key="sk-test",
+        llm_primary_models=["gpt-4o-mini"],
+        llm_embed_url=embed_url or primary_url,
+        llm_embed_models=["text-embedding-3-small"],
+    )
+
+
+def _legacy_config():
+    """Build a LLMConfig in legacy mode (all defaults)."""
+    return LLMConfig()  # all defaults → llm_mode="legacy"
+
+
+def test_make_llm_client_openai():
+    """make_llm_client with openai-compatible URL returns OpenAIGenericClient."""
+    config = _provider_config("https://api.openai.com/v1")
+    client = make_llm_client(config)
+    assert isinstance(client, OpenAIGenericClient)
+
+
+def test_make_llm_client_legacy():
+    """make_llm_client with legacy mode returns OllamaLLMClient."""
+    config = _legacy_config()
+    client = make_llm_client(config)
+    assert isinstance(client, OllamaLLMClient)
+
+
+def test_make_llm_client_ollama_url():
+    """make_llm_client with localhost URL returns OllamaLLMClient even in provider mode."""
+    config = _provider_config("http://localhost:11434")
+    client = make_llm_client(config)
+    assert isinstance(client, OllamaLLMClient)
+
+
+def test_make_embedder_openai():
+    """make_embedder with openai-compatible embed URL returns OpenAIEmbedder."""
+    config = _provider_config("https://api.openai.com/v1", embed_url="https://api.openai.com/v1")
+    embedder = make_embedder(config)
+    assert isinstance(embedder, OpenAIEmbedder)
+
+
+def test_make_embedder_legacy():
+    """make_embedder with legacy mode returns OllamaEmbedder."""
+    config = _legacy_config()
+    embedder = make_embedder(config)
+    assert isinstance(embedder, OllamaEmbedder)
