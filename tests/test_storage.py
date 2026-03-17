@@ -1,5 +1,5 @@
 """
-Persistence and isolation tests for dual-scope Kuzu storage.
+Persistence and isolation tests for dual-scope Ladybug storage.
 
 These tests verify Phase 1 success criteria:
 1. Data persists across GraphManager close/reopen
@@ -10,7 +10,6 @@ import tempfile
 import shutil
 from pathlib import Path
 import pytest
-import kuzu
 from src.storage import GraphSelector, GraphManager
 from src.models import GraphScope
 from src.config import GLOBAL_DB_PATH
@@ -137,25 +136,32 @@ class TestPersistence:
 
     CRITICAL: These tests verify the core Phase 1 requirement that
     data survives application restarts.
+
+    NOTE (Wave 0): Tests use real_ladybug.Connection imported locally inside each
+    test method to avoid module-level conflict with kuzu (both Kuzu-derived C
+    extensions cannot be imported in the same process). Wave 2 will remove kuzu
+    entirely so the top-level import can be restored.
     """
 
     @pytest.fixture
     def isolated_global_path(self, tmp_path, monkeypatch):
         """Use isolated global path for tests to avoid polluting user's real global DB."""
-        test_global = tmp_path / "test_global" / "graphiti.kuzu"
+        test_global = tmp_path / "test_global" / "graphiti.lbdb"
         monkeypatch.setattr("src.config.paths.GLOBAL_DB_PATH", test_global)
         monkeypatch.setattr("src.storage.graph_manager.GLOBAL_DB_PATH", test_global)
         return test_global
 
     def test_global_persistence(self, isolated_global_path):
         """Data in global scope should survive manager restart."""
+        import real_ladybug as lb
+
         # First session: write data
         manager1 = GraphManager()
         driver1 = manager1.get_driver(GraphScope.GLOBAL)
 
-        # Use raw Kuzu connection to create a test node
-        # (Graphiti's KuzuDriver provides .db attribute for raw access)
-        conn = kuzu.Connection(driver1.db)
+        # Use raw LadybugDB connection to create a test node
+        # (LadybugDriver provides .db attribute for raw access)
+        conn = lb.Connection(driver1.db)
         try:
             # Create a simple test table and insert data
             conn.execute("CREATE NODE TABLE IF NOT EXISTS TestNode(id STRING PRIMARY KEY, value STRING)")
@@ -169,7 +175,7 @@ class TestPersistence:
         manager2 = GraphManager()
         driver2 = manager2.get_driver(GraphScope.GLOBAL)
 
-        conn = kuzu.Connection(driver2.db)
+        conn = lb.Connection(driver2.db)
         try:
             result = conn.execute("MATCH (n:TestNode {id: 'test1'}) RETURN n.value AS value")
             rows = list(result.rows_as_dict())
@@ -181,13 +187,15 @@ class TestPersistence:
 
     def test_project_persistence(self, tmp_path):
         """Data in project scope should survive manager restart."""
+        import real_ladybug as lb
+
         (tmp_path / ".git").mkdir()
 
         # First session: write data
         manager1 = GraphManager()
         driver1 = manager1.get_driver(GraphScope.PROJECT, tmp_path)
 
-        conn = kuzu.Connection(driver1.db)
+        conn = lb.Connection(driver1.db)
         try:
             conn.execute("CREATE NODE TABLE IF NOT EXISTS TestNode(id STRING PRIMARY KEY, value STRING)")
             conn.execute("CREATE (:TestNode {id: 'proj1', value: 'project_data'})")
@@ -200,7 +208,7 @@ class TestPersistence:
         manager2 = GraphManager()
         driver2 = manager2.get_driver(GraphScope.PROJECT, tmp_path)
 
-        conn = kuzu.Connection(driver2.db)
+        conn = lb.Connection(driver2.db)
         try:
             result = conn.execute("MATCH (n:TestNode {id: 'proj1'}) RETURN n.value AS value")
             rows = list(result.rows_as_dict())
@@ -217,13 +225,15 @@ class TestIsolation:
     @pytest.fixture
     def isolated_global_path(self, tmp_path, monkeypatch):
         """Use isolated global path for tests."""
-        test_global = tmp_path / "test_global" / "graphiti.kuzu"
+        test_global = tmp_path / "test_global" / "graphiti.lbdb"
         monkeypatch.setattr("src.config.paths.GLOBAL_DB_PATH", test_global)
         monkeypatch.setattr("src.storage.graph_manager.GLOBAL_DB_PATH", test_global)
         return test_global
 
     def test_global_and_project_isolation(self, isolated_global_path, tmp_path):
         """Writing to global should not affect project and vice versa."""
+        import real_ladybug as lb
+
         project_root = tmp_path / "project"
         (project_root / ".git").mkdir(parents=True)
 
@@ -234,8 +244,8 @@ class TestIsolation:
             project_driver = manager.get_driver(GraphScope.PROJECT, project_root)
 
             # Write different data to each
-            global_conn = kuzu.Connection(global_driver.db)
-            project_conn = kuzu.Connection(project_driver.db)
+            global_conn = lb.Connection(global_driver.db)
+            project_conn = lb.Connection(project_driver.db)
 
             try:
                 # Global: create table and insert
@@ -267,6 +277,8 @@ class TestIsolation:
 
     def test_simultaneous_access(self, isolated_global_path, tmp_path):
         """Both graphs should be accessible simultaneously."""
+        import real_ladybug as lb
+
         project_root = tmp_path / "project"
         (project_root / ".git").mkdir(parents=True)
 
@@ -281,8 +293,8 @@ class TestIsolation:
             assert project_driver is not None
 
             # Both should be usable
-            global_conn = kuzu.Connection(global_driver.db)
-            project_conn = kuzu.Connection(project_driver.db)
+            global_conn = lb.Connection(global_driver.db)
+            project_conn = lb.Connection(project_driver.db)
 
             try:
                 # Both can execute queries
