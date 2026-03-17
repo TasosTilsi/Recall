@@ -1,18 +1,17 @@
 """Hook installation and management for automatic capture.
 
 This package provides:
-- Git post-commit hook installation (src/hooks/installer.py)
 - Claude Code Stop hook configuration (src/hooks/installer.py)
 - Hook lifecycle management (src/hooks/manager.py)
+
+NOTE: Git post-commit hook (install_git_hook / uninstall_git_hook) removed in v2.0.
+Git commit capture is superseded by incremental graphiti sync on SessionStart (Phase 15).
 """
 
 from .installer import (
     install_claude_hook,
-    install_git_hook,
     is_claude_hook_installed,
-    is_git_hook_installed,
     uninstall_claude_hook,
-    uninstall_git_hook,
 )
 from .manager import (
     get_hook_status,
@@ -23,9 +22,6 @@ from .manager import (
 )
 
 __all__ = [
-    "install_git_hook",
-    "uninstall_git_hook",
-    "is_git_hook_installed",
     "install_claude_hook",
     "is_claude_hook_installed",
     "uninstall_claude_hook",

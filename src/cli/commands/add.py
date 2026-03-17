@@ -15,7 +15,7 @@ from src.models import GraphScope
 from src.config.paths import get_project_db_path
 from src.graph import get_service, run_graph_operation
 from src.llm import LLMUnavailableError
-from src.hooks import is_git_hook_installed, install_hooks
+from src.hooks import install_hooks
 import structlog
 
 
@@ -57,16 +57,15 @@ def _ensure_project_directory(project_root: Path) -> None:
 def _auto_install_hooks(project_root: Path) -> None:
     """Auto-install hooks on first graphiti add in a project.
 
-    Per locked decision: "Auto-install on first `graphiti add`: When user
-    first runs `graphiti add` in a project, automatically install the
-    post-commit hook. Frictionless, no extra step."
+    Installs the Claude Code Stop hook on first use. The git post-commit hook
+    was removed in v2.0 (Phase 15 prep: replaced by incremental graphiti sync
+    on SessionStart).
 
     This function:
-    1. Checks if git hook already installed (no-op if yes)
-    2. Checks if .git directory exists (only install in git repos)
-    3. Installs both git and Claude Code hooks
-    4. Logs the auto-installation (transparent to user)
-    5. Best-effort: Never fails the add operation
+    1. Checks if .git directory exists (only install in git repos)
+    2. Installs Claude Code hook (install_hooks handles idempotency)
+    3. Logs the auto-installation (transparent to user)
+    4. Best-effort: Never fails the add operation
 
     Args:
         project_root: Root directory of the project
@@ -74,33 +73,22 @@ def _auto_install_hooks(project_root: Path) -> None:
     logger = structlog.get_logger()
 
     try:
-        # 1. Check if already installed (no-op if yes)
-        if is_git_hook_installed(project_root):
-            return
-
-        # 2. Check if .git directory exists (only install in git repos)
+        # Check if .git directory exists (only install in git repos)
         git_dir = project_root / ".git"
         if not git_dir.exists():
             return
 
-        # 3. Install both git and Claude Code hooks (locked decision)
-        logger.info(
-            "auto_install_hooks",
-            action="installing_hooks",
-            project_root=str(project_root)
-        )
-
+        # Install Claude Code hook (install_git=True is a no-op in v2.0)
         result = install_hooks(
             project_root,
-            install_git=True,
+            install_git=False,
             install_claude=True
         )
 
-        if result.get("git_hook") or result.get("claude_hook"):
+        if result.get("claude_hook"):
             logger.info(
                 "auto_install_hooks",
                 action="hooks_installed",
-                git=result.get("git_hook", False),
                 claude=result.get("claude_hook", False)
             )
 

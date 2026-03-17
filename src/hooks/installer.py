@@ -2,6 +2,11 @@
 
 Provides non-destructive installation of capture hooks with marker-based detection
 for idempotent and reversible operations.
+
+# NOTE: The post-commit git hook (install_git_hook / uninstall_git_hook) was removed in v2.0.
+# Git commit capture is superseded by incremental graphiti sync on SessionStart (Phase 15).
+# The 5 remaining hook types (pre-commit, post-merge, post-checkout, post-rewrite, Claude Stop)
+# are still installed and maintained.
 """
 
 import json
@@ -17,7 +22,7 @@ HOOK_START_MARKER = "# GRAPHITI_HOOK_START"
 HOOK_END_MARKER = "# GRAPHITI_HOOK_END"
 
 
-def _get_hook_template(hook_type: str = "post-commit") -> str:
+def _get_hook_template(hook_type: str = "pre-commit") -> str:
     """Read a hook template from the templates directory.
 
     Args:
@@ -61,28 +66,6 @@ def _get_graphiti_section(hook_type: str = "post-commit") -> str:
     return template[start_idx:end_line_end]
 
 
-def is_git_hook_installed(repo_path: Path) -> bool:
-    """Check if graphiti post-commit hook is already installed.
-
-    Args:
-        repo_path: Path to git repository
-
-    Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
-    """
-    hook_path = repo_path / ".git" / "hooks" / "post-commit"
-
-    if not hook_path.exists():
-        return False
-
-    try:
-        content = hook_path.read_text()
-        return HOOK_START_MARKER in content
-    except Exception as e:
-        logger.warning("Failed to read hook file", path=str(hook_path), error=str(e))
-        return False
-
-
 def is_claude_hook_installed(project_path: Path) -> bool:
     """Check if graphiti Claude Code Stop hook is installed in .claude/settings.json.
 
@@ -116,137 +99,6 @@ def is_claude_hook_installed(project_path: Path) -> bool:
                     return True
 
     return False
-
-
-def install_git_hook(repo_path: Path, force: bool = False) -> bool:
-    """Install post-commit hook non-destructively.
-
-    If an existing hook is present, appends graphiti section. If no hook exists,
-    creates new hook with full template. Uses markers for idempotent detection.
-
-    Args:
-        repo_path: Path to git repository
-        force: If True, reinstall even if already installed (not currently used)
-
-    Returns:
-        True if hook was installed, False if already installed
-
-    Raises:
-        ValueError: If repo_path is not a git repository
-    """
-    # Verify this is a git repo
-    git_dir = repo_path / ".git"
-    if not git_dir.exists() or not git_dir.is_dir():
-        raise ValueError(f"Not a git repository: {repo_path}")
-
-    # Check if already installed (idempotent)
-    if is_git_hook_installed(repo_path):
-        logger.info("Graphiti hook already installed", repo=str(repo_path))
-        return False
-
-    hook_path = git_dir / "hooks" / "post-commit"
-
-    # Ensure hooks directory exists
-    hook_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if hook_path.exists():
-        # Existing hook from another tool - append our section
-        logger.info("Existing post-commit hook found, appending graphiti section",
-                   path=str(hook_path))
-
-        existing_content = hook_path.read_text()
-
-        # Detect pre-commit framework
-        if "# pre-commit" in existing_content or "pre-commit hook" in existing_content:
-            logger.warning(
-                "pre-commit framework detected - appending graphiti hook",
-                suggestion="Consider pre-commit integration for better compatibility"
-            )
-
-        # Insert our section before any trailing exit statement so it runs
-        graphiti_section = _get_graphiti_section()
-        existing_trimmed = existing_content.rstrip()
-        exit_match = re.search(r'(\n+)(exit\s+\d+\s*)$', existing_trimmed)
-        if exit_match:
-            before_exit = existing_trimmed[:exit_match.start()].rstrip()
-            exit_line = exit_match.group(2).rstrip()
-            new_content = before_exit + "\n\n" + graphiti_section + "\n\n" + exit_line
-        else:
-            new_content = existing_trimmed + "\n\n" + graphiti_section
-        hook_path.write_text(new_content)
-
-    else:
-        # No existing hook - create new one with full template
-        logger.info("Creating new post-commit hook", path=str(hook_path))
-        template = _get_hook_template()
-        hook_path.write_text(template)
-
-    # Set executable permission
-    hook_path.chmod(0o755)
-
-    logger.info("Graphiti post-commit hook installed successfully", repo=str(repo_path))
-    return True
-
-
-def uninstall_git_hook(repo_path: Path) -> bool:
-    """Remove graphiti section from post-commit hook.
-
-    If hook only contains graphiti content, removes entire file.
-    If hook contains other content, removes only graphiti section.
-
-    Args:
-        repo_path: Path to git repository
-
-    Returns:
-        True if hook was uninstalled, False if not installed
-    """
-    # Check if installed
-    if not is_git_hook_installed(repo_path):
-        logger.info("Graphiti hook not installed, nothing to uninstall", repo=str(repo_path))
-        return False
-
-    hook_path = repo_path / ".git" / "hooks" / "post-commit"
-    content = hook_path.read_text()
-
-    # Find graphiti section boundaries
-    start_idx = content.find(HOOK_START_MARKER)
-    end_idx = content.find(HOOK_END_MARKER)
-
-    if start_idx == -1 or end_idx == -1:
-        logger.error("Hook markers not found despite is_git_hook_installed check",
-                    path=str(hook_path))
-        return False
-
-    # Find the end of the end marker line
-    end_line_end = content.find('\n', end_idx)
-    if end_line_end == -1:
-        end_line_end = len(content)
-    else:
-        end_line_end += 1  # Include the newline
-
-    # Extract content before and after graphiti section
-    before = content[:start_idx]
-    after = content[end_line_end:]
-
-    # Remove surrounding blank lines
-    before = before.rstrip()
-    after = after.lstrip()
-
-    remaining_content = before + ("\n\n" + after if after else "")
-    remaining_content = remaining_content.strip()
-
-    if not remaining_content or remaining_content == "#!/bin/sh":
-        # Hook only contained graphiti content - remove entire file
-        hook_path.unlink()
-        logger.info("Removed entire post-commit hook (only graphiti content)",
-                   path=str(hook_path))
-    else:
-        # Other content exists - write back without graphiti section
-        hook_path.write_text(remaining_content + "\n")
-        logger.info("Removed graphiti section from post-commit hook",
-                   path=str(hook_path))
-
-    return True
 
 
 def install_claude_hook(project_path: Path) -> bool:
