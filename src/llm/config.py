@@ -72,6 +72,18 @@ class LLMConfig:
     backend_type: str = "ladybug"   # "ladybug" | "neo4j" — ladybug = embedded default
     backend_uri: str | None = None  # bolt://user:pass@host:port — Neo4j only
 
+    # [llm] section fields — Multi-Provider LLM (Phase 13)
+    # All None/empty when [llm] absent (llm_mode == "legacy")
+    llm_mode: str = "legacy"               # "legacy" | "provider"
+    llm_primary_url: str | None = None
+    llm_primary_api_key: str | None = None
+    llm_primary_models: list[str] = field(default_factory=list)
+    llm_fallback_url: str | None = None
+    llm_fallback_models: list[str] = field(default_factory=list)
+    llm_embed_url: str | None = None
+    llm_embed_api_key: str | None = None
+    llm_embed_models: list[str] = field(default_factory=list)
+
 
 def load_config(config_path: Path | None = None) -> LLMConfig:
     """Load LLM configuration from TOML file with environment overrides.
@@ -131,6 +143,31 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         )
         backend_type = "ladybug"
 
+    # [llm] section — multi-provider routing (Phase 13)
+    # When present, replaces cloud Ollama path entirely. [cloud]/[local] silently ignored.
+    llm_section = config_data.get("llm", {})
+    if llm_section:
+        llm_mode = "provider"
+        llm_primary_url = llm_section.get("primary_url", "")
+        llm_primary_api_key = llm_section.get("primary_api_key")
+        llm_primary_models = llm_section.get("primary_models", [])
+        llm_fallback_url = llm_section.get("fallback_url")
+        llm_fallback_models = llm_section.get("fallback_models", [])
+        llm_embed_url = llm_section.get("embed_url") or llm_primary_url
+        # embed_api_key optional — falls back to primary_api_key at parse time (not use time)
+        llm_embed_api_key = llm_section.get("embed_api_key") or llm_primary_api_key
+        llm_embed_models = llm_section.get("embed_models", [])
+    else:
+        llm_mode = "legacy"
+        llm_primary_url = None
+        llm_primary_api_key = None
+        llm_primary_models = []
+        llm_fallback_url = None
+        llm_fallback_models = []
+        llm_embed_url = None
+        llm_embed_api_key = None
+        llm_embed_models = []
+
     capture = config_data.get("capture", {})
     VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
     raw_mode = capture.get("mode", "decisions-only")
@@ -173,6 +210,15 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         ui_port=ui.get("port", 3000),
         backend_type=backend_type,
         backend_uri=backend_uri,
+        llm_mode=llm_mode,
+        llm_primary_url=llm_primary_url,
+        llm_primary_api_key=llm_primary_api_key,
+        llm_primary_models=llm_primary_models,
+        llm_fallback_url=llm_fallback_url,
+        llm_fallback_models=llm_fallback_models,
+        llm_embed_url=llm_embed_url,
+        llm_embed_api_key=llm_embed_api_key,
+        llm_embed_models=llm_embed_models,
     )
 
 
