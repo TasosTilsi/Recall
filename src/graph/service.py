@@ -3,7 +3,7 @@
 This service provides the main API that all CLI commands use for graph operations.
 It handles:
 - Per-scope Graphiti initialization (global vs project)
-- Adapter wiring (OllamaLLMClient, OllamaEmbedder, KuzuDriver)
+- Adapter wiring (OllamaLLMClient, OllamaEmbedder, LadybugDriver)
 - Async/sync bridging for CLI context
 - Content sanitization
 - Error handling and logging
@@ -181,7 +181,7 @@ class GraphService:
         # Create new Graphiti instance
         logger.debug("Creating new Graphiti instance", cache_key=cache_key)
 
-        # Get KuzuDriver for this scope
+        # Get LadybugDriver for this scope
         driver = self._graph_manager.get_driver(scope, project_root)
 
         # Create Graphiti with our adapters
