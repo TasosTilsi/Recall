@@ -7,6 +7,8 @@ import sys
 import typer
 from typing import Optional
 from src.cli.output import err_console, print_error
+from src.llm.provider import validate_provider_startup
+from src.llm.config import load_config as _load_config_for_startup
 
 
 # Create main Typer app
@@ -35,6 +37,18 @@ def main_callback(
             version_str = "0.1.0 (development)"
         typer.echo(f"graphiti version {version_str}")
         raise typer.Exit(0)
+
+    # Provider startup validation (Phase 13) — skip for help/version/health/config subcommands
+    # Must run synchronously here, before any asyncio.run(graph_operation) call.
+    _skip_validation_for = {"health", "config", None}
+    if ctx.invoked_subcommand not in _skip_validation_for and not version:
+        try:
+            _startup_config = _load_config_for_startup()
+            validate_provider_startup(_startup_config)
+        except SystemExit:
+            raise  # propagate sys.exit(1) from validate_provider_startup
+        except Exception:
+            pass  # non-fatal: provider validation errors should not block legacy path
 
     # If command invoked but not found, suggest alternatives
     if ctx.invoked_subcommand is None and ctx.resilient_parsing is False:

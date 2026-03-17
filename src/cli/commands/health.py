@@ -1,4 +1,5 @@
 """Health check command for system diagnostics."""
+import asyncio
 import sys
 from pathlib import Path
 from typing import Annotated, Optional
@@ -11,6 +12,7 @@ from src.cli.output import console, print_json
 from src.cli.utils import EXIT_ERROR, EXIT_SUCCESS
 from src.config.paths import GLOBAL_DB_DIR, get_project_db_path
 from src.llm import get_client, load_config
+from src.llm.provider import ProviderClient
 from src.storage import GraphSelector
 
 
@@ -89,6 +91,51 @@ def _check_ollama_local() -> dict:
             "detail": f"Not running. Start with: ollama serve",
             "error": str(e),  # Extra data for verbose mode
         }
+
+
+def _check_provider() -> list[dict]:
+    """Check multi-provider LLM tiers when [llm] section is configured.
+
+    Returns a list of 0-3 check dicts (provider, embed, fallback).
+    Returns empty list when llm_mode == "legacy".
+
+    Row format: "detail": "<sdk>/<first-model> @ <hostname> [OK|UNREACHABLE]"
+    """
+    config = load_config()
+    if config.llm_mode != "provider":
+        return []  # No [llm] section — skip provider rows
+
+    provider_client = ProviderClient(config)
+    rows = []
+
+    # Primary tier
+    ok, _err = asyncio.run(provider_client.ping_primary())
+    status_tag = "OK" if ok else "UNREACHABLE"
+    rows.append({
+        "name": "Provider",
+        "status": "ok" if ok else "error",
+        "detail": f"{provider_client.primary_label()} [{status_tag}]",
+    })
+
+    # Embed tier (may share URL with primary)
+    ok_embed, _err_embed = asyncio.run(provider_client.ping_embed())
+    status_embed = "OK" if ok_embed else "UNREACHABLE"
+    rows.append({
+        "name": "Embed",
+        "status": "ok" if ok_embed else "error",
+        "detail": f"{provider_client.embed_label()} [{status_embed}]",
+    })
+
+    # Fallback tier — only shown when configured
+    fallback_label = provider_client.fallback_label()
+    if fallback_label is not None:
+        rows.append({
+            "name": "Fallback",
+            "status": "ok",  # No ping for fallback at health time; shows configured label
+            "detail": f"{fallback_label} [configured]",
+        })
+
+    return rows
 
 
 def _check_database(scope_name: str, db_path: Path) -> dict:
@@ -258,11 +305,15 @@ def health_command(
     # Run all health checks
     checks = []
 
-    # Check cloud Ollama
-    checks.append(_check_ollama_cloud())
-
-    # Check local Ollama
-    checks.append(_check_ollama_local())
+    # Provider rows — shown when [llm] is configured; Ollama rows skipped in that case
+    from src.llm.config import load_config as _load_cfg
+    _cfg = _load_cfg()
+    if _cfg.llm_mode == "provider":
+        checks.extend(_check_provider())
+    else:
+        # Legacy mode — show Ollama cloud/local rows
+        checks.append(_check_ollama_cloud())
+        checks.append(_check_ollama_local())
 
     # Check global database
     checks.append(_check_database("global", GLOBAL_DB_DIR))
