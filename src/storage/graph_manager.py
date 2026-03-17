@@ -1,10 +1,8 @@
 import asyncio
-import kuzu
 import structlog
 from pathlib import Path
 from typing import Optional
-from graphiti_core.driver.kuzu_driver import KuzuDriver, GraphProvider
-from graphiti_core.graph_queries import get_fulltext_indices
+from src.storage.ladybug_driver import LadybugDriver
 from src.models import GraphScope
 from src.config import GLOBAL_DB_PATH, get_project_db_path
 
@@ -12,33 +10,33 @@ logger = structlog.get_logger(__name__)
 
 
 class GraphManager:
-    """Manages dual-scope Kuzu database instances.
+    """Manages dual-scope LadybugDB database instances.
 
-    Maintains singleton KuzuDriver instances for global and project scopes.
+    Maintains singleton LadybugDriver instances for global and project scopes.
     Handles lazy initialization and proper cleanup.
 
-    CRITICAL: Only one Database object should exist per database path.
-    This class enforces that constraint via singleton pattern per scope.
+    Singleton pattern: only one Database object should exist per database path.
+    This class enforces that constraint per scope.
     """
 
     def __init__(self):
-        self._global_driver: Optional[KuzuDriver] = None
-        self._project_driver: Optional[KuzuDriver] = None
+        self._global_driver: Optional[LadybugDriver] = None
+        self._project_driver: Optional[LadybugDriver] = None
         self._current_project_root: Optional[Path] = None
 
     def get_driver(
         self,
         scope: GraphScope,
         project_root: Optional[Path] = None
-    ) -> KuzuDriver:
-        """Get or create KuzuDriver for the specified scope.
+    ) -> LadybugDriver:
+        """Get or create LadybugDriver for the specified scope.
 
         Args:
             scope: Which graph scope to access
             project_root: Required for PROJECT scope, ignored for GLOBAL
 
         Returns:
-            KuzuDriver instance for the requested scope
+            LadybugDriver instance for the requested scope
 
         Raises:
             ValueError: If project_root not provided for PROJECT scope
@@ -48,39 +46,17 @@ class GraphManager:
         else:
             return self._get_project_driver(project_root)
 
-    def _create_fts_indices(self, db: kuzu.Database) -> None:
-        """Create Kuzu FTS indices if they don't exist.
-
-        Workaround for graphiti-core v0.26.3 bug: KuzuDriver.build_indices_and_constraints()
-        is a no-op and never calls get_fulltext_indices(KUZU). The FTS index
-        (e.g. 'node_name_and_summary' on Entity) must be created before any
-        QUERY_FTS_INDEX call or Kuzu raises a Binder exception.
-
-        This is idempotent: errors are suppressed so re-running on an existing DB is safe.
-        """
-        conn = kuzu.Connection(db)
-        for query in get_fulltext_indices(GraphProvider.KUZU):
-            try:
-                conn.execute(query)
-            except Exception as e:
-                # Index already exists or other non-fatal error — ignore
-                logger.debug("FTS index creation skipped (may already exist)", error=str(e))
-        conn.close()
-
-    def _get_global_driver(self) -> KuzuDriver:
+    def _get_global_driver(self) -> LadybugDriver:
         """Get or create the global scope driver."""
         if self._global_driver is None:
-            # Ensure directory exists
             GLOBAL_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-            self._global_driver = KuzuDriver(db=str(GLOBAL_DB_PATH))
-            # Workaround: graphiti-core KuzuDriver doesn't set _database,
-            # but Graphiti.add_episode() accesses driver._database for group_id checks.
-            self._global_driver._database = str(GLOBAL_DB_PATH)
-            # Workaround: graphiti-core v0.26.3 KuzuDriver never creates FTS indices.
-            self._create_fts_indices(self._global_driver.db)
+            self._global_driver = LadybugDriver(db=str(GLOBAL_DB_PATH))
+            # No workarounds needed:
+            # - LadybugDriver.clone() properly sets _database (workaround 1 eliminated)
+            # - LadybugDriver.setup_schema() handles schema + FTS (workaround 2 eliminated)
         return self._global_driver
 
-    def _get_project_driver(self, project_root: Optional[Path]) -> KuzuDriver:
+    def _get_project_driver(self, project_root: Optional[Path]) -> LadybugDriver:
         """Get or create project scope driver.
 
         Handles project switching: if project_root differs from cached,
@@ -99,11 +75,8 @@ class GraphManager:
             db_path = get_project_db_path(project_root)
             # Ensure directory exists
             db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._project_driver = KuzuDriver(db=str(db_path))
-            # Workaround: see _get_global_driver comment
-            self._project_driver._database = str(db_path)
-            # Workaround: graphiti-core v0.26.3 KuzuDriver never creates FTS indices.
-            self._create_fts_indices(self._project_driver.db)
+            self._project_driver = LadybugDriver(db=str(db_path))
+            # No workarounds needed (same as global driver — see _get_global_driver comment)
             self._current_project_root = project_root
 
         return self._project_driver
