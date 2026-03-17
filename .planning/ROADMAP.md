@@ -173,7 +173,7 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
 | 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | commits-only | Complete | 2026-03-09 |
-| 12. DB Migration | v2.0 | 0/5 | In progress | — |
+| 12. DB Migration | 1/5 | In Progress|  | — |
 | 13. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
 | 15. Local Memory System | v2.0 | 0/TBD | Not started | — |

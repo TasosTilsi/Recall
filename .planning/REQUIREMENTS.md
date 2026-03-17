@@ -9,8 +9,8 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 ### DB Migration
 
-- [ ] **DB-01**: User can run `graphiti` with LadybugDB as the embedded default backend (no Docker required) — replaces KuzuDB, removes all 3 `graph_manager.py` workarounds
-- [ ] **DB-02**: User can opt in to Neo4j via Docker Compose for teams and power users
+- [x] **DB-01**: User can run `graphiti` with LadybugDB as the embedded default backend (no Docker required) — replaces KuzuDB, removes all 3 `graph_manager.py` workarounds
+- [x] **DB-02**: User can opt in to Neo4j via Docker Compose for teams and power users
 
 ### Multi-Provider LLM
 
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DB-01 | Phase 12 | Pending |
-| DB-02 | Phase 12 | Pending |
+| DB-01 | Phase 12 | Complete |
+| DB-02 | Phase 12 | Complete |
 | PROV-01 | Phase 13 | Pending |
 | PROV-02 | Phase 13 | Pending |
 | PROV-03 | Phase 13 | Pending |
