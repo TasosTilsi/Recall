@@ -11,6 +11,34 @@ from src.cli.output import console, print_error, print_json, print_success
 from src.cli.utils import EXIT_BAD_ARGS, EXIT_SUCCESS
 from src.llm.config import load_config
 
+config_app = typer.Typer(help="View, modify, and initialize LLM configuration", invoke_without_command=True, no_args_is_help=False)
+
+
+@config_app.callback(invoke_without_command=True)
+def _config_app_default(
+    ctx: typer.Context,
+    set_value: Annotated[
+        Optional[str], typer.Option("--set", help="Set config value: key=value")
+    ] = None,
+    get_key: Annotated[
+        Optional[str], typer.Option("--get", help="Get a specific config value")
+    ] = None,
+    format: Annotated[
+        Optional[str], typer.Option("--format", "-f", help="Output format: json")
+    ] = None,
+) -> None:
+    """View and modify LLM configuration.
+
+    Examples:
+        graphiti config                        # Show all settings
+        graphiti config --get cloud.endpoint   # Get specific value
+        graphiti config --set retry.max_attempts=5  # Set value
+        graphiti config init                   # Generate default llm.toml
+    """
+    if ctx.invoked_subcommand is None:
+        config_command(set_value=set_value, get_key=get_key, format=format)
+
+
 # Mapping of valid config keys to their types and descriptions
 VALID_CONFIG_KEYS = {
     "cloud.endpoint": {"type": str, "desc": "Cloud Ollama endpoint URL"},
@@ -382,3 +410,63 @@ def config_command(
         console.print(table)
 
     sys.exit(EXIT_SUCCESS)
+
+
+def init_command(
+    path: Annotated[
+        Optional[Path],
+        typer.Option("--path", "-p", help="Path to write llm.toml (default: ~/.graphiti/llm.toml)")
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Overwrite existing file")
+    ] = False,
+) -> None:
+    """Generate a default llm.toml configuration file.
+
+    Creates ~/.graphiti/llm.toml with sensible defaults and a commented-out
+    [backend] block showing how to switch to Neo4j (opt-in).
+    """
+    target = path or _get_config_path()
+    if target.exists() and not force:
+        print_error(
+            f"Config file already exists at {target}",
+            suggestion="Use --force to overwrite, or --path to write elsewhere."
+        )
+        sys.exit(EXIT_BAD_ARGS)
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    # Template — the [backend] commented block is a LOCKED UX decision (CONTEXT.md)
+    template = '''[cloud]
+models = []
+# endpoint = "https://api.example.com/v1"
+# api_key  = "sk-..."
+
+[local]
+models = ["gemma2:9b"]
+endpoint = "http://localhost:11434"
+auto_start = false
+
+[embeddings]
+models = ["nomic-embed-text"]
+
+[retry]
+max_attempts = 3
+delay_seconds = 2
+
+[timeout]
+request_seconds = 180
+
+[capture]
+mode = "decisions-only"
+
+# Backend configuration — uncomment to switch from the embedded default.
+# Absence of this section = LadybugDB (embedded, no container required).
+# [backend]
+# type = "ladybug"  # default — no container required
+# type = "neo4j"
+# uri  = "bolt://neo4j:changeme@localhost:7687"
+'''
+    target.write_text(template)
+    print_success(f"Created {target}")

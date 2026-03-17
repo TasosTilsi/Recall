@@ -1,0 +1,44 @@
+# Neo4j opt-in backend for graphiti-knowledge-graph v2.0
+#
+# Usage:
+#   1. Set in ~/.graphiti/llm.toml:
+#      [backend]
+#      type = "neo4j"
+#      uri  = "bolt://neo4j:changeme@localhost:7687"
+#   2. Start Neo4j:
+#      docker compose -f docker-compose.neo4j.yml up -d
+#   3. Run any graphiti command — it will connect to Neo4j automatically
+#
+# Requirements: Docker or Podman with compose plugin
+version: "3.9"
+
+services:
+  neo4j:
+    image: neo4j:5.24-community
+    container_name: graphiti-neo4j
+    ports:
+      - "7687:7687"   # Bolt protocol
+      - "7474:7474"   # HTTP browser
+    environment:
+      NEO4J_AUTH: neo4j/changeme
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      # Memory settings — tune for your machine
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1g"
+      NEO4J_server_memory_pagecache_size: "512m"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

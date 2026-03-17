@@ -171,6 +171,69 @@ def _check_quota() -> dict:
         }
 
 
+def _check_backend() -> dict:
+    """Check database backend status.
+
+    Returns:
+        Dict with name, status, detail keys.
+        name is always "Backend".
+    """
+    from src.llm.config import load_config
+    config = load_config()
+
+    if config.backend_type == "ladybug":
+        return {
+            "name": "Backend",
+            "status": "ok",
+            "detail": "ladybug (embedded)",
+        }
+    elif config.backend_type == "neo4j":
+        if not config.backend_uri:
+            return {
+                "name": "Backend",
+                "status": "warning",
+                "detail": "neo4j configured but no uri set in [backend] section",
+            }
+        from urllib.parse import urlparse
+        parsed = urlparse(config.backend_uri)
+        clean_uri = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
+        # Async ping — run in event loop
+        import asyncio
+        try:
+            from neo4j import AsyncGraphDatabase
+            async def _ping():
+                drv = AsyncGraphDatabase.driver(clean_uri, auth=(parsed.username or "", parsed.password or ""))
+                try:
+                    await drv.verify_connectivity()
+                    return True
+                except Exception:
+                    return False
+                finally:
+                    await drv.close()
+            reachable = asyncio.run(_ping())
+        except Exception:
+            reachable = False
+
+        if reachable:
+            return {
+                "name": "Backend",
+                "status": "ok",
+                "detail": f"neo4j @ {clean_uri} [OK]",
+            }
+        else:
+            return {
+                "name": "Backend",
+                "status": "error",
+                "detail": f"neo4j @ {clean_uri} [UNREACHABLE — run docker compose up]",
+            }
+    else:
+        return {
+            "name": "Backend",
+            "status": "warning",
+            "detail": f"unknown backend type: {config.backend_type}",
+        }
+
+
 def health_command(
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Show full diagnostic details")
@@ -209,6 +272,9 @@ def health_command(
     if project_root:
         project_db_path = get_project_db_path(project_root)
         checks.append(_check_database("project", project_db_path.parent))
+
+    # Check backend
+    checks.append(_check_backend())
 
     # Check quota
     checks.append(_check_quota())

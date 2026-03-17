@@ -25,7 +25,6 @@ def test_neo4j_type_parsed_from_toml(tmp_path):
     assert config.backend_uri == "bolt://neo4j:changeme@localhost:7687"
 
 
-@pytest.mark.skip(reason="Wave 2: parse_bolt_uri not yet implemented")
 def test_bolt_uri_parsed_correctly():
     """parse_bolt_uri extracts (clean_uri, user, password) from bolt://user:pass@host:port."""
     from src.storage.graph_manager import parse_bolt_uri

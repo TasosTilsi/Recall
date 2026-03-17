@@ -67,7 +67,7 @@ from src.cli.commands.compact import compact_command
 from src.cli.commands.list_cmd import list_command
 from src.cli.commands.show import show_command
 from src.cli.commands.delete import delete_command
-from src.cli.commands.config import config_command
+from src.cli.commands.config import config_command, init_command, config_app as _config_sub_app
 from src.cli.commands.health import health_command
 from src.cli.commands.queue_cmd import queue_app
 from src.cli.commands.capture import capture_command
@@ -110,10 +110,9 @@ app.command(
     help="Delete entities from the knowledge graph"
 )(delete_command)
 
-app.command(
-    name="config",
-    help="View and modify configuration"
-)(config_command)
+# config is a sub-app: 'graphiti config' (view/set) and 'graphiti config init' (generate llm.toml)
+_config_sub_app.command(name="init", help="Generate a default llm.toml configuration file")(init_command)
+app.add_typer(_config_sub_app, name="config", help="View and modify configuration")
 
 app.command(
     name="health",
