@@ -12,6 +12,8 @@ Runs:
     Phase 71: Git Indexing Pivot  (R8.1, R8.2)                           — Ollama optional
     Phase 09: Smart Retention     (RETN-01 … RETN-06)                    — no Ollama required
     Phase 10: Configurable Capture Modes (CAPT-01 · CAPT-02 · CAPT-03)  — no Ollama required
+    Phase 11: Graph UI            (UI-01 · UI-02 · UI-03)                — no Ollama required
+    Phase 12: DB Migration        (DB-01 · DB-02)                        — Ollama optional
 """
 
 import subprocess
@@ -28,12 +30,14 @@ BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
 SCRIPTS_TO_RUN = [
-    ("Phase 02", "verify_phase_02.py", "Security Filtering",  "R3.1 · R3.2 · R3.3"),
-    ("Phase 06", "verify_phase_06.py", "Automatic Capture",   "R4.1 · R4.2"),
-    ("Phase 07", "verify_phase_07.py", "Git Integration",     "R8.1"),
-    ("Phase 71", "verify_phase_71.py", "Git Indexing Pivot",  "R8.1 · R8.2"),
-    ("Phase 09", "verify_phase_09.py", "Smart Retention",     "RETN-01 · RETN-02 · RETN-03 · RETN-04 · RETN-05 · RETN-06"),
-    ("Phase 10", "verify_phase_10.py", "Configurable Capture Modes", "CAPT-01 · CAPT-02 · CAPT-03"),
+    ("Phase 02", "verify_phase_02.py", "Security Filtering",          "R3.1 · R3.2 · R3.3"),
+    ("Phase 06", "verify_phase_06.py", "Automatic Capture",           "R4.1 · R4.2"),
+    ("Phase 07", "verify_phase_07.py", "Git Integration",             "R8.1"),
+    ("Phase 71", "verify_phase_71.py", "Git Indexing Pivot",          "R8.1 · R8.2"),
+    ("Phase 09", "verify_phase_09.py", "Smart Retention",             "RETN-01 · RETN-02 · RETN-03 · RETN-04 · RETN-05 · RETN-06"),
+    ("Phase 10", "verify_phase_10.py", "Configurable Capture Modes",  "CAPT-01 · CAPT-02 · CAPT-03"),
+    ("Phase 11", "verify_phase_11.py", "Graph UI",                    "UI-01 · UI-02 · UI-03"),
+    ("Phase 12", "verify_phase_12.py", "DB Migration",                "DB-01 · DB-02"),
 ]
 
 

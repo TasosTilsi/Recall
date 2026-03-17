@@ -50,7 +50,7 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
-KUZU_DB = ROOT / ".graphiti" / "graphiti.kuzu"
+LBDB_PATH = Path.home() / ".graphiti" / "global" / "graphiti.lbdb"
 RETENTION_DB = Path.home() / ".graphiti" / "retention.db"
 GROUP_ID = ROOT.name  # "graphiti-knowledge-graph"
 
@@ -116,38 +116,38 @@ def run_graphiti(*args, timeout: int = 30) -> subprocess.CompletedProcess:
     )
 
 
-# ── Kuzu helpers ──────────────────────────────────────────────────────────────
-
-def _kuzu_conn():
-    import kuzu
-    db = kuzu.Database(str(KUZU_DB))
-    return kuzu.Connection(db)
-
+# ── LadybugDB helpers ─────────────────────────────────────────────────────────
 
 def _insert_test_entity() -> None:
-    """Insert a single test entity directly into Kuzu for use in INT-02/03 tests."""
+    """Insert a single test entity directly into LadybugDB for INT-02/03 tests."""
+    import asyncio
     from datetime import datetime
-    conn = _kuzu_conn()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Use MERGE to be idempotent
-    conn.execute(
-        f"MERGE (e:Entity {{uuid: '{MARKER_UUID}'}}) "
-        f"ON CREATE SET e.name = '{MARKER_NAME}', e.group_id = '{GROUP_ID}', "
-        f"e.labels = ['Entity'], e.created_at = timestamp('{now}'), "
-        f"e.name_embedding = [], e.summary = 'UAT test node Phase 11', e.attributes = '{{}}'"
-    )
-    conn.execute("CHECKPOINT")
-    _db = conn.database
-    conn.close()
-    _db.close()
+
+    async def _insert():
+        from src.storage.ladybug_driver import LadybugDriver
+        driver = LadybugDriver(db=str(LBDB_PATH))
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        async with driver.session() as session:
+            await session.run(
+                f"MERGE (e:Entity {{uuid: '{MARKER_UUID}'}}) "
+                f"ON CREATE SET e.name = '{MARKER_NAME}', e.group_id = '{GROUP_ID}', "
+                f"e.labels = ['Entity'], e.created_at = timestamp('{now}'), "
+                f"e.name_embedding = [], e.summary = 'UAT test node Phase 11', e.attributes = '{{}}'"
+            )
+
+    asyncio.run(_insert())
 
 
 def _delete_test_entity() -> None:
-    conn = _kuzu_conn()
-    conn.execute(f"MATCH (e:Entity {{uuid: '{MARKER_UUID}'}}) DETACH DELETE e")
-    _db = conn.database
-    conn.close()
-    _db.close()
+    import asyncio
+
+    async def _delete():
+        from src.storage.ladybug_driver import LadybugDriver
+        driver = LadybugDriver(db=str(LBDB_PATH))
+        async with driver.session() as session:
+            await session.run(f"MATCH (e:Entity {{uuid: '{MARKER_UUID}'}}) DETACH DELETE e")
+
+    asyncio.run(_delete())
 
 
 def _clean_retention(uuid: str) -> None:
@@ -178,6 +178,10 @@ def _make_test_client(scope: str = "project"):
     )
     app.state.scope = scope
     return TestClient(app, raise_server_exceptions=False)
+
+
+def _db_exists() -> bool:
+    return LBDB_PATH.exists()
 
 
 # ── Test 1–3 (UI-01): CLI behaviour ──────────────────────────────────────────
@@ -231,7 +235,7 @@ def test_api_shape_and_readonly(r: Runner) -> None:
     r.banner("Tests 4–5 (UI-02): API shape and read-only DB access")
 
     # Test 4: /api/graph shape
-    if not KUZU_DB.exists():
+    if not _db_exists():
         r.skip("GET /api/graph shape", reason="Kuzu DB not found — run graphiti add at least once")
     else:
         try:
@@ -251,25 +255,25 @@ def test_api_shape_and_readonly(r: Runner) -> None:
         except Exception as e:
             r.fail(f"TestClient raised: {e}")
 
-    # Test 5: read_only=True confirmed in source
+    # Test 5: methods use driver.execute_query() abstraction (no direct kuzu after Phase 12)
     import src.graph.service as svc_mod
     src_text = inspect.getsource(svc_mod.GraphService.list_entities_readonly)
-    if "read_only=True" in src_text:
-        r.ok("list_entities_readonly() uses kuzu.Database(read_only=True)")
+    if "execute_query" in src_text:
+        r.ok("list_entities_readonly() uses driver.execute_query() abstraction")
     else:
-        r.fail("list_entities_readonly() does NOT use read_only=True")
+        r.fail("list_entities_readonly() does NOT use driver.execute_query()")
 
     src_edges = inspect.getsource(svc_mod.GraphService.list_edges)
-    if "read_only=True" in src_edges:
-        r.ok("list_edges() uses kuzu.Database(read_only=True)")
+    if "execute_query" in src_edges:
+        r.ok("list_edges() uses driver.execute_query() abstraction")
     else:
-        r.fail("list_edges() does NOT use read_only=True")
+        r.fail("list_edges() does NOT use driver.execute_query()")
 
     src_uuid = inspect.getsource(svc_mod.GraphService.get_entity_by_uuid)
-    if "read_only=True" in src_uuid:
-        r.ok("get_entity_by_uuid() uses kuzu.Database(read_only=True)")
+    if "execute_query" in src_uuid:
+        r.ok("get_entity_by_uuid() uses driver.execute_query() abstraction")
     else:
-        r.fail("get_entity_by_uuid() does NOT use read_only=True")
+        r.fail("get_entity_by_uuid() does NOT use driver.execute_query()")
 
 
 # ── Test 6 (UI-03): --global flag ─────────────────────────────────────────────
@@ -290,7 +294,7 @@ def test_global_flag(r: Runner) -> None:
 def test_node_detail_retention_enrichment(r: Runner) -> None:
     r.banner("Test 7 (INT-01): GET /api/nodes/{uuid} surfaces real retention metadata")
 
-    if not KUZU_DB.exists():
+    if not _db_exists():
         r.skip("INT-01: node detail retention", reason="Kuzu DB not found")
         return
 
@@ -347,7 +351,7 @@ def test_node_detail_retention_enrichment(r: Runner) -> None:
 def test_archived_nodes_filtered_from_graph(r: Runner) -> None:
     r.banner("Test 8 (INT-02): Archived nodes absent from GET /api/graph")
 
-    if not KUZU_DB.exists():
+    if not _db_exists():
         r.skip("INT-02: archive filter", reason="Kuzu DB not found")
         return
 
@@ -388,7 +392,7 @@ def test_archived_nodes_filtered_from_graph(r: Runner) -> None:
 def test_pinned_nodes_flagged_in_graph(r: Runner) -> None:
     r.banner("Test 9 (INT-03): Pinned nodes have pinned:true in GET /api/graph")
 
-    if not KUZU_DB.exists():
+    if not _db_exists():
         r.skip("INT-03: pin flag in graph", reason="Kuzu DB not found")
         return
 
@@ -470,10 +474,10 @@ def check_prerequisites() -> None:
     print(f"  {GREEN}OK{RESET} graphiti CLI available")
 
     try:
-        import kuzu  # noqa: F401
-        print(f"  {GREEN}OK{RESET} kuzu importable")
+        import real_ladybug  # noqa: F401
+        print(f"  {GREEN}OK{RESET} real_ladybug importable")
     except ImportError:
-        print(f"{RED}ERROR: kuzu not importable — run: pip install -e '.[dev]'{RESET}")
+        print(f"{RED}ERROR: real_ladybug not importable — run: pip install -e '.[dev]'{RESET}")
         sys.exit(1)
 
     try:
@@ -483,10 +487,10 @@ def check_prerequisites() -> None:
         print(f"{RED}ERROR: fastapi not importable — run: pip install -e '.[dev]'{RESET}")
         sys.exit(1)
 
-    if KUZU_DB.exists():
-        print(f"  {GREEN}OK{RESET} Kuzu DB exists at {KUZU_DB}")
+    if LBDB_PATH.exists():
+        print(f"  {GREEN}OK{RESET} LadybugDB exists at {LBDB_PATH}")
     else:
-        print(f"  {YELLOW}WARN{RESET} Kuzu DB not found — INT-01/02/03 tests will be skipped")
+        print(f"  {YELLOW}WARN{RESET} LadybugDB not found at {LBDB_PATH} — INT-01/02/03 tests will be skipped")
 
 
 # ── Teardown ──────────────────────────────────────────────────────────────────
@@ -494,7 +498,7 @@ def check_prerequisites() -> None:
 def teardown() -> None:
     print(f"\n{BOLD}── Teardown ──{RESET}")
     try:
-        if KUZU_DB.exists():
+        if _db_exists():
             _delete_test_entity()
         _clean_retention(MARKER_UUID)
         from src.retention import reset_retention_manager
