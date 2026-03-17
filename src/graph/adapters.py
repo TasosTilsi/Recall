@@ -311,6 +311,7 @@ class OllamaEmbedder(EmbedderClient):
         super().__init__()
         logger.debug("OllamaEmbedder initialized")
 
+
     async def create_batch(self, input_data_list: list[str]) -> list[list[float]]:
         """Create embeddings for a batch of strings.
 
@@ -388,3 +389,92 @@ class OllamaEmbedder(EmbedderClient):
                 error_type=type(e).__name__,
             )
             raise
+
+
+# ---------------------------------------------------------------------------
+# Phase 13: Adapter factories — select correct client based on LLMConfig
+# ---------------------------------------------------------------------------
+
+
+def make_llm_client(config):
+    """Return the appropriate graphiti-core LLMClient based on config.
+
+    When [llm] section present and primary URL is openai-compatible:
+        → OpenAIGenericClient (graphiti-core's built-in openai adapter)
+    When [llm] section present and primary URL is Ollama (localhost):
+        → OllamaLLMClient (existing adapter — Ollama SDK)
+    When [llm] absent (legacy mode):
+        → OllamaLLMClient (existing path, no change)
+
+    Args:
+        config: LLMConfig instance (from load_config())
+
+    Returns:
+        An instance implementing graphiti_core.llm_client.client.LLMClient
+    """
+    from src.llm.provider import _detect_sdk
+
+    if config.llm_mode == "provider":
+        primary_sdk = _detect_sdk(config.llm_primary_url or "")
+        if primary_sdk == "openai":
+            from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
+            from graphiti_core.llm_client.config import LLMConfig as GraphitiLLMConfig
+            graphiti_cfg = GraphitiLLMConfig(
+                api_key=config.llm_primary_api_key,
+                base_url=config.llm_primary_url,
+                model=config.llm_primary_models[0] if config.llm_primary_models else "gpt-4o-mini",
+            )
+            logger.debug(
+                "make_llm_client: using OpenAIGenericClient",
+                base_url=config.llm_primary_url,
+                model=graphiti_cfg.model,
+            )
+            return OpenAIGenericClient(config=graphiti_cfg)
+        else:
+            # primary URL is Ollama endpoint — use existing Ollama adapter
+            logger.debug("make_llm_client: provider mode but Ollama URL, using OllamaLLMClient")
+            return OllamaLLMClient()
+    # Legacy path — no [llm] section
+    logger.debug("make_llm_client: legacy mode, using OllamaLLMClient")
+    return OllamaLLMClient()
+
+
+def make_embedder(config):
+    """Return the appropriate graphiti-core EmbedderClient based on config.
+
+    When [llm] section present and embed URL is openai-compatible:
+        → OpenAIEmbedder (graphiti-core's built-in openai embedder)
+    When [llm] section present and embed URL is Ollama:
+        → OllamaEmbedder (existing adapter)
+    When [llm] absent (legacy mode):
+        → OllamaEmbedder (existing path, no change)
+
+    Args:
+        config: LLMConfig instance (from load_config())
+
+    Returns:
+        An instance implementing graphiti_core.embedder.client.EmbedderClient
+    """
+    from src.llm.provider import _detect_sdk
+
+    if config.llm_mode == "provider":
+        embed_sdk = _detect_sdk(config.llm_embed_url or "")
+        if embed_sdk == "openai":
+            from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
+            embed_cfg = OpenAIEmbedderConfig(
+                api_key=config.llm_embed_api_key or config.llm_primary_api_key,
+                base_url=config.llm_embed_url,
+                embedding_model=config.llm_embed_models[0] if config.llm_embed_models else "text-embedding-3-small",
+            )
+            logger.debug(
+                "make_embedder: using OpenAIEmbedder",
+                base_url=config.llm_embed_url,
+                model=embed_cfg.embedding_model,
+            )
+            return OpenAIEmbedder(config=embed_cfg)
+        else:
+            logger.debug("make_embedder: provider mode but Ollama embed URL, using OllamaEmbedder")
+            return OllamaEmbedder()
+    # Legacy path
+    logger.debug("make_embedder: legacy mode, using OllamaEmbedder")
+    return OllamaEmbedder()

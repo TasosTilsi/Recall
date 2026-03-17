@@ -22,7 +22,7 @@ from graphiti_core import Graphiti
 from graphiti_core.nodes import EntityNode, EpisodeType, Node
 
 from src.config.paths import GLOBAL_DB_PATH, get_project_db_path
-from src.graph.adapters import NoOpCrossEncoder, OllamaEmbedder, OllamaLLMClient
+from src.graph.adapters import NoOpCrossEncoder, OllamaEmbedder, OllamaLLMClient, make_llm_client, make_embedder
 from src.llm import LLMUnavailableError
 from src.llm import chat as ollama_chat
 from src.llm.config import load_config
@@ -86,8 +86,10 @@ class GraphService:
         self._graph_manager = GraphManager()
 
         # Create adapters (reused across all scopes)
-        self._llm_client = OllamaLLMClient()
-        self._embedder = OllamaEmbedder()
+        # Phase 13: factory routing — selects correct client based on [llm] config
+        config = load_config()
+        self._llm_client = make_llm_client(config)
+        self._embedder = make_embedder(config)
         self._cross_encoder = self._create_cross_encoder()
 
         # Cache Graphiti instances per scope
