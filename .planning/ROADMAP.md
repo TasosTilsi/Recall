@@ -4,7 +4,7 @@
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- [ ] **v2.0 Rebuild** — Phases 12–15 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, shadcn/ui graph UI redesign, full Claude Code hook lifecycle with session-start context injection and progressive disclosure MCP search
+- [ ] **v2.0 Rebuild** — Phases 12–15 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, shadcn/ui graph UI redesign. Execution order: 12 → 13 → 15 → 14
 
 ## Phases
 
@@ -43,7 +43,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [ ] **Phase 12: DB Migration** — LadybugDB embedded default replaces KuzuDB; Neo4j opt-in via Docker Compose; all 3 Kuzu workarounds removed
 - [ ] **Phase 13: Multi-Provider LLM** — Users can switch LLM providers by editing `llm.toml`; backward compatible with Ollama
 - [ ] **Phase 14: Graph UI Redesign** — shadcn/ui dual-view table + graph replacing react-force-graph-2d; reads via driver-agnostic API
-- [ ] **Phase 15: Local Memory System** — 6-hook Claude Code lifecycle, session-start context injection, Ollama summarization, progressive disclosure MCP search
+- [ ] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 14
 
 ## Phase Details
 
@@ -59,8 +59,14 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
   4. FTS entity deduplication works correctly with the new backend — adding the same entity twice in `graphiti add` resolves to one node, not two
   5. All existing integration tests pass and new backend-specific integration tests cover add/search/delete/FTS against a real (non-mocked) DB instance
 
-**Research flag**: Phase plan MUST start with a spike — install `real-ladybug==0.15.1`, check PR #1296 status, verify 3 workarounds against LadybugDB. Backend choice resolves during planning, not execution.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Spike + test infrastructure (install real-ladybug, resolve 3 spike questions, rewrite test_storage.py, create stub test files)
+- [ ] 12-02-PLAN.md — LadybugDriver + GraphManager + paths + pyproject.toml (vendor driver, delete 3 workarounds, rename .kuzu→.lbdb, swap deps)
+- [ ] 12-03-PLAN.md — service.py readonly rewrites (3 import kuzu methods → driver.execute_query())
+- [ ] 12-04-PLAN.md — BackendConfig + Neo4j opt-in + health Backend row + Docker Compose + first-run detection
+- [ ] 12-05-PLAN.md — Cleanup + integration tests + full suite + human smoke test
 
 ---
 
@@ -82,7 +88,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 ### Phase 14: Graph UI Redesign
 
 **Goal**: The browser UI displays entities in a dual-view shadcn/ui layout (table + graph), reads data through the driver-agnostic service API, and preserves scope toggle and retention filters from v1.1.
-**Depends on**: Phase 12 (service.py read methods must use new backend API before UI can consume them correctly)
+**Depends on**: Phase 12 (service.py read methods must use new backend API before UI can consume them correctly). Executes after Phase 15 in practice — independent of memory system, can run in parallel if capacity allows
 **Requirements**: UI-01, UI-02, UI-03, UI-04
 **Success Criteria** (what must be TRUE):
   1. User can open `graphiti ui` and switch between a table view (browsable entity list with columns) and a graph view (interactive node/edge visualization) without reloading the page
@@ -97,29 +103,30 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 
 ### Phase 15: Local Memory System
 
-**Goal**: Claude Code captures all 6 hook lifecycle events into a local observation store, compresses them with Ollama, and injects relevant past context at session start — entirely local, never blocking the development workflow.
-**Depends on**: Phase 12 (observation store uses the chosen DB backend's FTS/vector APIs; FTS quality validated in Phase 12 integration tests)
+**Goal**: Four Claude Code hook scripts (pure Python, calling GraphService directly) automatically capture tool call context and inject temporally-aware knowledge before every prompt — entirely local, never blocking the development workflow. Distill CLI (stateless SDK sessions sharing the same DB) is a stretch goal.
+**Depends on**: Phase 12 (FTS/vector quality validated on new backend), Phase 13 (Ollama-primary LLM abstraction must be in place for hook path)
 **Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05
 **Success Criteria** (what must be TRUE):
-  1. All 6 Claude Code hooks (SessionStart, SessionResume, UserPromptSubmit, PostToolUse, Notification, SessionEnd) fire and return within 100ms — no hook blocks on storage, LLM calls, or network
-  2. Tool observations are compressed by local Ollama into structured summaries (request / investigated / learned / completed / next_steps fields) and stored in the chosen DB backend
-  3. `graphiti memory search <query>` returns relevant results via 3-layer progressive disclosure: compact index first (`memory_search`), chronological context on demand (`memory_timeline`), full observation by ID (`memory_details`)
-  4. When a new Claude Code session starts, the SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext` — Claude arrives with project context without the user repeating it
-  5. An existing `~/.graphiti/` install with no memory data continues working unchanged — memory features add new paths, never modify existing ones
+  1. Four hooks fire within their timeout budgets: SessionStart ≤5s (includes `graphiti sync`), UserPromptSubmit ≤6s (hybrid search + context format), PostToolUse fire-and-forget via async queue, PreCompact ≤30s (urgent queue flush before compaction destroys context)
+  2. PostToolUse captures Write/Edit/Bash/WebFetch tool calls as graph episodes via the existing async write queue — Ollama entity extraction runs in background, tool execution never blocked
+  3. UserPromptSubmit injects context in Option C format: `<session_context>` block containing `<continuity>` (previous session summary) + `<relevant_history>` (temporally-current facts from BM25+semantic+graph retrieval, ≤4000 token budget, priority: recent session facts → recent git facts → older session facts → older git facts)
+  4. SessionStart triggers `graphiti sync` (incremental git indexing since last synced commit hash) — skips gracefully if no git repo; registers session in graph
+  5. Hooks installed via `graphiti hooks install` — additive only, existing `~/.graphiti/` installs continue working unchanged
 
-**Research flag**: Medium research needed — observation store schema design, 3-layer MCP progressive disclosure implementation patterns, SessionStart `additionalContext` format constraints.
+**Research flag**: Low — architecture fully designed, context injection format resolved (Option C), hook timeout budgets confirmed. Pure Python hook scripts, no TypeScript or bridge process.
 **Plans**: TBD
 
 ---
 
-## v2.0 Strategic Direction (locked 2026-03-09)
+## v2.0 Strategic Direction (updated 2026-03-17)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
 - **KuzuDB replaced.** Archived Oct 2025. All 3 workarounds in `graph_manager.py` are Kuzu-specific bugs — they disappear with the backend swap.
 - **Two-tier backend model.** Embedded default (zero container requirement) + containerized power path (opt-in).
-- **Full Claude Code hook lifecycle.** All 6 hooks with fire-and-forget queue pattern. SessionStart injects relevant past memories via `additionalContext`. Non-blocking; hooks must return in <100ms.
-- **Local observation storage + Ollama summarization** (Phase 15) — tool observations compressed into structured summaries by local Ollama. Stored in a backend-agnostic memory layer (uses the DB backend chosen in Phase 12).
-- **Progressive disclosure MCP search** (Phase 15) — 3-layer pattern: `memory_search` → compact index, `memory_timeline` → chronological context, `memory_details` → full observation by ID.
+- **Four-hook Claude Code memory system** (Phase 15) — SessionStart (≤5s, incremental git sync), UserPromptSubmit (≤6s, inject context), PostToolUse (fire-and-forget async queue), PreCompact (≤30s urgent flush). Pure Python scripts calling GraphService directly. No TypeScript, no bridge process.
+- **Option C context injection format** (Phase 15) — `<session_context>` block: `<continuity>` (previous session summary) + `<relevant_history>` (temporally-current facts via BM25+semantic+graph retrieval). Token budget ≤4000. Priority when tight: recent session facts → recent git facts → older session facts → older git facts.
+- **Incremental git indexing** (Phase 15) — `graphiti init` full history, `graphiti sync` delta on SessionStart. Episodes fed oldest-first for correct bi-temporal ordering. Gracefully skips non-git directories.
+- **Execution order: 12 → 13 → 15 → 14** — memory hooks (Phase 15) need LLM abstraction (Phase 13); UI (Phase 14) independent of memory system.
 - **Web viewer redesign** — `graphiti ui` redesigned in Phase 14 with shadcn/ui dual-view replacing react-force-graph-2d.
 - **Docker Compose** — single-file for Neo4j power path (Phase 12 opt-in).
 - **Git history bootstrap stays.** `graphiti index` is the unique differentiator. Non-negotiable.
@@ -141,10 +148,10 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 
 ### Build Order Rationale
 
-- **Phase 12 first** — storage layer is the lowest dependency; removing KuzuDB unblocks the `service.py` read methods that Phase 14 UI consumes and validates FTS quality that Phase 15 memory depends on.
-- **Phase 13 second** — zero storage dependency; decoupled from DB; high user value; proceeds immediately after DB stabilizes.
-- **Phase 14 third** — depends on Phase 12 `service.py` rewrites; UI reads via the fixed driver-agnostic methods.
-- **Phase 15 last** — most complex; depends on FTS quality (Phase 12) and backend choice finalized.
+- **Phase 12 first** — storage layer is the lowest dependency; removing KuzuDB validates FTS/vector quality that Phase 15 memory hooks depend on and fixes `service.py` read methods that Phase 14 UI consumes.
+- **Phase 13 second** — zero storage dependency; decoupled from DB; the Ollama-primary LLM abstraction must be in place before Phase 15 hook scripts can be built against it.
+- **Phase 15 third** — depends on Phase 12 (FTS quality) and Phase 13 (LLM abstraction); architecture fully designed, low research needed, expected to be fastest phase to execute.
+- **Phase 14 last** — depends on Phase 12 `service.py` rewrites only; independent of memory system; can run in parallel with Phase 15 if capacity allows.
 
 ---
 
@@ -166,7 +173,7 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
 | 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | commits-only | Complete | 2026-03-09 |
-| 12. DB Migration | v2.0 | 0/TBD | Not started | — |
+| 12. DB Migration | v2.0 | 0/5 | In progress | — |
 | 13. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
 | 15. Local Memory System | v2.0 | 0/TBD | Not started | — |

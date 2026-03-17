@@ -10,13 +10,13 @@ A local knowledge graph system with persistent graph storage, defense-in-depth s
 
 ## Current Milestone: v2.0 Rebuild
 
-**Goal:** Replace KuzuDB (archived Oct 2025) with a maintained embedded backend (LadybugDB default, Neo4j opt-in). Add full Claude Code hook lifecycle (6 hooks) with session-start context injection and progressive disclosure MCP search. Keep graphiti-core's graph engine — entity resolution, typed edges, bi-temporal model are the ceiling for the product's value.
+**Goal:** Replace KuzuDB (archived Oct 2025) with a maintained embedded backend (LadybugDB default, Neo4j opt-in). Add 4-hook Claude Code memory system with Option C context injection and incremental git indexing. Keep graphiti-core's graph engine — entity resolution, typed edges, bi-temporal model are the ceiling for the product's value. Execution order: 12 → 13 → 15 → 14.
 
 **Target features:**
-- DB backend swap: LadybugDB (embedded, no container) default + Neo4j (Docker Compose) opt-in — removes all 3 Kuzu workarounds
-- Multi-provider LLM (Phase 12): OpenAI, Groq, any OpenAI-compatible endpoint via `[provider]` in `llm.toml`
-- Graph UI redesign (Phase 13): shadcn/ui dual-view table + graph (replaces react-force-graph-2d)
-- Local memory system (Phase 14): 6-hook Claude Code lifecycle, session-start context injection, Ollama summarization, progressive disclosure MCP search
+- DB backend swap (Phase 12): LadybugDB (embedded, no container) default + Neo4j (Docker Compose) opt-in — removes all 3 Kuzu workarounds
+- Multi-provider LLM (Phase 13): OpenAI, Groq, any OpenAI-compatible endpoint via `[provider]` in `llm.toml`
+- Local memory system (Phase 15): 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing — executed before Phase 14
+- Graph UI redesign (Phase 14): shadcn/ui dual-view table + graph (replaces react-force-graph-2d) — executes after Phase 15
 
 ## Requirements
 
@@ -56,11 +56,11 @@ A local knowledge graph system with persistent graph storage, defense-in-depth s
 - [ ] **PROV-02**: Existing Ollama config works unchanged when no `[provider]` section present (backward compatibility guaranteed)
 - [ ] **PROV-03**: `graphiti health` shows active provider name and reachability status
 - [ ] **PROV-04**: Provider API key validated at startup with clear error if unreachable (not at first use)
-- [ ] **MEM-01**: All 6 Claude Code hooks (SessionStart, SessionResume, UserPromptSubmit, PostToolUse, Notification, SessionEnd) fire and return within 100ms (fire-and-forget)
-- [ ] **MEM-02**: Tool observations compressed by local Ollama into structured summaries, stored in chosen DB backend
-- [ ] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
-- [ ] **MEM-04**: SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext`
-- [ ] **MEM-05**: Memory features are additive — existing installs with no memory data continue working unchanged
+- [ ] **MEM-01**: Four Claude Code hooks (SessionStart ≤5s, UserPromptSubmit ≤6s, PostToolUse fire-and-forget, PreCompact ≤30s) fire within their timeout budgets — pure Python scripts calling GraphService directly, no subprocess or bridge overhead beyond Python startup (~200ms)
+- [ ] **MEM-02**: PostToolUse captures Write/Edit/Bash/WebFetch tool calls as graph episodes via the async write queue — Ollama entity extraction runs in background, tool execution never blocked
+- [ ] **MEM-03**: UserPromptSubmit injects context using Option C format (`<session_context>` block: `<continuity>` + `<relevant_history>`) via BM25+semantic+graph hybrid retrieval, ≤4000 token budget, temporally-current facts only (superseded facts never injected)
+- [ ] **MEM-04**: SessionStart triggers `graphiti sync` (incremental git indexing since last synced commit hash) — skips gracefully if no git repo present
+- [ ] **MEM-05**: Hooks installed via `graphiti hooks install` — additive only, no changes to existing `~/.graphiti/` data or config
 - [ ] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
 - [ ] **UI-02**: User can toggle between project and global scope in the redesigned UI
 - [ ] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
@@ -133,6 +133,10 @@ LLM: Cloud Ollama (chat-only) + local Ollama (gemma2:9b, llama3.2:3b, nomic-embe
 | Graph UI: FastAPI + Next.js static export | Zero external dependencies; pre-built static bundle committed to git | ✓ Good — v1.1 |
 | openai SDK base_url overrides for multi-provider | Covers OpenAI/Groq/compatible endpoints; no LiteLLM abstraction needed | ✓ Good — v2.0 approach locked |
 | graphiti-core stays for v2.0 | Entity resolution, typed relationship edges, bi-temporal model — these justify the dependency | ✓ Good — confirmed at v2.0 planning |
+| Option C context injection format | Narrative continuity + temporal facts (`<continuity>` + `<relevant_history>`); priority: recent session → recent git → older session → older git; ≤4000 token budget | ✓ Locked — v2.0 Phase 15 |
+| Hook path: pure Python scripts | Hooks call GraphService directly via Python; no TypeScript layer, no bridge daemon; Python startup ~200ms fits within timeout budgets | ✓ Locked — v2.0 Phase 15 |
+| Git indexing: batch incremental | `graphiti init` full history + `graphiti sync` delta on SessionStart; episodes fed oldest-first; gracefully skips non-git dirs | ✓ Locked — v2.0 Phase 15 |
+| Phase execution order: 12→13→15→14 | Phase 15 (memory) needs Phase 13 LLM abstraction; Phase 14 (UI) independent of memory, can run after | ✓ Locked — v2.0 planning |
 
 ---
-*Last updated: 2026-03-09 after v2.0 requirements defined*
+*Last updated: 2026-03-17 — Phase 15 architecture locked (4 hooks, Option C injection, incremental git); execution order updated to 12→13→15→14*
