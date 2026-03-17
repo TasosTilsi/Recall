@@ -7,14 +7,15 @@ import tempfile
 from pathlib import Path
 
 
-@pytest.mark.skip(reason="Wave 2: LadybugDriver not yet implemented in src/storage/ladybug_driver.py")
 def test_ladybug_driver_creates_fresh_db(tmp_path):
     """LadybugDriver(db=path) creates a new DB file and returns a working driver."""
     from src.storage.ladybug_driver import LadybugDriver
     db_path = str(tmp_path / "test.lbdb")
     driver = LadybugDriver(db=db_path)
     assert driver is not None
-    assert driver._database is not None or True  # _database set by with_database()/clone()
+    # _database is NOT set in __init__ — it's set only via clone()/with_database()
+    # Use getattr to avoid AttributeError when _database is absent (correct behavior)
+    assert getattr(driver, '_database', None) is None  # not set until clone() called
 
 
 @pytest.mark.asyncio

@@ -13,6 +13,11 @@ Spike findings (Phase 12 Plan 01):
 - AsyncConnection signature: lb.AsyncConnection(database, max_concurrent_queries=4)
 - Connection API: lb.Connection(db).execute(cypher) returns QueryResult with .rows_as_dict()
 
+IMPORTANT: Do NOT import from graphiti_core.driver.kuzu_driver — that module imports kuzu
+at the top level which will fail once kuzu is removed. Import from graphiti_core.driver.driver
+instead (GraphProvider and GraphDriverSession live there).
+SCHEMA_QUERIES is embedded directly to avoid any kuzu_driver import.
+
 Ref: https://github.com/zep-ai/graphiti/pull/1296
 """
 import copy
@@ -20,13 +25,92 @@ from typing import Any
 
 import real_ladybug as lb
 import structlog
-from graphiti_core.driver.driver import GraphDriver, GraphDriverSession
-from graphiti_core.driver.kuzu_driver import (
-    GraphProvider,
-    SCHEMA_QUERIES,
-)
+from graphiti_core.driver.driver import GraphDriver, GraphDriverSession, GraphProvider
 
 logger = structlog.get_logger(__name__)
+
+# Schema DDL copied from graphiti_core.driver.kuzu_driver.SCHEMA_QUERIES (0.28.1).
+# Embedded here to avoid importing kuzu_driver which has `import kuzu` at the top level.
+# LadybugDB is a Kuzu fork with identical Cypher DDL syntax, so these queries work as-is.
+SCHEMA_QUERIES = """
+    CREATE NODE TABLE IF NOT EXISTS Episodic (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        created_at TIMESTAMP,
+        source STRING,
+        source_description STRING,
+        content STRING,
+        valid_at TIMESTAMP,
+        entity_edges STRING[]
+    );
+    CREATE NODE TABLE IF NOT EXISTS Entity (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        labels STRING[],
+        created_at TIMESTAMP,
+        name_embedding FLOAT[],
+        summary STRING,
+        attributes STRING
+    );
+    CREATE NODE TABLE IF NOT EXISTS Community (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        created_at TIMESTAMP,
+        name_embedding FLOAT[],
+        summary STRING
+    );
+    CREATE NODE TABLE IF NOT EXISTS RelatesToNode_ (
+        uuid STRING PRIMARY KEY,
+        group_id STRING,
+        created_at TIMESTAMP,
+        name STRING,
+        fact STRING,
+        fact_embedding FLOAT[],
+        episodes STRING[],
+        expired_at TIMESTAMP,
+        valid_at TIMESTAMP,
+        invalid_at TIMESTAMP,
+        attributes STRING
+    );
+    CREATE REL TABLE IF NOT EXISTS RELATES_TO(
+        FROM Entity TO RelatesToNode_,
+        FROM RelatesToNode_ TO Entity
+    );
+    CREATE REL TABLE IF NOT EXISTS MENTIONS(
+        FROM Episodic TO Entity,
+        uuid STRING PRIMARY KEY,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+    CREATE REL TABLE IF NOT EXISTS HAS_MEMBER(
+        FROM Community TO Entity,
+        FROM Community TO Community,
+        uuid STRING,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+    CREATE NODE TABLE IF NOT EXISTS Saga (
+        uuid STRING PRIMARY KEY,
+        name STRING,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+    CREATE REL TABLE IF NOT EXISTS HAS_EPISODE(
+        FROM Saga TO Episodic,
+        uuid STRING,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+    CREATE REL TABLE IF NOT EXISTS NEXT_EPISODE(
+        FROM Episodic TO Episodic,
+        uuid STRING,
+        group_id STRING,
+        created_at TIMESTAMP
+    );
+"""
 
 
 class LadybugDriverSession(GraphDriverSession):
@@ -68,8 +152,8 @@ class LadybugDriver(GraphDriver):
     Drop-in replacement for KuzuDriver. All 3 KuzuDB workarounds are eliminated:
     1. _database is NOT set in __init__ — set only via clone()/with_database()
        (KuzuDriver.clone() was a no-op bug returning self; this returns a real copy)
-    2. FTS indices created properly via build_indices_and_constraints()
-       (KuzuDriver.build_indices_and_constraints() was a no-op; setup_schema() handles schema)
+    2. FTS indices / schema created properly in setup_schema() called from __init__
+       (KuzuDriver.build_indices_and_constraints() was a no-op; workaround 2 eliminated)
     3. No direct kuzu imports anywhere in this file
 
     Usage:
@@ -103,8 +187,8 @@ class LadybugDriver(GraphDriver):
     def setup_schema(self) -> None:
         """Create all required tables and relations.
 
-        Uses the same SCHEMA_QUERIES as KuzuDriver — LadybugDB is a Kuzu fork
-        with identical Cypher DDL syntax.
+        Uses SCHEMA_QUERIES embedded from graphiti-core 0.28.1 KuzuDriver.
+        LadybugDB is a Kuzu fork with identical Cypher DDL syntax.
         """
         conn = lb.Connection(self.db)
         conn.execute(SCHEMA_QUERIES)
@@ -165,11 +249,11 @@ class LadybugDriver(GraphDriver):
         """Create FTS and other indices required by graphiti-core.
 
         LadybugDB uses the same Cypher FTS index syntax as KuzuDB (identical fork).
-        Schema is created during setup_schema() via SCHEMA_QUERIES.
+        Schema is created during setup_schema() called from __init__.
         This method is kept for ABC compliance and future index additions.
         """
         # Schema/indices are created in setup_schema() called from __init__.
-        # This is a no-op here (same as KuzuDriver.build_indices_and_constraints).
+        # This is a no-op here (same pattern as KuzuDriver.build_indices_and_constraints).
         pass
 
     def delete_all_indexes(self, database_: str = '') -> None:
