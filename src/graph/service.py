@@ -1138,17 +1138,14 @@ class GraphService:
         """List all relationship edges for the given scope.
 
         Returns edges as dicts with source, target, label, fact keys.
-        Uses read-only Kuzu access — does NOT call _get_graphiti().
+        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
         """
-        import kuzu
-
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
             return []
 
         try:
-            db = kuzu.Database(str(db_path), read_only=True)
-            conn = kuzu.Connection(db)
+            driver = self.graph_manager.get_driver(scope, project_root)
             group_id = self._get_group_id(scope, project_root)
 
             query = """
@@ -1156,15 +1153,14 @@ class GraphService:
                 RETURN a.uuid AS source, b.uuid AS target, rel.name AS label, rel.fact AS fact
                 LIMIT 5000
             """
-            result = conn.execute(query, {"group_id": group_id})
+            results, _, _ = await driver.execute_query(query, group_id=group_id)
             edges = []
-            while result.has_next():
-                row = result.get_next()
+            for row in results:
                 edges.append({
-                    "source": row[0],
-                    "target": row[1],
-                    "label": row[2] or "RELATES_TO",
-                    "fact": row[3] or "",
+                    "source": row["source"],
+                    "target": row["target"],
+                    "label": row["label"] or "RELATES_TO",
+                    "fact": row["fact"] or "",
                 })
             return edges
         except Exception as e:
@@ -1177,20 +1173,18 @@ class GraphService:
         project_root: Optional[Path],
         limit: Optional[int] = None,
     ) -> list[dict]:
-        """List all entity nodes for the given scope using read-only Kuzu access.
+        """List all entity nodes for the given scope.
 
         Identical shape to list_entities() output but NEVER calls _get_graphiti().
         Returns list of dicts with: uuid, name, tags, scope, summary, created_at, last_accessed_at.
+        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
         """
-        import kuzu
-
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
             return []
 
         try:
-            db = kuzu.Database(str(db_path), read_only=True)
-            conn = kuzu.Connection(db)
+            driver = self.graph_manager.get_driver(scope, project_root)
             group_id = self._get_group_id(scope, project_root)
 
             limit_clause = f"LIMIT {limit}" if limit else ""
@@ -1200,18 +1194,17 @@ class GraphService:
                        e.summary AS summary, e.created_at AS created_at
                 {limit_clause}
             """
-            result = conn.execute(query, {"group_id": group_id})
+            results, _, _ = await driver.execute_query(query, group_id=group_id)
             entities = []
             scope_str = "global" if scope == GraphScope.GLOBAL else "project"
-            while result.has_next():
-                row = result.get_next()
+            for row in results:
                 entities.append({
-                    "uuid": row[0],
-                    "name": row[1],
-                    "tags": row[2] if isinstance(row[2], list) else [row[2]] if row[2] else ["Entity"],
+                    "uuid": row["uuid"],
+                    "name": row["name"],
+                    "tags": row["tags"] if isinstance(row["tags"], list) else [row["tags"]] if row["tags"] else ["Entity"],
                     "scope": scope_str,
-                    "summary": row[3] or "",
-                    "created_at": row[4],
+                    "summary": row["summary"] or "",
+                    "created_at": row["created_at"],
                     "last_accessed_at": None,
                     "access_count": 0,
                     "pinned": False,
@@ -1240,34 +1233,32 @@ class GraphService:
         scope: GraphScope,
         project_root: Optional[Path],
     ) -> dict | None:
-        """Fetch a single entity node by UUID using read-only Kuzu access.
+        """Fetch a single entity node by UUID.
 
         Does NOT call _get_graphiti(). Returns None if not found.
+        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
         """
-        import kuzu
-
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
             return None
 
         try:
-            db = kuzu.Database(str(db_path), read_only=True)
-            conn = kuzu.Connection(db)
+            driver = self.graph_manager.get_driver(scope, project_root)
 
             query = """
                 MATCH (e:Entity {uuid: $uuid})
                 RETURN e.uuid AS uuid, e.name AS name, e.labels AS tags,
                        e.summary AS summary, e.created_at AS created_at
             """
-            result = conn.execute(query, {"uuid": uuid})
-            if result.has_next():
-                row = result.get_next()
+            results, _, _ = await driver.execute_query(query, uuid=uuid)
+            if results:
+                row = results[0]
                 return {
-                    "uuid": row[0],
-                    "name": row[1],
-                    "tags": row[2] if isinstance(row[2], list) else [row[2]] if row[2] else ["Entity"],
-                    "summary": row[3] or "",
-                    "created_at": row[4],
+                    "uuid": row["uuid"],
+                    "name": row["name"],
+                    "tags": row["tags"] if isinstance(row["tags"], list) else [row["tags"]] if row["tags"] else ["Entity"],
+                    "summary": row["summary"] or "",
+                    "created_at": row["created_at"],
                     "last_accessed_at": None,
                     "access_count": 0,
                     "pinned": False,

@@ -156,3 +156,13 @@ None — no external service configuration required.
 ---
 *Phase: 12-db-migration*
 *Completed: 2026-03-17*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/12-db-migration/12-01-SUMMARY.md
+- FOUND: spike_notes.txt
+- FOUND: tests/test_backend_config.py
+- FOUND: tests/test_backend_integration.py
+- FOUND: commit 8a3bcf4 (Task 1)
+- FOUND: commit 3e5477d (Task 2)
+- FOUND: commit edc55fd (Plan metadata)
