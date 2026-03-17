@@ -204,3 +204,89 @@ class TestStatePath:
         assert state_path == expected
         assert state_path.name == "llm_state.json"
         assert state_path.parent.name == ".graphiti"
+
+
+# ---------------------------------------------------------------------------
+# Phase 13: [llm] section tests
+# ---------------------------------------------------------------------------
+
+LLM_SECTION_TOML = """
+[llm]
+primary_url     = "https://api.openai.com/v1"
+primary_api_key = "sk-test-key"
+primary_models  = ["gpt-4o-mini"]
+embed_url       = "https://api.openai.com/v1"
+embed_models    = ["text-embedding-3-small"]
+"""
+
+
+def test_llm_section_sets_provider_mode(tmp_path, monkeypatch):
+    """load_config() with [llm] section sets llm_mode='provider' and llm_* fields."""
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    monkeypatch.delenv("OLLAMA_CLOUD_ENDPOINT", raising=False)
+    monkeypatch.delenv("OLLAMA_LOCAL_ENDPOINT", raising=False)
+
+    config_file = tmp_path / "llm.toml"
+    config_file.write_text(LLM_SECTION_TOML)
+
+    config = load_config(config_path=config_file)
+
+    assert config.llm_mode == "provider"
+    assert config.llm_primary_url == "https://api.openai.com/v1"
+    assert config.llm_primary_models == ["gpt-4o-mini"]
+
+
+def test_legacy_mode_when_no_llm_section(tmp_path, monkeypatch):
+    """load_config() with no [llm] section sets llm_mode='legacy', llm_* fields are None/empty."""
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+
+    config_file = tmp_path / "llm.toml"
+    config_file.write_text("[cloud]\nendpoint = \"https://ollama.com\"\n")
+
+    config = load_config(config_path=config_file)
+
+    assert config.llm_mode == "legacy"
+    assert config.llm_primary_url is None
+    assert config.llm_primary_api_key is None
+    assert config.llm_primary_models == []
+    assert config.llm_fallback_url is None
+    assert config.llm_fallback_models == []
+    assert config.llm_embed_url is None
+    assert config.llm_embed_api_key is None
+    assert config.llm_embed_models == []
+
+
+def test_old_cloud_local_sections_work_with_llm_present(tmp_path, monkeypatch):
+    """load_config() with both [llm] and [cloud]/[local] raises no exception; llm_mode='provider'."""
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+
+    config_file = tmp_path / "llm.toml"
+    config_file.write_text(
+        LLM_SECTION_TOML
+        + "\n[cloud]\nendpoint = \"https://ollama.com\"\n"
+        + "\n[local]\nmodels = [\"gemma2:9b\"]\n"
+    )
+
+    config = load_config(config_path=config_file)  # must not raise
+
+    assert config.llm_mode == "provider"
+
+
+def test_embed_api_key_fallback(tmp_path, monkeypatch):
+    """[llm] with primary_api_key but no embed_api_key → llm_embed_api_key == primary_api_key."""
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+
+    # No embed_api_key in this TOML
+    config_file = tmp_path / "llm.toml"
+    config_file.write_text("""
+[llm]
+primary_url     = "https://api.openai.com/v1"
+primary_api_key = "sk-test-key"
+primary_models  = ["gpt-4o-mini"]
+embed_url       = "https://api.openai.com/v1"
+embed_models    = ["text-embedding-3-small"]
+""")
+
+    config = load_config(config_path=config_file)
+
+    assert config.llm_embed_api_key == "sk-test-key"
