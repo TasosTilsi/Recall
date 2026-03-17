@@ -81,7 +81,12 @@ Plans:
   3. `graphiti health` shows the active provider name (e.g., "openai via api.openai.com" or "ollama local") and whether the endpoint is reachable
   4. If the configured provider API key is invalid or the endpoint is unreachable, `graphiti` reports the error at startup — not silently at the time of first graph operation
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — [llm] config fields + ProviderClient (LLMConfig llm_* fields, _detect_sdk, validate_provider_startup)
+- [ ] 13-02-PLAN.md — Adapter factories + GraphService wiring (make_llm_client, make_embedder)
+- [ ] 13-03-PLAN.md — Health rows + CLI startup validation (_check_provider, startup hook, human verify)
 
 ---
 
