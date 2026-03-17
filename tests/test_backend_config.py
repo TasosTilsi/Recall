@@ -5,7 +5,6 @@ Wave 0 stubs — all tests skipped until BackendConfig is implemented in Wave 2/
 import pytest
 
 
-@pytest.mark.skip(reason="Wave 2: BackendConfig not yet implemented in src/llm/config.py")
 def test_ladybug_default_when_no_backend_section():
     """load_config() with no [backend] section returns BackendConfig(backend_type='ladybug', backend_uri=None)."""
     from src.llm.config import load_config
@@ -14,7 +13,6 @@ def test_ladybug_default_when_no_backend_section():
     assert config.backend_uri is None
 
 
-@pytest.mark.skip(reason="Wave 2: BackendConfig not yet implemented")
 def test_neo4j_type_parsed_from_toml(tmp_path):
     """[backend] type = 'neo4j' + uri parses into config correctly."""
     import tomllib

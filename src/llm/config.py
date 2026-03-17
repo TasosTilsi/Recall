@@ -68,6 +68,10 @@ class LLMConfig:
     ui_api_port: int = 8765   # FastAPI server port (avoids MCP conflict on 8000)
     ui_port: int = 3000        # Reserved for future next dev mode
 
+    # Backend configuration (v2.0)
+    backend_type: str = "ladybug"   # "ladybug" | "neo4j" — ladybug = embedded default
+    backend_uri: str | None = None  # bolt://user:pass@host:port — Neo4j only
+
 
 def load_config(config_path: Path | None = None) -> LLMConfig:
     """Load LLM configuration from TOML file with environment overrides.
@@ -114,6 +118,19 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         raw_days = 90
 
     ui = config_data.get("ui", {})
+    backend = config_data.get("backend", {})
+    backend_type = backend.get("type", "ladybug")
+    backend_uri = backend.get("uri", None)
+    # Validate backend_type
+    if backend_type not in ("ladybug", "neo4j"):
+        import structlog as _structlog
+        _structlog.get_logger(__name__).warning(
+            "unknown backend type, falling back to ladybug",
+            configured=backend_type,
+            valid=["ladybug", "neo4j"],
+        )
+        backend_type = "ladybug"
+
     capture = config_data.get("capture", {})
     VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
     raw_mode = capture.get("mode", "decisions-only")
@@ -154,6 +171,8 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         capture_mode=raw_mode,
         ui_api_port=ui.get("api_port", 8765),
         ui_port=ui.get("port", 3000),
+        backend_type=backend_type,
+        backend_uri=backend_uri,
     )
 
 
