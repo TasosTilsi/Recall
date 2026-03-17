@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: "Roadmap created. 4 phases, 15 requirements, 100% coverage. Next action: `/gsd:plan-phase 12`"
-stopped_at: Completed 12-db-migration/12-04-PLAN.md
-last_updated: "2026-03-17T16:54:54.663Z"
+stopped_at: "Checkpoint: 12-05 tasks complete — awaiting human smoke test for graphiti add + search with LadybugDB"
+last_updated: "2026-03-17T17:04:02.021Z"
 last_activity: "2026-03-09 — v2.0 roadmap created (4 phases: 12 DB Migration, 13 Multi-Provider LLM, 14 Graph UI Redesign, 15 Local Memory System)"
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0% (v2.0 milestone — 0/4 phases sta
 | Phase 12-db-migration P03 | 2 | 1 tasks | 1 files |
 | Phase 12-db-migration P02 | 7 | 2 tasks | 5 files |
 | Phase 12-db-migration P04 | 7 | 2 tasks | 6 files |
+| Phase 12-db-migration P05 | 6 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 12-db-migration]: config sub-app pattern: convert 'config' to Typer sub-app preserving graphiti config (view) and graphiti config init (generate)
 - [Phase 12-db-migration]: fail-fast with sys.exit(1) for Neo4j unreachable: named URI message guides user to docker compose command
 - [Phase 12-db-migration]: schema version stamp at ~/.graphiti/version.json: detects first v2.0 run; clears retention.db and queue on upgrade
+- [Phase 12-db-migration]: install_hooks() install_git param preserved as no-op: backward compatible, callers passing install_git=True won't break
+- [Phase 12-db-migration]: get_hook_status() git_hook_installed hardcoded to False: post-commit hook removed; v2.0 invariant
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -122,6 +125,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-17T16:54:54.660Z
-Stopped at: Completed 12-db-migration/12-04-PLAN.md
+Last session: 2026-03-17T17:04:02.019Z
+Stopped at: Checkpoint: 12-05 tasks complete — awaiting human smoke test for graphiti add + search with LadybugDB
 Resume with: `/gsd:plan-phase 12`

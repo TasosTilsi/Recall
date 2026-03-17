@@ -40,7 +40,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 
 ### v2.0 Rebuild (Phases 12–15)
 
-- [ ] **Phase 12: DB Migration** — LadybugDB embedded default replaces KuzuDB; Neo4j opt-in via Docker Compose; all 3 Kuzu workarounds removed
+- [x] **Phase 12: DB Migration** — LadybugDB embedded default replaces KuzuDB; Neo4j opt-in via Docker Compose; all 3 Kuzu workarounds removed (completed 2026-03-17)
 - [ ] **Phase 13: Multi-Provider LLM** — Users can switch LLM providers by editing `llm.toml`; backward compatible with Ollama
 - [ ] **Phase 14: Graph UI Redesign** — shadcn/ui dual-view table + graph replacing react-force-graph-2d; reads via driver-agnostic API
 - [ ] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 14
@@ -173,7 +173,7 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 10. Configurable Capture Modes | v1.1 | 4/4 | Complete | 2026-03-08 |
 | 11. Graph UI | v1.1 | 5/5 | Complete | 2026-03-08 |
 | 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | commits-only | Complete | 2026-03-09 |
-| 12. DB Migration | 4/5 | In Progress|  | — |
+| 12. DB Migration | 5/5 | Complete   | 2026-03-17 | — |
 | 13. Multi-Provider LLM | v2.0 | 0/TBD | Not started | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
 | 15. Local Memory System | v2.0 | 0/TBD | Not started | — |
