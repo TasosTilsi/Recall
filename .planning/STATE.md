@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: "Roadmap created. 4 phases, 15 requirements, 100% coverage. Next action: `/gsd:plan-phase 12`"
-stopped_at: Completed 12-db-migration/12-03-PLAN.md
-last_updated: "2026-03-17T16:38:42.907Z"
+stopped_at: Completed 12-db-migration/12-02-PLAN.md
+last_updated: "2026-03-17T16:44:45.565Z"
 last_activity: "2026-03-09 — v2.0 roadmap created (4 phases: 12 DB Migration, 13 Multi-Provider LLM, 14 Graph UI Redesign, 15 Local Memory System)"
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0% (v2.0 milestone — 0/4 phases sta
 *Updated after each plan completion*
 | Phase 12-db-migration P01 | 5 | 2 tasks | 4 files |
 | Phase 12-db-migration P03 | 2 | 1 tasks | 1 files |
+| Phase 12-db-migration P02 | 7 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 12-db-migration]: kuzu and real_ladybug are incompatible in same Python process: lazy import real_ladybug in tests until kuzu fully removed in Wave 2
 - [Phase 12-db-migration]: Row access changed from positional (row[0]) to dict-keyed (row['uuid']) — execute_query() returns list[dict] keyed by Cypher RETURN aliases
 - [Phase 12-db-migration]: read_only=True dropped from readonly methods — not applicable to execute_query() abstraction; LadybugDB/Neo4j handle read isolation at driver level
+- [Phase 12-db-migration]: Embed SCHEMA_QUERIES locally in ladybug_driver.py — graphiti_core.driver.kuzu_driver has top-level import kuzu which fails post-uninstall; GraphProvider imported from driver.driver instead
+- [Phase 12-db-migration]: LadybugDriver.provider = GraphProvider.KUZU — LadybugDB Cypher dialect identical to Kuzu fork; no enum patching needed
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -115,6 +118,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-17T16:38:42.905Z
-Stopped at: Completed 12-db-migration/12-03-PLAN.md
+Last session: 2026-03-17T16:44:45.562Z
+Stopped at: Completed 12-db-migration/12-02-PLAN.md
 Resume with: `/gsd:plan-phase 12`
