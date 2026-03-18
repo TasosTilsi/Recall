@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-17T22:10:48.241Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-03-18T17:50:30.877Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -70,6 +70,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 12-db-migration P05 | 6 | 2 tasks | 7 files |
 | Phase 13-multi-provider-llm P01 | 3 | 2 tasks | 4 files |
 | Phase 13-multi-provider-llm P02 | 3 | 2 tasks | 3 files |
+| Phase 13-multi-provider-llm P03 | continuation | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Key v2.0 architectural decisions from research:
 - [Phase 13-multi-provider-llm]: llm_embed_api_key defaults to primary_api_key at parse time — simpler for callers, single source of truth
 - [Phase 13-multi-provider-llm]: Lazy imports inside make_llm_client/make_embedder — OpenAIGenericClient/OpenAIEmbedder imported only when provider mode active
 - [Phase 13-multi-provider-llm]: GraphService calls load_config() once in __init__() and passes result to make_llm_client()/make_embedder() factories
+- [Phase 13-multi-provider-llm]: Startup validation skips health/config subcommands; they handle provider interaction themselves
+- [Phase 13-multi-provider-llm]: Fallback tier shown as 'configured' not pinged at health time — avoids extra Ollama ping in provider mode
+- [Phase 13-multi-provider-llm]: Ollama cloud/local rows suppressed entirely when llm_mode='provider' — mutually exclusive health display
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -132,6 +136,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-17T22:10:48.239Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-03-18T17:50:30.875Z
+Stopped at: Completed 13-03-PLAN.md
 Resume with: `/gsd:plan-phase 13`

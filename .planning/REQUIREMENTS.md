@@ -14,10 +14,10 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 ### Multi-Provider LLM
 
-- [ ] **PROV-01**: User can set a `[provider]` section in `llm.toml` to switch to OpenAI, Groq, or any OpenAI-compatible endpoint without code changes
-- [ ] **PROV-02**: Existing Ollama config works unchanged when no `[provider]` section is present (backward compatibility guaranteed)
-- [ ] **PROV-03**: `graphiti health` shows the active provider name and reachability status
-- [ ] **PROV-04**: Provider API key is validated at startup with a clear error if unreachable (not at first use)
+- [x] **PROV-01**: User can set a `[provider]` section in `llm.toml` to switch to OpenAI, Groq, or any OpenAI-compatible endpoint without code changes
+- [x] **PROV-02**: Existing Ollama config works unchanged when no `[provider]` section is present (backward compatibility guaranteed)
+- [x] **PROV-03**: `graphiti health` shows the active provider name and reachability status
+- [x] **PROV-04**: Provider API key is validated at startup with a clear error if unreachable (not at first use)
 
 ### Memory System
 
@@ -80,10 +80,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DB-01 | Phase 12 | Complete |
 | DB-02 | Phase 12 | Complete |
-| PROV-01 | Phase 13 | Pending |
-| PROV-02 | Phase 13 | Pending |
-| PROV-03 | Phase 13 | Pending |
-| PROV-04 | Phase 13 | Pending |
+| PROV-01 | Phase 13 | Complete |
+| PROV-02 | Phase 13 | Complete |
+| PROV-03 | Phase 13 | Complete |
+| PROV-04 | Phase 13 | Complete |
 | UI-01 | Phase 14 | Pending |
 | UI-02 | Phase 14 | Pending |
 | UI-03 | Phase 14 | Pending |
