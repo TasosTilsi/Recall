@@ -11,6 +11,7 @@ for idempotent and reversible operations.
 
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -225,6 +226,130 @@ def uninstall_claude_hook(project_path: Path) -> bool:
         json.dump(settings, f, indent=2)
 
     logger.info("Graphiti Claude Code hook removed", project=str(project_path))
+    return True
+
+
+# Phase 15 global hook installation
+
+
+def _is_graphiti_hook(entry: dict) -> bool:
+    """Return True if entry contains any graphiti Phase 15 hook script command."""
+    for h in entry.get("hooks", []):
+        cmd = h.get("command", "")
+        if any(script in cmd for script in [
+            "session_start.py", "inject_context.py",
+            "capture_entry.py", "session_stop.py"
+        ]):
+            return True
+    return False
+
+
+def install_global_hooks() -> bool:
+    """Write all 5 Phase 15 hook entries to ~/.claude/settings.json (global install).
+
+    Preserves non-graphiti entries. Overwrites any existing graphiti hook entries
+    (clean overwrite semantics — per user decision in CONTEXT.md).
+
+    Returns:
+        True if written successfully, False on error
+    """
+    settings_path = Path.home() / ".claude" / "settings.json"
+    python_exe = sys.executable
+    hooks_dir = str(Path(__file__).resolve().parent)
+
+    def hook_script(name: str) -> str:
+        return str(Path(hooks_dir) / name)
+
+    hook_entries = {
+        "SessionStart": [{
+            "matcher": "*",
+            "hooks": [{"type": "command",
+                        "command": f"{python_exe} {hook_script('session_start.py')}",
+                        "timeout": 5000}]
+        }],
+        "UserPromptSubmit": [{
+            "matcher": "",
+            "hooks": [{"type": "command",
+                        "command": f"{python_exe} {hook_script('inject_context.py')}",
+                        "timeout": 6000}]
+        }],
+        "PostToolUse": [{
+            "matcher": "Write|Edit|Bash|WebFetch",
+            "hooks": [{"type": "command",
+                        "command": f"{python_exe} {hook_script('capture_entry.py')}",
+                        "timeout": 1000}]
+        }],
+        "PreCompact": [{
+            "matcher": "",
+            "hooks": [{"type": "command",
+                        "command": f"{python_exe} {hook_script('session_stop.py')} --mode precompact",
+                        "timeout": 30000}]
+        }],
+        "Stop": [{
+            "matcher": "",
+            "hooks": [{"type": "command",
+                        "command": f"{python_exe} {hook_script('session_stop.py')}",
+                        "timeout": 30000}]
+        }],
+    }
+
+    # Load existing settings (preserve non-graphiti entries)
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r') as f:
+                settings = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning("failed_to_read_global_settings",
+                           path=str(settings_path), error=str(e))
+            settings = {}
+    else:
+        settings = {}
+
+    if "hooks" not in settings:
+        settings["hooks"] = {}
+
+    # For each hook type: remove existing graphiti entries, add new ones
+    for hook_type, new_entries in hook_entries.items():
+        existing = settings["hooks"].get(hook_type, [])
+        cleaned = [e for e in existing if not _is_graphiti_hook(e)]
+        settings["hooks"][hook_type] = cleaned + new_entries
+
+    try:
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(settings_path, 'w') as f:
+            json.dump(settings, f, indent=2)
+        logger.info("global_hooks_installed", path=str(settings_path))
+        return True
+    except (IOError, PermissionError) as e:
+        logger.error("failed_to_write_global_settings",
+                     path=str(settings_path), error=str(e))
+        return False
+
+
+def is_global_hooks_installed() -> bool:
+    """Check if all 5 Phase 15 graphiti hooks are registered in ~/.claude/settings.json.
+
+    Returns:
+        True if all 5 hook types have a graphiti entry, False otherwise
+    """
+    settings_path = Path.home() / ".claude" / "settings.json"
+    if not settings_path.exists():
+        return False
+
+    try:
+        with open(settings_path, 'r') as f:
+            settings = json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return False
+
+    required_hook_types = {"SessionStart", "UserPromptSubmit", "PostToolUse", "PreCompact", "Stop"}
+    hooks = settings.get("hooks", {})
+
+    for hook_type in required_hook_types:
+        entries = hooks.get(hook_type, [])
+        if not any(_is_graphiti_hook(e) for e in entries):
+            return False
+
     return True
 
 
