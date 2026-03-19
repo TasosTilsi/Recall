@@ -279,6 +279,9 @@ class BackgroundWorker:
         """
         # Dispatch by job type for structured payloads (not generic CLI replay)
         job_type = item.get('job_type', '')
+        if job_type == 'capture_tool_use':
+            self._handle_capture_tool_use(item)
+            return
         if job_type == 'capture_git_commits':
             success = self._handle_capture_git_commits(item)
             if not success:
@@ -369,6 +372,56 @@ class BackgroundWorker:
             pending_file=str(pending_file)
         )
         return True
+
+    def _handle_capture_tool_use(self, item: dict) -> None:
+        """Handle capture_tool_use job — store tool capture as graph episode via service.add().
+
+        Payload format: {"content": "...", "session_id": "...", "cwd": "/abs/path", "timestamp": "..."}
+        Calls service.add() directly (not via CLI subprocess) — content is pre-sanitized by capture_entry.py.
+        Re-raises exceptions so BackgroundWorker's retry/dead-letter logic handles failures.
+        """
+        import asyncio
+        from pathlib import Path
+
+        payload = item.get('payload', {})
+        content = payload.get('content', '').strip()
+        session_id = payload.get('session_id', '')
+        cwd_str = payload.get('cwd', '')
+
+        if not content:
+            self._logger.warning("capture_tool_use_empty_content", job_id=item['id'])
+            return
+
+        try:
+            from src.graph.service import get_service
+            from src.models import GraphScope
+            from src.security import sanitize_content
+
+            project_root = Path(cwd_str).resolve() if cwd_str else Path.home()
+            # sanitize_content returns SanitizationResult; access .sanitized_content for the string
+            sanitized = sanitize_content(content).sanitized_content
+
+            if not sanitized.strip():
+                self._logger.warning("capture_tool_use_sanitized_to_empty", job_id=item['id'])
+                return
+
+            service = get_service()
+            asyncio.run(service.add(
+                content=sanitized,
+                scope=GraphScope.PROJECT,
+                project_root=project_root,
+                tags=([session_id] if session_id else []),
+                source="tool_capture",
+            ))
+
+            self._logger.info(
+                "capture_tool_use_stored",
+                job_id=item['id'],
+                session_id=session_id[:8] if session_id else "none",
+            )
+        except Exception as e:
+            # Re-raise so BackgroundWorker's retry logic handles it
+            raise RuntimeError(f"capture_tool_use handler failed: {e}") from e
 
     @staticmethod
     def _kwargs_to_flags(kwargs: dict) -> list[str]:
