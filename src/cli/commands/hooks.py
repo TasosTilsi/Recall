@@ -28,6 +28,8 @@ from src.hooks.installer import (
     uninstall_postrewrite_hook,
     is_postcheckout_hook_installed,
     is_postrewrite_hook_installed,
+    install_global_hooks,
+    is_global_hooks_installed,
 )
 
 # Create hooks command group
@@ -94,6 +96,11 @@ def install_command(
             postcheckout_installed = install_postcheckout_hook(git_dir)
             postrewrite_installed = install_postrewrite_hook(git_dir)
 
+        # Install global Claude Code memory hooks (~/.claude/settings.json)
+        global_hooks_installed = False
+        with console.status("Installing global Claude Code memory hooks..."):
+            global_hooks_installed = install_global_hooks()
+
         # Output result
         if format == "json":
             result["precommit_installed"] = precommit_installed
@@ -129,6 +136,13 @@ def install_command(
                 installed.append("post-rewrite")
             else:
                 skipped.append("post-rewrite (already installed)")
+
+            if global_hooks_installed:
+                installed.append("Claude Code global memory hooks (SessionStart, UserPromptSubmit, PostToolUse, PreCompact, Stop)")
+            elif is_global_hooks_installed():
+                skipped.append("Claude Code global memory hooks (already installed)")
+            else:
+                console.print("[yellow]Warning:[/yellow] Failed to install global Claude Code hooks — check ~/.claude/ permissions")
 
             # Success message
             if installed:
@@ -265,6 +279,7 @@ def status_command(
         precommit_installed = is_precommit_hook_installed(root)
         postcheckout_installed = is_postcheckout_hook_installed(git_dir)
         postrewrite_installed = is_postrewrite_hook_installed(git_dir)
+        global_hooks = is_global_hooks_installed()
 
         # JSON output mode
         if format == "json":
@@ -311,6 +326,10 @@ def status_command(
         table.add_row(
             "Git post-rewrite",
             status_icon(postrewrite_installed)
+        )
+        table.add_row(
+            "Claude Code global (memory hooks)",
+            status_icon(global_hooks)
         )
 
         console.print(table)
