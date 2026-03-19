@@ -22,7 +22,7 @@ decisions:
   - "Token budget uses len(text)//4 approximation — no tiktoken dependency, conservative for English"
   - "Continuity block always rendered (empty tags when no summary) — XML structure consistent"
 metrics:
-  duration_seconds: 0
+  duration_seconds: 600
   completed_date: "2026-03-19"
   tasks_completed: 2
   files_changed: 2
@@ -36,8 +36,8 @@ Created the two read-path Claude Code hook scripts providing session UUID persis
 
 | Task | Description | Commit | Files |
 |------|-------------|--------|-------|
-| 1 | Create session_start.py SessionStart hook | TBD | src/hooks/session_start.py |
-| 2 | Create inject_context.py UserPromptSubmit hook | TBD | src/hooks/inject_context.py |
+| 1 | Create session_start.py SessionStart hook | 44f372e | src/hooks/session_start.py |
+| 2 | Create inject_context.py UserPromptSubmit hook | 44f372e | src/hooks/inject_context.py |
 
 ## What Was Built
 
