@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-03-19T21:36:16.228Z"
+stopped_at: Completed 15-04-PLAN.md
+last_updated: "2026-03-19T21:45:38.131Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 12
   percent: 25
 ---
 
@@ -73,6 +73,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 13-multi-provider-llm P03 | continuation | 2 tasks | 3 files |
 | Phase 15-local-memory-system PP01 | 3 | 2 tasks | 5 files |
 | Phase 15-local-memory-system P02 | 10 | 2 tasks | 2 files |
+| Phase 15-local-memory-system P04 | 5 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 15-01]: install_global_hooks() uses clean overwrite for graphiti entries; sys.executable for Python interpreter path
 - [Phase 15-02]: session_start.py uses sys.executable to locate graphiti CLI (same venv as interpreter)
 - [Phase 15-02]: inject_context.py imports get_service() lazily after sys.path fix and uses asyncio.run() inside try/except for standalone subprocess safety
+- [Phase 15-04]: memory_app registered via app.add_typer() consistent with hooks_app and queue_app pattern
+- [Phase 15-04]: install_global_hooks called unconditionally in install_command after local hooks — no --global-only flag needed
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -142,6 +145,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-19T21:36:16.224Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-03-19T21:45:38.125Z
+Stopped at: Completed 15-04-PLAN.md
 Resume with: `/gsd:plan-phase 13`
