@@ -4,7 +4,7 @@
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- [ ] **v2.0 Rebuild** — Phases 12–15 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, shadcn/ui graph UI redesign. Execution order: 12 → 13 → 15 → 14
+- [ ] **v2.0 Rebuild** — Phases 12–16 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Execution order: 12 → 13 → 15 → 16 → 14
 
 ## Phases
 
@@ -43,7 +43,8 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 12: DB Migration** — LadybugDB embedded default replaces KuzuDB; Neo4j opt-in via Docker Compose; all 3 Kuzu workarounds removed (completed 2026-03-17)
 - [x] **Phase 13: Multi-Provider LLM** — Users can switch LLM providers by editing `llm.toml`; backward compatible with Ollama (completed 2026-03-18)
 - [ ] **Phase 14: Graph UI Redesign** — shadcn/ui dual-view table + graph replacing react-force-graph-2d; reads via driver-agnostic API
-- [ ] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 14
+- [ ] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 16
+- [ ] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14
 
 ## Phase Details
 
@@ -119,11 +120,35 @@ Plans:
   5. Hooks installed via `graphiti hooks install` — additive only, existing `~/.graphiti/` installs continue working unchanged
 
 **Research flag**: Low — architecture fully designed, context injection format resolved (Option C), hook timeout budgets confirmed. Pure Python hook scripts, no TypeScript or bridge process.
+**Plans**: 5 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — graphiti sync command + install_global_hooks() foundation (Wave 1)
+- [ ] 15-02-PLAN.md — session_start.py + inject_context.py read-path hooks (Wave 2)
+- [ ] 15-03-PLAN.md — capture_entry.py + session_stop.py + BackgroundWorker capture_tool_use (Wave 2)
+- [ ] 15-04-PLAN.md — graphiti hooks install wiring + graphiti memory search CLI (Wave 3)
+- [ ] 15-05-PLAN.md — integration tests + E2E human verification (Wave 4)
+
+---
+
+### Phase 16: Rename & CLI Consolidation
+
+**Goal**: Users interact with the tool as `recall` (alias `rc`) through a clean 9-command public surface — internal plumbing is hidden, the entrypoint communicates what the tool actually does (local developer memory), and every command is maintainable without ripple effects across 18 entrypoints.
+**Depends on**: Phase 15 (hook scripts call `graphiti` commands — rename updates them all consistently)
+**Requirements**: CLI-01, CLI-02, CLI-03
+**Success Criteria** (what must be TRUE):
+  1. `recall --help` shows exactly 9 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui` — no plumbing commands visible
+  2. `recall search "query"` auto-syncs git history (incremental if indexed, full if not) before searching — one command, always works
+  3. `recall list <name>` shows entity detail (replaces `show`); `recall list --stale` previews TTL candidates (replaces `stale`)
+  4. `recall init` installs hooks globally, registers MCP, runs initial git index, and generates config if missing — one command to set up everything
+  5. All hook scripts, MCP server, and internal references updated from `graphiti` → `recall`; alias `rc` works identically
+
+**Research flag**: Low — scope is mechanical renaming + command consolidation; no new architecture.
 **Plans**: TBD
 
 ---
 
-## v2.0 Strategic Direction (updated 2026-03-17)
+## v2.0 Strategic Direction (updated 2026-03-19)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
 - **KuzuDB replaced.** Archived Oct 2025. All 3 workarounds in `graph_manager.py` are Kuzu-specific bugs — they disappear with the backend swap.
@@ -131,7 +156,7 @@ Plans:
 - **Four-hook Claude Code memory system** (Phase 15) — SessionStart (≤5s, incremental git sync), UserPromptSubmit (≤6s, inject context), PostToolUse (fire-and-forget async queue), PreCompact (≤30s urgent flush). Pure Python scripts calling GraphService directly. No TypeScript, no bridge process.
 - **Option C context injection format** (Phase 15) — `<session_context>` block: `<continuity>` (previous session summary) + `<relevant_history>` (temporally-current facts via BM25+semantic+graph retrieval). Token budget ≤4000. Priority when tight: recent session facts → recent git facts → older session facts → older git facts.
 - **Incremental git indexing** (Phase 15) — `graphiti init` full history, `graphiti sync` delta on SessionStart. Episodes fed oldest-first for correct bi-temporal ordering. Gracefully skips non-git directories.
-- **Execution order: 12 → 13 → 15 → 14** — memory hooks (Phase 15) need LLM abstraction (Phase 13); UI (Phase 14) independent of memory system.
+- **Execution order: 12 → 13 → 15 → 16 → 14** — memory hooks (Phase 15) need LLM abstraction (Phase 13); rename (Phase 16) needs Phase 15 hook scripts to exist before updating them; UI (Phase 14) launches with the final `recall` entrypoint.
 - **Web viewer redesign** — `graphiti ui` redesigned in Phase 14 with shadcn/ui dual-view replacing react-force-graph-2d.
 - **Docker Compose** — single-file for Neo4j power path (Phase 12 opt-in).
 - **Git history bootstrap stays.** `graphiti index` is the unique differentiator. Non-negotiable.
@@ -156,7 +181,8 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 - **Phase 12 first** — storage layer is the lowest dependency; removing KuzuDB validates FTS/vector quality that Phase 15 memory hooks depend on and fixes `service.py` read methods that Phase 14 UI consumes.
 - **Phase 13 second** — zero storage dependency; decoupled from DB; the Ollama-primary LLM abstraction must be in place before Phase 15 hook scripts can be built against it.
 - **Phase 15 third** — depends on Phase 12 (FTS quality) and Phase 13 (LLM abstraction); architecture fully designed, low research needed, expected to be fastest phase to execute.
-- **Phase 14 last** — depends on Phase 12 `service.py` rewrites only; independent of memory system; can run in parallel with Phase 15 if capacity allows.
+- **Phase 16 fourth** — depends on Phase 15 (hook scripts must exist to be updated); mechanical rename + consolidation; low risk, fast execution.
+- **Phase 14 last** — depends on Phase 12 `service.py` rewrites and Phase 16 rename (UI launches with `recall` entrypoint); independent of memory system otherwise.
 
 ---
 
@@ -181,4 +207,5 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 12. DB Migration | 5/5 | Complete    | 2026-03-17 | — |
 | 13. Multi-Provider LLM | 3/3 | Complete    | 2026-03-18 | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
-| 15. Local Memory System | v2.0 | 0/TBD | Not started | — |
+| 15. Local Memory System | v2.0 | 0/5 | Planned | — |
+| 16. Rename & CLI Consolidation | v2.0 | 0/TBD | Not started | — |

@@ -87,6 +87,7 @@ from src.cli.commands.queue_cmd import queue_app
 from src.cli.commands.capture import capture_command
 from src.cli.commands.hooks import hooks_app
 from src.cli.commands.index import index_command
+from src.cli.commands.sync import sync_command
 from src.cli.commands.mcp import mcp_app
 from src.cli.commands.ui import ui_command
 
@@ -145,6 +146,9 @@ app.add_typer(hooks_app, name="hooks", help="Manage automatic capture hooks")
 # Register index command
 app.command(name="index", help="Index git history into the knowledge graph")(index_command)
 
+# Register sync command
+app.command(name="sync", help="Incrementally index new git commits since last sync")(sync_command)
+
 # Register mcp command group
 app.add_typer(mcp_app, name="mcp", help="MCP server for Claude Code integration")
 
@@ -152,4 +156,4 @@ app.add_typer(mcp_app, name="mcp", help="MCP server for Claude Code integration"
 app.command(name="ui", help="Launch graph visualization UI")(ui_command)
 
 
-# All 18 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, mcp (group), ui
+# All 19 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, sync, mcp (group), ui

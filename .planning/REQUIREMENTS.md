@@ -27,6 +27,12 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 - [ ] **MEM-04**: SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext`
 - [ ] **MEM-05**: Memory features are additive — existing installs with no memory data continue working unchanged
 
+### Rename & CLI Consolidation
+
+- [ ] **CLI-01**: Tool is invocable as `recall` (primary) and `rc` (alias) — `graphiti` and `gk` entrypoints removed
+- [ ] **CLI-02**: `recall --help` shows exactly 9 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui` — no plumbing commands in public help
+- [ ] **CLI-03**: `recall search` auto-syncs git history (incremental if previously indexed, full if not) before returning results — works without prior `init`
+
 ### Graph UI Redesign
 
 - [ ] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
@@ -93,10 +99,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-03 | Phase 15 | Pending |
 | MEM-04 | Phase 15 | Pending |
 | MEM-05 | Phase 15 | Pending |
+| CLI-01 | Phase 16 | Pending |
+| CLI-02 | Phase 16 | Pending |
+| CLI-03 | Phase 16 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 15 total
-- Mapped to phases: 15
+- v2.0 requirements: 18 total
+- Mapped to phases: 18
 - Unmapped: 0 ✓
 
 ---
