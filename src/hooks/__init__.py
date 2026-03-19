@@ -12,6 +12,8 @@ from .installer import (
     install_claude_hook,
     is_claude_hook_installed,
     uninstall_claude_hook,
+    install_global_hooks,
+    is_global_hooks_installed,
 )
 from .manager import (
     get_hook_status,
@@ -25,6 +27,8 @@ __all__ = [
     "install_claude_hook",
     "is_claude_hook_installed",
     "uninstall_claude_hook",
+    "install_global_hooks",
+    "is_global_hooks_installed",
     "install_hooks",
     "uninstall_hooks",
     "get_hook_status",

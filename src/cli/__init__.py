@@ -90,6 +90,7 @@ from src.cli.commands.index import index_command
 from src.cli.commands.sync import sync_command
 from src.cli.commands.mcp import mcp_app
 from src.cli.commands.ui import ui_command
+from src.cli.commands.memory import memory_app
 
 
 # Register commands
@@ -155,5 +156,8 @@ app.add_typer(mcp_app, name="mcp", help="MCP server for Claude Code integration"
 # Register ui command
 app.command(name="ui", help="Launch graph visualization UI")(ui_command)
 
+# Register memory command group
+app.add_typer(memory_app, name="memory", help="Search and manage knowledge graph memory")
 
-# All 19 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, sync, mcp (group), ui
+
+# All 20 commands registered: add, pin, search, stale, summarize, compact, list, show, unpin, delete, config, health, queue (group), capture, hooks (group), index, sync, mcp (group), ui, memory (group)
