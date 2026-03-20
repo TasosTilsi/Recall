@@ -44,7 +44,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 13: Multi-Provider LLM** — Users can switch LLM providers by editing `llm.toml`; backward compatible with Ollama (completed 2026-03-18)
 - [ ] **Phase 14: Graph UI Redesign** — shadcn/ui dual-view table + graph replacing react-force-graph-2d; reads via driver-agnostic API
 - [x] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 16 (completed 2026-03-20)
-- [ ] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14
+- [x] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14 (completed 2026-03-20)
 
 ## Phase Details
 
@@ -214,4 +214,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 13. Multi-Provider LLM | 3/3 | Complete    | 2026-03-18 | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
-| 16. Rename & CLI Consolidation | 3/4 | In Progress|  | — |
+| 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |

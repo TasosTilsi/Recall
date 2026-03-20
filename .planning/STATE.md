@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-03-20T10:13:17.107Z"
+stopped_at: "Completed 16-04-PLAN.md Task 1; checkpoint:human-verify awaiting approval"
+last_updated: "2026-03-20T10:22:33.721Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
   percent: 25
 ---
 
@@ -78,6 +78,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 16-rename-cli-consolidation P02 | 12 | 2 tasks | 2 files |
 | Phase 16-rename-cli-consolidation P01 | 4 | 2 tasks | 5 files |
 | Phase 16-rename-cli-consolidation P03 | 8 | 2 tasks | 14 files |
+| Phase 16-rename-cli-consolidation P04 | 9 | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 16-rename-cli-consolidation]: init and index added to _skip_validation_for — both must work before provider is configured
 - [Phase 16-03]: session_start.py calls GitIndexer directly instead of subprocess to recall sync — sync command is deleted, direct call is simpler and eliminates binary name dependency
 - [Phase 16-03]: installer.py uninstall_claude_hook detects both graphiti capture and recall note for backward compat during migration
+- [Phase 16-04]: GitIndexer lazy-import requires patching src.indexer.GitIndexer not the call-site module
+- [Phase 16-04]: TRULY_REMOVED_COMMANDS excludes add/hooks/memory — these words appear in active command descriptions making naive string assertions unreliable
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -157,6 +160,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:13:17.104Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-03-20T10:22:33.718Z
+Stopped at: Completed 16-04-PLAN.md Task 1; checkpoint:human-verify awaiting approval
 Resume with: `/gsd:plan-phase 13`
