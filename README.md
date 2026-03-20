@@ -1,319 +1,235 @@
-# 🧠 Graphiti Knowledge Graph
+# recall
 
-> **Never repeat context again.** A personal knowledge graph system that automatically captures and provides development context—eliminating the need to re-explain preferences, decisions, and project architecture across Claude Code sessions.
+> **Never repeat context again.** A local developer memory system that automatically captures tool call context and injects relevant knowledge before every Claude Code prompt — entirely local, never blocking your workflow.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Built with Kuzu](https://img.shields.io/badge/Database-Kuzu-orange.svg)](https://kuzudb.com/)
+[![LadybugDB](https://img.shields.io/badge/Database-LadybugDB-green.svg)](https://github.com/bwJoint/ladybugdb)
 
 ---
 
-## 🎯 The Problem
+## The Problem
 
 You're working in Claude Code. You explain your tech stack, coding style, and project architecture. Next session? You explain it again. And again. Context is lost between sessions.
 
-**Graphiti solves this:**
-- 📝 Automatically captures **decisions** and **architecture**
-- 🔍 Provides context when you start a new Claude Code session
-- 🔐 Keeps sensitive data (secrets, PII) completely out of the graph
-- 📦 Project knowledge stays in your git repo—shareable with your team
-- ⚡ Runs locally, never blocks your workflow
+**recall solves this:**
+- Automatically captures decisions and architecture from every session
+- Injects relevant past knowledge before every prompt via Claude Code hooks
+- Keeps sensitive data (secrets, PII) completely out of the graph
+- Project knowledge stays in your git repo — shareable with your team
+- Runs locally, never blocks your workflow
 
 ---
 
-## ✨ What It Does
-
-### Core Features (Implemented ✓)
-
-| Feature | Status | Details |
-|---------|--------|---------|
-| **CLI Interface** | ✓ Complete | 9 commands for full knowledge graph management |
-| **Dual-Scope Storage** | ✓ Complete | Global preferences + per-project knowledge graphs |
-| **Kuzu Database** | ✓ Complete | Persistent graph storage with semantic relationships |
-| **Security Filtering** | ✓ Complete | Strips secrets, API keys, credentials automatically |
-| **LLM Integration** | ✓ Complete | Cloud Ollama + local fallback for embeddings |
-| **Semantic Search** | ✓ Complete | Find relevant knowledge via natural language |
-| **Entity Management** | ✓ Complete | Add, list, show, delete, summarize, compact operations |
-
-### Planned Features (Roadmap)
-
-- 🎯 **Phase 5**: Background async queue for non-blocking capture
-- 🪝 **Phase 6**: Git hooks for automatic commit-based capture
-- 📚 **Phase 7**: Git-safe knowledge graphs (committable to GitHub)
-- 🔌 **Phase 8**: MCP server integration with Claude Code hooks
-- 🧹 **Phase 9**: Smart retention (90-day cleanup) and performance optimization
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
 ```bash
-# Clone the repo
 git clone git@github.com:TasosTilsi/Graphiti-Knowledge-Graph.git
 cd Graphiti-Knowledge-Graph
 
-# Create virtual environment
 python3.12 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
-# Install with dev dependencies
 pip install -e ".[dev]"
 ```
 
-### Basic Usage
+### One-command setup
 
 ```bash
-# Add knowledge to your global graph
-graphiti add "We use pytest for testing and follow pytest-bdd patterns"
-
-# Search for relevant knowledge
-graphiti search "testing framework"
-
-# List all stored knowledge
-graphiti list
-
-# Get details about a specific entity
-graphiti show "pytest"
-
-# Generate a summary of your knowledge graph
-graphiti summarize
-
-# Delete an entity
-graphiti delete "old-decision"
-
-# Deduplicate and optimize the graph
-graphiti compact
-
-# View health and statistics
-graphiti health
-graphiti config --show
+recall init          # installs hooks, creates config, indexes git history
 ```
 
-### Scope: Global vs Project
-
-```bash
-# Global scope (stored in ~/.graphiti/global/)
-graphiti add --scope global "My preferred Python version is 3.12+"
-
-# Project scope (stored in .graphiti/ in current project)
-graphiti add --scope project "We use FastAPI for this project's backend"
-graphiti add  # Default: project scope if .git detected
-```
+This installs 5 Claude Code hooks into `~/.claude/settings.json` and sets up your local knowledge graph at `~/.recall/global/` and `.recall/` in your project.
 
 ---
 
-## 🏗️ Architecture
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `recall init` | One-command setup: install hooks, create config, index git history |
+| `recall search <query>` | Natural language search (auto-syncs git before results) |
+| `recall list` | List stored knowledge (`--stale`, `--compact`, `--queue` flags) |
+| `recall delete <id>` | Remove an entry from the graph |
+| `recall pin <id>` | Pin an entry (exempt from retention cleanup) |
+| `recall unpin <id>` | Unpin an entry |
+| `recall health` | System health check: backend, LLM provider, hooks status |
+| `recall config` | View and edit configuration |
+| `recall ui` | Open the graph browser UI at localhost:8765 |
+| `recall note <text>` | Manually add a memory entry |
+
+Short alias: `rc` works everywhere `recall` does.
+
+---
+
+## How It Works
+
+Four Claude Code hook scripts run automatically during your sessions:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| `session_start.py` | `SessionStart` | Writes session UUID, runs incremental git index |
+| `inject_context.py` | `UserPromptSubmit` | Searches graph, injects `<session_context>` block (≤4000 tokens) |
+| `capture_entry.py` | `PostToolUse` | Appends tool call data to queue (fire-and-forget, <1s) |
+| `session_stop.py` | `Stop` / `PreCompact` | Drains queue, generates session summary episode |
+
+No manual steps. Just work — `recall` remembers.
+
+---
+
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Claude Code                        │
-│              (MCP Server - Future: Phase 8)             │
-└────────────────────────┬────────────────────────────────┘
-                         │ Context Injection
-┌────────────────────────▼────────────────────────────────┐
-│                    CLI Interface                        │
-│    add | search | list | show | delete | summarize    │
-│              compact | config | health                  │
-└────────────────────────┬────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-        ▼                ▼                ▼
-   ┌────────────┐  ┌──────────┐  ┌──────────────┐
-   │ GraphService  │ LLM Client   │ Security Filter
-   │ (Semantic    │ (Ollama)     │ (Secrets)
-   │  Search)     │              │
-   └────────────┘  └──────────┘  └──────────────┘
-        │                │                │
-        └────────────────┼────────────────┘
-                         │
-                    ┌────▼─────┐
-                    │   Kuzu   │
-                    │ Database │
-                    └──────────┘
-                         │
-        ┌────────────────┴────────────────┐
-        │                                 │
-    ~/.graphiti/               .graphiti/ (git-safe)
-    (Global Preferences)       (Project Knowledge)
-```
+~/.recall/global/          # Global preferences (cross-project)
+.recall/                   # Project knowledge (git-safe)
+~/.recall/llm.toml         # LLM provider config
 
-**Key Components:**
-
-- **CLI Layer** (`src/cli/`): User-facing commands built with Typer
-- **Graph Service** (`src/graph/`): Graphiti-core adapters + query API
-- **LLM Integration** (`src/llm/`): Cloud Ollama + local fallback
-- **Security** (`src/security/`): Secret detection and sanitization
-- **Storage** (`src/storage/`): Kuzu database management
-
----
-
-## 🔐 Security
-
-Graphiti takes security seriously:
-
-### What Gets Captured ✓
-- Decisions and rationale
-- Architecture patterns
-- Technology choices
-- Testing frameworks
-- Coding conventions
-
-### What Gets Filtered ✗
-- API keys, tokens, credentials
-- Database passwords
-- Private keys
-- Environment secrets (.env files)
-- Sensitive configuration
-- PII and personally identifiable information
-
-**Mechanism:** The sanitizer runs on all content before storage, using:
-- Pattern detection (regex for common formats)
-- Entropy analysis (identifies high-entropy credential-like strings)
-- detect-secrets integration (industry-standard scanning)
-- Allowlist management (safe patterns to skip)
-
----
-
-## 📊 Current Status
-
-**Phase 4 Complete** (4 of 9 phases) ✓
-
-| Phase | Goal | Status |
-|-------|------|--------|
-| 1 | Storage Foundation | ✓ Complete |
-| 2 | Security Filtering | ✓ Complete |
-| 3 | LLM Integration | ✓ Complete |
-| 4 | CLI Interface | ✓ Complete |
-| 5 | Background Queue | 🔄 Planned |
-| 6 | Automatic Capture | 🔄 Planned |
-| 7 | Git Integration | 🔄 Planned |
-| 8 | MCP Server | 🔄 Planned |
-| 9 | Advanced Features | 🔄 Planned |
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v
-
-# Run specific test file
-pytest tests/test_cli_commands.py
-
-# Run with coverage
-pytest --cov=src
-```
-
-**Test Suite:** 56 tests covering CLI commands, security filtering, LLM integration, and storage operations.
-
----
-
-## 📦 Dependencies
-
-### Core
-- **graphiti-core** (0.26.3) — Knowledge graph operations
-- **kuzu** (0.11.3) — Persistent graph database
-- **ollama** (0.6.1) — LLM and embedding client
-- **typer** — CLI framework
-
-### Security
-- **detect-secrets** (1.5.0+) — Secret scanning and detection
-
-### Infrastructure
-- **httpx** — Async HTTP client
-- **persist-queue** — Local job queue
-- **structlog** — Structured logging
-- **tenacity** — Retry logic
-
-See `pyproject.toml` for full dependency list.
-
----
-
-## 🛠️ Development
-
-### Project Structure
-
-```
 src/
-├── cli/                 # CLI commands and utilities
-│   ├── commands/       # Individual command implementations
-│   ├── output.py       # Rich terminal formatting
-│   └── utils.py        # CLI helpers
-├── graph/              # GraphService and adapters
-├── llm/                # Ollama client and LLM operations
-├── security/           # Secret detection and sanitization
-├── storage/            # Kuzu database management
-├── models/             # Data models and types
-└── config/             # Configuration management
+├── cli/                   # Typer CLI (recall/rc entrypoints)
+│   └── commands/          # init, search, list, delete, pin, unpin,
+│                          # health, config, ui, note
+├── hooks/                 # Claude Code hook scripts
+│   ├── session_start.py   # SessionStart: UUID + git sync
+│   ├── inject_context.py  # UserPromptSubmit: context injection
+│   ├── capture_entry.py   # PostToolUse: queue append
+│   └── session_stop.py    # Stop/PreCompact: drain + summarize
+├── graph/
+│   ├── service.py         # GraphService — all graph operations
+│   └── adapters.py        # LLM client + embedder factories
+├── storage/
+│   ├── graph_manager.py   # Backend routing (LadybugDB / Neo4j)
+│   └── ladybug_driver.py  # LadybugDB driver
+├── llm/
+│   ├── config.py          # LLMConfig dataclass, load_config()
+│   └── provider.py        # OpenAI-compatible provider client
+├── queue/
+│   └── worker.py          # BackgroundWorker for async capture
+└── ui_server/             # FastAPI server + Vite frontend
 
-tests/
-├── test_cli_*.py       # CLI command tests
-├── test_security_*.py  # Security filtering tests
-├── test_llm_*.py       # LLM integration tests
-└── test_storage_*.py   # Database tests
-
-pyproject.toml          # Project metadata and dependencies
+ui/                        # Vite + React + Sigma.js + shadcn/ui
+└── out/                   # Pre-built frontend (committed)
 ```
 
-### Running Locally
+---
+
+## Configuration
+
+Config lives at `~/.recall/llm.toml`:
+
+```toml
+# Local Ollama (default)
+[local]
+models = ["gemma2:9b"]
+
+[embeddings]
+models = ["nomic-embed-text"]
+
+# Optional: switch to any OpenAI-compatible provider
+# [llm]
+# primary_url = "https://api.openai.com/v1"
+# primary_api_key = "sk-..."
+# primary_models = ["gpt-4o-mini"]
+# embed_url = "http://localhost:11434"
+# embed_models = ["nomic-embed-text"]
+
+# Optional: Neo4j backend (default is embedded LadybugDB)
+# [backend]
+# type = "neo4j"
+# uri = "bolt://localhost:7687"
+```
+
+---
+
+## Storage Backends
+
+| Backend | Default | Use case |
+|---------|---------|----------|
+| **LadybugDB** | Yes | Embedded, no Docker, zero config |
+| **Neo4j** | No (opt-in) | Teams, power users, Docker Compose |
+
+For Neo4j: `docker compose -f docker-compose.neo4j.yml up -d`
+
+---
+
+## Graph UI
 
 ```bash
-# Install in development mode
-pip install -e ".[dev]"
+recall ui
+```
 
-# Test a command
-graphiti add "Test knowledge"
-graphiti search "test"
-graphiti list
+Opens at `http://localhost:8765`. Features:
+- **Dashboard** — entity stats, activity heatmap, retention breakdown
+- **Graph** — interactive Sigma.js WebGL view with FA2 physics
+- **Entities / Relations / Episodes** — sortable tables with detail panel
+- **Search** — full-text search across all graph data
+- Scope toggle (project / global), retention filters (pinned / stale / archived)
 
-# Check health
-graphiti health
+---
 
-# View configuration
-graphiti config --show
+## Security
+
+All content is sanitized before storage:
+- Pattern detection for API keys, tokens, credentials
+- Entropy analysis for high-entropy strings
+- `detect-secrets` integration for industry-standard scanning
+
+What gets captured: decisions, architecture patterns, technology choices, coding conventions.
+
+What gets filtered: API keys, database passwords, private keys, `.env` contents, PII.
+
+---
+
+## Testing
+
+```bash
+pytest tests/                    # full suite
+pytest tests/ -m "not integration"  # skip Ollama-dependent tests
+pytest tests/test_cli_rename.py  # CLI surface tests
 ```
 
 ---
 
-## 🚦 Next Steps
+## Dependencies
 
-1. **Install & Try**: Follow Quick Start above
-2. **Add Knowledge**: Use `graphiti add` to capture your preferences
-3. **Search**: Test `graphiti search` with natural language queries
-4. **Watch Roadmap**: Background queue and auto-capture coming next
+| Package | Purpose |
+|---------|---------|
+| `graphiti-core[neo4j]==0.28.1` | Knowledge graph engine |
+| `real-ladybug==0.15.1` | Embedded graph database |
+| `ollama==0.6.1` | Local LLM + embeddings client |
+| `typer` | CLI framework |
+| `fastapi` + `uvicorn` | UI server |
+| `detect-secrets` | Secret scanning |
+| `persist-queue` | Async capture queue |
+| `structlog` | Structured logging |
+| `mcp[cli]` | MCP server protocol |
 
----
-
-## 📝 License
-
-MIT License — See LICENSE file for details.
-
----
-
-## 🤝 Contributing
-
-This is a personal project, but contributions welcome!
-
-- Report bugs and suggest features via GitHub Issues
-- Submit PRs with improvements
-- Extend security patterns or LLM integrations
+Optional: `pip install -e ".[reranking]"` for BGE cross-encoder reranking.
 
 ---
 
-## 📚 Resources
+## Development
 
-- **Graphiti Core**: [github.com/getzep/graphiti](https://github.com/getzep/graphiti)
-- **Kuzu Database**: [kuzudb.com](https://kuzudb.com/)
+```bash
+pip install -e ".[dev]"
+
+recall health               # verify everything is wired
+recall search "test query"  # end-to-end smoke test
+pytest tests/ -x -q         # run test suite
+```
+
+---
+
+## License
+
+MIT License — see LICENSE file for details.
+
+---
+
+## Resources
+
+- **graphiti-core**: [github.com/getzep/graphiti](https://github.com/getzep/graphiti)
+- **LadybugDB**: embedded graph backend
 - **Ollama**: [ollama.ai](https://ollama.ai/)
 - **Claude Code**: [claude.com/claude-code](https://claude.com/claude-code)
-
----
-
-**Built with ❤️ to remember what matters.**
