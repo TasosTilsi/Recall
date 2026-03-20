@@ -14,6 +14,22 @@ from src.models import GraphScope
 from src.graph import get_service, run_graph_operation
 
 
+def _auto_sync(project_root) -> None:
+    """Run incremental git sync before search. Silent and best-effort.
+
+    Implements CLI-03: recall search auto-syncs git history before returning results.
+    Uses GitIndexer's built-in cooldown — skips if ran within the last 5 minutes.
+    Fails silently if not in a git repo or GitIndexer unavailable.
+    """
+    try:
+        if project_root is None:
+            return
+        from src.indexer import GitIndexer
+        GitIndexer(project_root=project_root).run(full=False)
+    except Exception:
+        pass  # fail-open: search must not be blocked by sync failure
+
+
 def _search_entities(
     query: str,
     scope: GraphScope,
@@ -28,7 +44,7 @@ def _search_entities(
     """Search entities in the knowledge graph via GraphService.
 
     Calls GraphService.search() which performs semantic or exact search
-    against the real Kuzu graph database.
+    against the knowledge graph database.
 
     Args:
         query: Search query string
@@ -83,15 +99,18 @@ def search_command(
     filters and formatting options.
 
     Examples:
-        graphiti search "meeting notes"
-        graphiti search "API design" --exact
-        graphiti search "roadmap" --since 7d --tag planning
-        graphiti search "architecture" --compact
-        graphiti search "decisions" --format json
+        recall search "meeting notes"
+        recall search "API design" --exact
+        recall search "roadmap" --since 7d --tag planning
+        recall search "architecture" --compact
+        recall search "decisions" --format json
     """
     try:
         # 1. Resolve scope
         scope, project_root = resolve_scope(global_scope, project_scope)
+
+        # 1a. Auto-sync git history before searching (CLI-03)
+        _auto_sync(project_root)
 
         # 2. Determine effective limit
         effective_limit = None if all_results else limit
