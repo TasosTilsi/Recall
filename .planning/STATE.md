@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-03-20T10:08:05.086Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-03-20T10:08:52.625Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
   percent: 25
 ---
 
@@ -76,6 +76,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 15-local-memory-system P04 | 5 | 2 tasks | 4 files |
 | Phase 15-local-memory-system P05 | 15 | 2 tasks | 2 files |
 | Phase 16-rename-cli-consolidation P02 | 12 | 2 tasks | 2 files |
+| Phase 16-rename-cli-consolidation P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 15-05]: 16 tests written (exceeds plan 13-test minimum) — test_session_start_produces_no_stdout added as extra MEM-01 guard
 - [Phase 16-02]: Rename --compact/-c (one-line view) to --one-line/-c to avoid collision with new --compact (archive stale) flag
 - [Phase 16-02]: _auto_sync placed after resolve_scope before search spinner — silent, fail-open, bounded by GitIndexer 5-min cooldown (CLI-03)
+- [Phase 16-rename-cli-consolidation]: recall/rc entrypoints replace graphiti/gk — same cli_entry function, only pyproject.toml scripts change
+- [Phase 16-rename-cli-consolidation]: init and index added to _skip_validation_for — both must work before provider is configured
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -151,6 +154,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-20T10:08:05.083Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-03-20T10:08:52.622Z
+Stopped at: Completed 16-01-PLAN.md
 Resume with: `/gsd:plan-phase 13`

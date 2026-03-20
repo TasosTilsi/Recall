@@ -29,7 +29,7 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 ### Rename & CLI Consolidation
 
-- [ ] **CLI-01**: Tool is invocable as `recall` (primary) and `rc` (alias) — `graphiti` and `gk` entrypoints removed
+- [x] **CLI-01**: Tool is invocable as `recall` (primary) and `rc` (alias) — `graphiti` and `gk` entrypoints removed
 - [x] **CLI-02**: `recall --help` shows exactly 10 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui`, `note` — no plumbing commands in public help
 - [x] **CLI-03**: `recall search` auto-syncs git history (incremental if previously indexed, full if not) before returning results — works without prior `init`
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-03 | Phase 15 | Complete |
 | MEM-04 | Phase 15 | Complete |
 | MEM-05 | Phase 15 | Complete |
-| CLI-01 | Phase 16 | Pending |
+| CLI-01 | Phase 16 | Complete |
 | CLI-02 | Phase 16 | Complete |
 | CLI-03 | Phase 16 | Complete |
 
