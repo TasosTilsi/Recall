@@ -33,14 +33,14 @@ runner = CliRunner()
 
 
 def test_app_help():
-    """Test --help flag shows all 9 commands."""
+    """Test --help flag shows all 10 public commands (Phase 16 rename)."""
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    assert "graphiti" in result.stdout.lower()
+    assert "recall" in result.stdout.lower()
 
-    # All 9 commands should appear in help
-    commands = ["add", "search", "list", "show", "delete", "summarize", "compact", "config", "health"]
+    # All 10 public commands should appear in help (Phase 16 public surface)
+    commands = ["search", "list", "delete", "config", "health", "init", "note", "pin", "unpin", "ui"]
     for cmd in commands:
         assert cmd in result.stdout
 
@@ -50,7 +50,7 @@ def test_app_no_args_shows_help():
     result = runner.invoke(app, [])
 
     # Should show help text, not error
-    assert "graphiti" in result.stdout.lower()
+    assert "recall" in result.stdout.lower()
     assert "Commands:" in result.stdout or "Usage:" in result.stdout
 
 
@@ -59,7 +59,7 @@ def test_app_version():
     result = runner.invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert "graphiti version" in result.stdout.lower() or "0.1.0" in result.stdout
+    assert "recall version" in result.stdout.lower() or "0.1.0" in result.stdout
 
 
 # ==================== Utils Tests ====================
