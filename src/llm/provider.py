@@ -173,7 +173,7 @@ def validate_provider_startup(config: LLMConfig) -> None:
     When llm_mode == "provider": pings primary endpoint; sys.exit(1) on failure.
 
     Error message format (CONTEXT.md spec):
-        "Provider unreachable: <primary_url> — check primary_api_key and primary_url in ~/.graphiti/llm.toml"
+        "Provider unreachable: <primary_url> — check primary_api_key and primary_url in ~/.recall/config.toml"
     """
     if config.llm_mode != "provider":
         return  # legacy Ollama path — no startup ping
@@ -183,7 +183,7 @@ def validate_provider_startup(config: LLMConfig) -> None:
     if not ok:
         msg = (
             f"Provider unreachable: {config.llm_primary_url} — "
-            f"check primary_api_key and primary_url in ~/.graphiti/llm.toml\n"
+            f"check primary_api_key and primary_url in ~/.recall/config.toml\n"
             f"Detail: {error_detail}"
         )
         print(msg, file=sys.stderr)

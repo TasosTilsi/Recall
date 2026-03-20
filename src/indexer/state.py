@@ -35,7 +35,7 @@ def _state_file_path(project_root: Path) -> Path:
 
 
 def load_state(project_root: Path) -> IndexState:
-    """Load IndexState from .graphiti/index-state.json.
+    """Load IndexState from .recall/index-state.json.
 
     Returns a fresh IndexState if the file does not exist or is malformed.
 
@@ -65,7 +65,7 @@ def load_state(project_root: Path) -> IndexState:
 
 
 def save_state(project_root: Path, state: IndexState) -> None:
-    """Atomically write IndexState to .graphiti/index-state.json.
+    """Atomically write IndexState to .recall/index-state.json.
 
     Uses a temporary file and Path.replace() for atomicity so that
     a crash mid-write does not corrupt the state file.

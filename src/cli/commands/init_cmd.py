@@ -1,7 +1,7 @@
 """Init command for recall CLI.
 
 Idempotent one-command setup: install hooks, run full git history index,
-write ~/.graphiti/llm.toml template if missing, register MCP server.
+write ~/.recall/config.toml template if missing, register MCP server.
 
 Each step warns on failure and continues — safe to re-run.
 """

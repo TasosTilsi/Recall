@@ -63,7 +63,7 @@ class GitIndexer:
     """Indexes git commit history into the Graphiti knowledge graph.
 
     Provides incremental indexing via a SHA cursor stored in
-    .graphiti/index-state.json. A quality gate skips bot commits,
+    .recall/index-state.json. A quality gate skips bot commits,
     tiny diffs, version-bump-only commits, and pure merge commits.
 
     Each qualifying commit is processed through a two-pass LLM extraction

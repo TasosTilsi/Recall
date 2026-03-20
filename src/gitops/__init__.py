@@ -1,7 +1,7 @@
 """Git hygiene utilities for Graphiti.
 
 This module provides general-purpose git utilities:
-- Gitignore generation for .graphiti/ directory
+- Gitignore generation for .recall/ directory
 - Git config setup helpers
 - Staged file secret scanning
 - Repository size checking

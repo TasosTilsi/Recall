@@ -11,7 +11,7 @@ from src.config import GLOBAL_DB_PATH, get_project_db_path
 
 logger = structlog.get_logger(__name__)
 
-_VERSION_FILE = Path.home() / ".graphiti" / "version.json"
+_VERSION_FILE = Path.home() / ".recall" / "version.json"
 _SCHEMA_VERSION = "2.0"
 
 
@@ -109,8 +109,8 @@ class GraphManager:
         Fresh start is acceptable — no real users with data to preserve.
         """
         import shutil
-        retention_db = Path.home() / ".graphiti" / "retention.db"
-        queue_dir = Path.home() / ".graphiti" / "queue"
+        retention_db = Path.home() / ".recall" / "retention.db"
+        queue_dir = Path.home() / ".recall" / "queue"
         if retention_db.exists():
             retention_db.unlink()
             logger.info("v2.0 first run: cleared stale retention.db (UUID mismatch)")

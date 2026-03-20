@@ -65,7 +65,7 @@ def get_queue(db_path: Optional[Path] = None, max_size: int = 100) -> JobQueue:
 
     Args:
         db_path: Path to queue directory. Only used on first call.
-            Default: ~/.graphiti/job_queue
+            Default: ~/.recall/job_queue
         max_size: Soft capacity limit. Only used on first call.
             Default: 100 jobs
 

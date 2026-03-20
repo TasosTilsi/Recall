@@ -24,7 +24,7 @@ def _is_index_stale(project_root: str | None) -> bool:
     """Check if git index is stale in <10ms.
 
     Compares current git HEAD SHA against the last_indexed_sha stored in
-    .graphiti/index-state.json. Returns False (not stale) if project_root
+    .recall/index-state.json. Returns False (not stale) if project_root
     is None or any error occurs.
     """
     if not project_root:
@@ -38,7 +38,7 @@ def _is_index_stale(project_root: str | None) -> bool:
             return False
         current_sha = result.stdout.strip()[:8]
 
-        state_file = Path(project_root) / ".graphiti" / "index-state.json"
+        state_file = Path(project_root) / ".recall" / "index-state.json"
         if not state_file.exists():
             return True  # No index at all — stale
         data = json.loads(state_file.read_text())

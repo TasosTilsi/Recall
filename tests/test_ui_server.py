@@ -134,18 +134,31 @@ class TestLLMConfigUI:
     """Tests for the [ui] section in LLMConfig / load_config()."""
 
     def test_ui_ports_from_toml(self, tmp_path: Path):
-        """load_config() reads [ui] api_port and ui_port from TOML file."""
-        from src.llm.config import load_config  # already exists — tests LLMConfig extension
+        """load_config() reads [ui] port from TOML file; api_port is backward-compat alias."""
+        from src.llm.config import load_config
 
-        config_file = tmp_path / "llm.toml"
+        # Test new single [ui] port field
+        config_file = tmp_path / "config.toml"
         config_file.write_text(textwrap.dedent("""\
             [ui]
-            api_port = 9999
-            port = 4000
+            port = 9999
         """))
 
         config = load_config(config_path=config_file)
 
-        # These attributes don't exist yet — AttributeError is the expected RED failure
-        assert config.ui_api_port == 9999
-        assert config.ui_port == 4000
+        assert config.ui_port == 9999
+        assert not hasattr(config, "ui_api_port")  # removed in Phase 14-01
+
+    def test_ui_port_backward_compat_api_port(self, tmp_path: Path):
+        """load_config() maps old [ui] api_port -> ui_port for backward compat."""
+        from src.llm.config import load_config
+
+        config_file = tmp_path / "config.toml"
+        config_file.write_text(textwrap.dedent("""\
+            [ui]
+            api_port = 8888
+        """))
+
+        config = load_config(config_path=config_file)
+        # api_port in old config files maps to ui_port
+        assert config.ui_port == 8888

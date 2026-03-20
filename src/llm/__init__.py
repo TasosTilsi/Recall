@@ -14,7 +14,7 @@ Quick start:
     print(f"Using: {status['current_provider']}")
 
 Configuration:
-    Copy config/llm.toml to ~/.graphiti/llm.toml and customize.
+    Copy config/llm.toml to ~/.recall/config.toml and customize.
     Set OLLAMA_API_KEY environment variable for cloud access.
 
 Error handling:

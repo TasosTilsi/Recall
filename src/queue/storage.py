@@ -45,13 +45,13 @@ class JobQueue:
         """Initialize job queue.
 
         Args:
-            db_path: Path to queue directory. Defaults to ~/.graphiti/job_queue
+            db_path: Path to queue directory. Defaults to ~/.recall/job_queue
             max_size: Soft capacity limit. Jobs always accepted, warnings logged
                      when threshold exceeded. Default: 100 jobs.
         """
         # Ensure db_path is a Path object
         if db_path is None:
-            self._db_path = Path.home() / ".graphiti" / "job_queue"
+            self._db_path = Path.home() / ".recall" / "job_queue"
         elif isinstance(db_path, str):
             self._db_path = Path(db_path)
         else:

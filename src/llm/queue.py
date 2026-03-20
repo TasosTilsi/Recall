@@ -49,10 +49,10 @@ class LLMRequestQueue:
 
         Args:
             config: LLM configuration with queue settings
-            queue_path: Path to queue directory. Defaults to ~/.graphiti/llm_queue
+            queue_path: Path to queue directory. Defaults to ~/.recall/llm_queue
         """
         self._config = config
-        self._queue_path = queue_path or (Path.home() / ".graphiti" / "llm_queue")
+        self._queue_path = queue_path or (Path.home() / ".recall" / "llm_queue")
         self._queue_path.mkdir(parents=True, exist_ok=True)
 
         # Initialize SQLite-backed queue with auto-commit.
