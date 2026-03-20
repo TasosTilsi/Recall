@@ -96,7 +96,7 @@ def is_claude_hook_installed(project_path: Path) -> bool:
     for entry in settings["hooks"]["Stop"]:
         if isinstance(entry, dict):
             for h in entry.get("hooks", []):
-                if isinstance(h, dict) and "graphiti capture" in h.get("command", ""):
+                if isinstance(h, dict) and ("graphiti capture" in h.get("command", "") or "recall note" in h.get("command", "")):
                     return True
 
     return False
@@ -117,13 +117,15 @@ def install_claude_hook(project_path: Path) -> bool:
     settings_dir = project_path / ".claude"
     settings_path = settings_dir / "settings.json"
 
-    # Graphiti Stop hook configuration (new format with matcher + hooks array)
+    # NOTE: install_claude_hook() is legacy (v1.x project-local hook). recall init uses
+    # install_global_hooks() instead. Kept for backward compatibility.
+    # Recall Stop hook configuration (new format with matcher + hooks array)
     graphiti_hook = {
         "matcher": "",
         "hooks": [
             {
                 "type": "command",
-                "command": 'graphiti capture --auto --transcript-path "$transcript_path" --session-id "$session_id"',
+                "command": 'recall note "$transcript_path"',
                 "async": True,
                 "timeout": 10,
             }
@@ -149,11 +151,11 @@ def install_claude_hook(project_path: Path) -> bool:
     if "Stop" not in settings["hooks"]:
         settings["hooks"]["Stop"] = []
 
-    # Check if graphiti hook already exists (idempotent) — check inside hooks array
+    # Check if recall/graphiti hook already exists (idempotent) — check inside hooks array
     for entry in settings["hooks"]["Stop"]:
         if isinstance(entry, dict):
             for h in entry.get("hooks", []):
-                if "graphiti capture" in h.get("command", ""):
+                if "graphiti capture" in h.get("command", "") or "recall note" in h.get("command", ""):
                     logger.info("Graphiti Claude Code hook already installed",
                                project=str(project_path))
                     return False
@@ -200,13 +202,16 @@ def uninstall_claude_hook(project_path: Path) -> bool:
                    project=str(project_path))
         return False
 
-    # Filter out graphiti hooks (new format: entries with hooks array)
+    # Filter out graphiti/recall hooks (new format: entries with hooks array)
     original_count = len(settings["hooks"]["Stop"])
     settings["hooks"]["Stop"] = [
         entry for entry in settings["hooks"]["Stop"]
         if not (
             isinstance(entry, dict)
-            and any("graphiti capture" in h.get("command", "") for h in entry.get("hooks", []))
+            and any(
+                "graphiti capture" in h.get("command", "") or "recall note" in h.get("command", "")
+                for h in entry.get("hooks", [])
+            )
         )
     ]
 

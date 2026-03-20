@@ -11,8 +11,9 @@ from typing import Dict
 
 import structlog
 
-# Use the graphiti binary from the same venv as the running interpreter
-_GRAPHITI_CLI = str(Path(sys.executable).parent / "graphiti")
+# Use the recall binary from the same venv as the running interpreter
+# NOTE: get/set_hooks_enabled() calls are vestigial v1.x code — hooks are always enabled in v2.0
+_RECALL_CLI = str(Path(sys.executable).parent / "recall")
 
 from .installer import (
     install_claude_hook,
@@ -33,7 +34,7 @@ def get_hooks_enabled() -> bool:
     """
     try:
         result = subprocess.run(
-            [_GRAPHITI_CLI, "config", "get", "hooks.enabled"],
+            [_RECALL_CLI, "config", "get", "hooks.enabled"],
             capture_output=True,
             text=True,
             timeout=5
@@ -66,7 +67,7 @@ def set_hooks_enabled(enabled: bool) -> None:
     """
     try:
         result = subprocess.run(
-            [_GRAPHITI_CLI, "config", "set", "hooks.enabled", str(enabled).lower()],
+            [_RECALL_CLI, "config", "set", "hooks.enabled", str(enabled).lower()],
             capture_output=True,
             text=True,
             timeout=5

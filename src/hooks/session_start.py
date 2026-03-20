@@ -2,13 +2,12 @@
 """SessionStart hook — generates session UUID and runs incremental git sync.
 
 Runs when Claude Code opens a new session. Writes session UUID to
-.graphiti/.current_session_id for use by other hooks. Calls graphiti sync
-with a 4.5s hard timeout (leaves 0.5s buffer in 5s SessionStart budget).
+.graphiti/.current_session_id for use by other hooks. Calls GitIndexer
+directly for incremental git sync (no subprocess — more robust in hook context).
 
 Fail-open: any exception produces no stdout output and exits 0.
 """
 import json
-import subprocess
 import sys
 import traceback
 import uuid
@@ -24,11 +23,6 @@ import structlog
 
 logger = structlog.get_logger()
 
-# Use graphiti binary from same venv as running Python interpreter
-_GRAPHITI_CLI = str(Path(sys.executable).parent / "graphiti")
-
-SYNC_TIMEOUT_SECONDS = 4.5
-
 
 def _write_session_id(project_root: Path) -> str:
     """Generate UUID v4 and write to .graphiti/.current_session_id. Overwrites if exists."""
@@ -41,26 +35,14 @@ def _write_session_id(project_root: Path) -> str:
 
 
 def _run_sync(project_root: Path) -> None:
-    """Call graphiti sync with 4.5s hard timeout. Partial progress preserved by GitIndexer state."""
+    """Run incremental git index directly via GitIndexer. Partial progress preserved by state file."""
     try:
-        result = subprocess.run(
-            [_GRAPHITI_CLI, "sync"],
-            cwd=str(project_root),
-            timeout=SYNC_TIMEOUT_SECONDS,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            logger.warning(
-                "sync_nonzero_exit",
-                returncode=result.returncode,
-                stderr=result.stderr[:200],
-            )
-    except subprocess.TimeoutExpired:
-        # Partial progress is preserved by GitIndexer .last_sync_hash state file
-        logger.warning("sync_timeout_expired", timeout_s=SYNC_TIMEOUT_SECONDS)
-    except FileNotFoundError:
-        logger.warning("graphiti_cli_not_found", path=_GRAPHITI_CLI)
+        # Fix sys.path for import (CWD undefined when Claude Code calls hooks)
+        # _PROJECT_PKG_ROOT is already inserted at module load time above
+        from src.indexer import GitIndexer
+        GitIndexer(project_root=project_root).run(full=False)
+    except Exception as e:
+        logger.warning("session_start_sync_error", error=str(e))
 
 
 def main() -> None:
