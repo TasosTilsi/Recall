@@ -17,7 +17,7 @@ from src.cli.output import print_success, print_error
 from src.cli.utils import resolve_scope, EXIT_SUCCESS, EXIT_ERROR
 
 
-PENDING_CAPTURES_FILENAME = ".graphiti/pending_tool_captures.jsonl"
+PENDING_CAPTURES_FILENAME = ".recall/pending_tool_captures.jsonl"
 
 
 def note_command(
@@ -25,7 +25,7 @@ def note_command(
 ) -> None:
     """Manually add a memory to the knowledge graph.
 
-    Writes the note to .graphiti/pending_tool_captures.jsonl where it is
+    Writes the note to .recall/pending_tool_captures.jsonl where it is
     processed by the PreCompact/Stop hook on next session end.
 
     Examples:

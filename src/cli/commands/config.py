@@ -65,8 +65,7 @@ VALID_CONFIG_KEYS = {
         "type": int,
         "desc": "Days before a node is considered stale (min 30)",
     },
-    "ui.api_port": {"type": int, "desc": "FastAPI UI server port (default 8765)"},
-    "ui.port": {"type": int, "desc": "UI dev server port (reserved, default 3000)"},
+    "ui.port": {"type": int, "desc": "FastAPI UI server port (default 8765)"},
 }
 
 
@@ -210,10 +209,10 @@ def config_command(
     """View and modify LLM configuration.
 
     Examples:
-        graphiti config                        # Show all settings
-        graphiti config --get cloud.endpoint   # Get specific value
-        graphiti config --set retry.max_attempts=5  # Set value
-        graphiti config --format json          # JSON output
+        recall config                        # Show all settings
+        recall config --get cloud.endpoint   # Get specific value
+        recall config --set retry.max_attempts=5  # Set value
+        recall config --format json          # JSON output
     """
     config = load_config()
     config_path = _get_config_path()
@@ -305,7 +304,6 @@ def config_command(
                 "reranking.backend": "reranking_backend",
                 "capture.mode": "capture_mode",
                 "retention.retention_days": "retention_days",
-                "ui.api_port": "ui_api_port",
                 "ui.port": "ui_port",
             }
             attr_name = attr_map.get(get_key)
@@ -361,7 +359,6 @@ def config_command(
                 "retention_days": config.retention_days,
             },
             "ui": {
-                "api_port": config.ui_api_port,
                 "port": config.ui_port,
             },
         }
@@ -405,7 +402,6 @@ def config_command(
         table.add_row("[bold]Retention Settings[/bold]", "", "", style="dim")
         table.add_row("retention.retention_days", str(config.retention_days), VALID_CONFIG_KEYS["retention.retention_days"]["desc"])
         table.add_row("[bold]UI Settings[/bold]", "", "", style="dim")
-        table.add_row("ui.api_port", str(config.ui_api_port), VALID_CONFIG_KEYS["ui.api_port"]["desc"])
         table.add_row("ui.port", str(config.ui_port), VALID_CONFIG_KEYS["ui.port"]["desc"])
 
         console.print(table)
@@ -416,16 +412,16 @@ def config_command(
 def init_command(
     path: Annotated[
         Optional[Path],
-        typer.Option("--path", "-p", help="Path to write llm.toml (default: ~/.graphiti/llm.toml)")
+        typer.Option("--path", "-p", help="Path to write config.toml (default: ~/.recall/config.toml)")
     ] = None,
     force: Annotated[
         bool,
         typer.Option("--force", "-f", help="Overwrite existing file")
     ] = False,
 ) -> None:
-    """Generate a default llm.toml configuration file.
+    """Generate a default config.toml configuration file.
 
-    Creates ~/.graphiti/llm.toml with sensible defaults and a commented-out
+    Creates ~/.recall/config.toml with sensible defaults and a commented-out
     [backend] block showing how to switch to Neo4j (opt-in).
     """
     target = path or _get_config_path()

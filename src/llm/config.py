@@ -65,8 +65,7 @@ class LLMConfig:
     capture_mode: str = "decisions-only"
 
     # UI server configuration
-    ui_api_port: int = 8765   # FastAPI server port (avoids MCP conflict on 8000)
-    ui_port: int = 3000        # Reserved for future next dev mode
+    ui_port: int = 8765   # Single FastAPI server port (serves both API and UI)
 
     # Backend configuration (v2.0)
     backend_type: str = "ladybug"   # "ladybug" | "neo4j" — ladybug = embedded default
@@ -92,13 +91,14 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
 
     Args:
         config_path: Path to TOML config file.
-                    Defaults to ~/.graphiti/llm.toml
+                    Defaults to ~/.recall/config.toml
 
     Returns:
         Frozen LLMConfig instance
     """
     if config_path is None:
-        config_path = Path.home() / ".graphiti" / "llm.toml"
+        from src.config.paths import CONFIG_PATH
+        config_path = CONFIG_PATH  # ~/.recall/config.toml
 
     # Load TOML config if exists
     config_data = {}
@@ -206,8 +206,7 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         hooks_enabled=hooks.get("enabled", False),
         retention_days=raw_days,
         capture_mode=raw_mode,
-        ui_api_port=ui.get("api_port", 8765),
-        ui_port=ui.get("port", 3000),
+        ui_port=ui.get("port", ui.get("api_port", 8765)),  # backward compat: api_port -> port
         backend_type=backend_type,
         backend_uri=backend_uri,
         llm_mode=llm_mode,
@@ -227,4 +226,5 @@ def get_state_path() -> Path:
 
     Returns path to llm_state.json for cooldown tracking.
     """
-    return Path.home() / ".graphiti" / "llm_state.json"
+    from src.config.paths import CONFIG_PATH
+    return CONFIG_PATH.parent / "llm_state.json"  # ~/.recall/llm_state.json

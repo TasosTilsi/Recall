@@ -27,7 +27,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
 def ui_command(
     global_scope: Annotated[bool, typer.Option("--global", "-g", help="Visualize global scope graph")] = False,
     project_scope: Annotated[bool, typer.Option("--project", "-p", help="Visualize project scope graph")] = False,
-    api_port: Annotated[int, typer.Option("--api-port", help="Override API server port (default from llm.toml [ui] api_port)")] = 0,
+    api_port: Annotated[int, typer.Option("--api-port", help="Override API server port (default from config.toml [ui] port)")] = 0,
 ):
     """Launch the graph visualization UI.
 
@@ -39,7 +39,7 @@ def ui_command(
     from src.llm.config import load_config
 
     config = load_config()
-    port = api_port if api_port else config.ui_api_port
+    port = api_port if api_port else config.ui_port
 
     # --- Pre-flight 1: Port availability ---
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -48,7 +48,7 @@ def ui_command(
         except OSError:
             print_error(
                 f"Port {port} is already in use. "
-                f"Set [ui] api_port in ~/.graphiti/llm.toml to use a different port, "
+                f"Set [ui] port in ~/.recall/config.toml to use a different port, "
                 f"or stop the process using port {port}."
             )
             raise typer.Exit(EXIT_ERROR)
@@ -75,11 +75,13 @@ def ui_command(
         scope_label = "project"
 
     # --- Launch banner ---
-    console.print(f"\n[bold green]Graphiti UI[/bold green]")
-    console.print(f"  [dim]API[/dim]   [cyan]http://localhost:{port}/api[/cyan]")
-    console.print(f"  [dim]UI[/dim]    [cyan]http://localhost:{port}[/cyan]")
-    console.print(f"  [dim]Scope[/dim] {scope_label}")
-    console.print(f"  [dim]Press Ctrl+C to stop[/dim]\n")
+    console.print(f"\n┏ recall ui")
+    console.print(f"┃ → http://localhost:{port}")
+    console.print(f"┃ Scope: {scope_label}")
+    console.print(f"┃")
+    console.print(f"┃ UI auto-refreshes every 30s.")
+    console.print(f"┃ Data added while this is running will appear automatically.")
+    console.print(f"┗ Press Ctrl+C to stop\n")
 
     logger.info("ui_server_starting", port=port, scope=scope_str)
 
@@ -97,6 +99,6 @@ def ui_command(
         # uvicorn.run() blocks until Ctrl+C (KeyboardInterrupt)
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     except KeyboardInterrupt:
-        console.print("\n[dim]Graphiti UI stopped.[/dim]")
+        console.print("\n[dim]recall ui stopped.[/dim]")
 
     raise typer.Exit(EXIT_SUCCESS)
