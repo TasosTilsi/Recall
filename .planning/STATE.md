@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 15-05-PLAN.md
-last_updated: "2026-03-20T09:09:06.648Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-03-20T10:08:05.086Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 14
   percent: 25
 ---
 
@@ -75,6 +75,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 15-local-memory-system P02 | 10 | 2 tasks | 2 files |
 | Phase 15-local-memory-system P04 | 5 | 2 tasks | 4 files |
 | Phase 15-local-memory-system P05 | 15 | 2 tasks | 2 files |
+| Phase 16-rename-cli-consolidation P02 | 12 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 15-04]: install_global_hooks called unconditionally in install_command after local hooks — no --global-only flag needed
 - [Phase 15-05]: Hook paths will change in Phase 16 rename; tests acknowledged as temporary by human reviewer
 - [Phase 15-05]: 16 tests written (exceeds plan 13-test minimum) — test_session_start_produces_no_stdout added as extra MEM-01 guard
+- [Phase 16-02]: Rename --compact/-c (one-line view) to --one-line/-c to avoid collision with new --compact (archive stale) flag
+- [Phase 16-02]: _auto_sync placed after resolve_scope before search spinner — silent, fail-open, bounded by GitIndexer 5-min cooldown (CLI-03)
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -148,6 +151,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-20T07:41:19.531Z
-Stopped at: Completed 15-05-PLAN.md
+Last session: 2026-03-20T10:08:05.083Z
+Stopped at: Completed 16-02-PLAN.md
 Resume with: `/gsd:plan-phase 13`

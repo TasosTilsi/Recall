@@ -214,4 +214,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 13. Multi-Provider LLM | 3/3 | Complete    | 2026-03-18 | — |
 | 14. Graph UI Redesign | v2.0 | 0/TBD | Not started | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
-| 16. Rename & CLI Consolidation | v2.0 | 0/TBD | Not started | — |
+| 16. Rename & CLI Consolidation | 1/4 | In Progress|  | — |
