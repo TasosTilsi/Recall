@@ -133,18 +133,24 @@ Plans:
 
 ### Phase 16: Rename & CLI Consolidation
 
-**Goal**: Users interact with the tool as `recall` (alias `rc`) through a clean 9-command public surface — internal plumbing is hidden, the entrypoint communicates what the tool actually does (local developer memory), and every command is maintainable without ripple effects across 18 entrypoints.
+**Goal**: Users interact with the tool as `recall` (alias `rc`) through a clean 10-command public surface — internal plumbing is hidden, the entrypoint communicates what the tool actually does (local developer memory), and every command is maintainable without ripple effects across 18 entrypoints.
 **Depends on**: Phase 15 (hook scripts call `graphiti` commands — rename updates them all consistently)
 **Requirements**: CLI-01, CLI-02, CLI-03
 **Success Criteria** (what must be TRUE):
-  1. `recall --help` shows exactly 9 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui` — no plumbing commands visible
+  1. `recall --help` shows exactly 10 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui`, `note` — no plumbing commands visible
   2. `recall search "query"` auto-syncs git history (incremental if indexed, full if not) before searching — one command, always works
   3. `recall list <name>` shows entity detail (replaces `show`); `recall list --stale` previews TTL candidates (replaces `stale`)
   4. `recall init` installs hooks globally, registers MCP, runs initial git index, and generates config if missing — one command to set up everything
   5. All hook scripts, MCP server, and internal references updated from `graphiti` → `recall`; alias `rc` works identically
 
 **Research flag**: Low — scope is mechanical renaming + command consolidation; no new architecture.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Rename entrypoints (recall/rc) + app restructure (10 commands) + init_cmd + note_cmd
+- [ ] 16-02-PLAN.md — Expand list command (--stale/--compact/--queue/name) + search auto-sync (CLI-03)
+- [ ] 16-03-PLAN.md — Delete 12 removed command files + update hook scripts to use recall binary
+- [ ] 16-04-PLAN.md — Phase 16 test suite + human verification checkpoint
 
 ---
 
