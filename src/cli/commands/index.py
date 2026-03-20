@@ -1,4 +1,4 @@
-"""Index command for Graphiti CLI.
+"""Index command for recall CLI.
 
 Indexes git commit history into the knowledge graph.
 Incremental by default — only processes commits not yet indexed.
@@ -12,21 +12,21 @@ from src.cli.utils import resolve_scope, EXIT_SUCCESS, EXIT_ERROR
 
 
 def index_command(
-    full: Annotated[bool, typer.Option("--full", help="Wipe all git-indexed knowledge and re-index entire history from scratch")] = False,
+    force: Annotated[bool, typer.Option("--force", help="Wipe all git-indexed knowledge and re-index entire history from scratch")] = False,
     since: Annotated[Optional[str], typer.Option("--since", help="Index commits since date (YYYY-MM-DD) or commit SHA")] = None,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show per-commit progress")] = False,
 ) -> None:
     """Index git history into the knowledge graph.
 
     Incremental by default — only processes commits not yet indexed.
-    Use --full to wipe and re-index entire history.
+    Use --force to wipe and re-index entire history.
 
     Examples:
-        graphiti index                         # Incremental index (new commits only)
-        graphiti index --full                  # Wipe and re-index everything
-        graphiti index --since 2024-01-01      # Index commits since date
-        graphiti index --since abc1234         # Index commits since a SHA
-        graphiti index --verbose               # Show per-commit progress
+        recall index                         # Incremental index (new commits only)
+        recall index --force                 # Wipe and re-index everything
+        recall index --since 2024-01-01      # Index commits since date
+        recall index --since abc1234         # Index commits since a SHA
+        recall index --verbose               # Show per-commit progress
     """
     try:
         # Resolve scope — index command requires a git project root
@@ -57,7 +57,7 @@ def index_command(
             raise typer.Exit(EXIT_ERROR)
 
         # Warn before full re-index (destructive)
-        if full:
+        if force:
             print_warning(
                 "Wiping all git-indexed knowledge. This will re-process the entire git history."
             )
@@ -67,7 +67,7 @@ def index_command(
         indexer = GitIndexer(project_root=root)
 
         # Full re-index: reset state and episodes first
-        if full:
+        if force:
             indexer.reset_full()
 
         # Build optional status callback for verbose mode
@@ -83,7 +83,7 @@ def index_command(
         # Handle cooldown case
         if result.get("skipped_reason") == "cooldown":
             console.print(
-                "Index is up to date (ran within the last 5 minutes). Use --full to force re-index."
+                "Index is up to date (ran within the last 5 minutes). Use --force to force re-index."
             )
             raise typer.Exit(EXIT_SUCCESS)
 
@@ -95,7 +95,7 @@ def index_command(
         if result.get("skipped_reason") == "graphiti_init_failed":
             print_error(
                 "Failed to initialize knowledge graph. Cannot index git history.",
-                suggestion="Run 'graphiti health' to diagnose configuration issues"
+                suggestion="Run 'recall health' to diagnose configuration issues"
             )
             raise typer.Exit(EXIT_ERROR)
 
@@ -114,7 +114,7 @@ def index_command(
                 f"[dim]Extracted knowledge from {commits_processed} commits in {elapsed_seconds:.1f}s[/dim]"
             )
 
-        console.print("[dim]Run 'graphiti search <query>' to explore the indexed knowledge.[/dim]")
+        console.print("[dim]Run 'recall search <query>' to explore the indexed knowledge.[/dim]")
 
     except typer.Exit:
         raise

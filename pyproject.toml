@@ -32,8 +32,8 @@ reranking = [
 ]
 
 [project.scripts]
-graphiti = "src.cli:cli_entry"
-gk = "src.cli:cli_entry"
+recall = "src.cli:cli_entry"
+rc = "src.cli:cli_entry"
 
 [tool.setuptools.packages.find]
 where = ["."]
