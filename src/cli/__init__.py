@@ -9,6 +9,7 @@ from typing import Optional
 from src.cli.output import err_console, print_error
 from src.llm.provider import validate_provider_startup
 from src.llm.config import load_config as _load_config_for_startup
+from src.config.paths import migrate_dot_graphiti_to_recall
 
 
 # Create main Typer app
@@ -28,6 +29,9 @@ def main_callback(
     ),
 ):
     """Main callback that handles version display and unknown command suggestions."""
+    # Migrate .graphiti/ -> .recall/ on every startup (no-op if already done)
+    migrate_dot_graphiti_to_recall()
+
     if version:
         # Import here to avoid circular dependency
         import importlib.metadata
