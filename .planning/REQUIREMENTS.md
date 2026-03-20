@@ -30,7 +30,7 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 ### Rename & CLI Consolidation
 
 - [ ] **CLI-01**: Tool is invocable as `recall` (primary) and `rc` (alias) — `graphiti` and `gk` entrypoints removed
-- [ ] **CLI-02**: `recall --help` shows exactly 9 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui` — no plumbing commands in public help
+- [ ] **CLI-02**: `recall --help` shows exactly 10 commands: `init`, `search`, `list`, `delete`, `pin`, `unpin`, `health`, `config`, `ui`, `note` — no plumbing commands in public help
 - [ ] **CLI-03**: `recall search` auto-syncs git history (incremental if previously indexed, full if not) before returning results — works without prior `init`
 
 ### Graph UI Redesign
@@ -110,4 +110,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 — traceability updated after v2.0 roadmap creation (phases 12–15)*
+*Last updated: 2026-03-20 — CLI-02 corrected to 10 commands (init, search, list, delete, pin, unpin, health, config, ui, note) per locked decision in 16-CONTEXT.md*
