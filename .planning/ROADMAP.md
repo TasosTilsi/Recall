@@ -221,6 +221,6 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 11.1. Gap Closure — Graph UI Retention Wiring | v1.1 | commits-only | Complete | 2026-03-09 |
 | 12. DB Migration | 5/5 | Complete    | 2026-03-17 | — |
 | 13. Multi-Provider LLM | 3/3 | Complete    | 2026-03-18 | — |
-| 14. Graph UI Redesign | 1/7 | In Progress|  | — |
+| 14. Graph UI Redesign | 2/7 | In Progress|  | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
