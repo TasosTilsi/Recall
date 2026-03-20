@@ -35,8 +35,8 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 ### Graph UI Redesign
 
-- [ ] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
-- [ ] **UI-02**: User can toggle between project and global scope in the redesigned UI
+- [x] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
+- [x] **UI-02**: User can toggle between project and global scope in the redesigned UI
 - [x] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
 - [x] **UI-04**: UI reads entity data via driver-agnostic API (no direct Kuzu reads) — works with any v2.0 backend
 
@@ -90,8 +90,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-02 | Phase 13 | Complete |
 | PROV-03 | Phase 13 | Complete |
 | PROV-04 | Phase 13 | Complete |
-| UI-01 | Phase 14 | Pending |
-| UI-02 | Phase 14 | Pending |
+| UI-01 | Phase 14 | Complete |
+| UI-02 | Phase 14 | Complete |
 | UI-03 | Phase 14 | Complete |
 | UI-04 | Phase 14 | Complete |
 | MEM-01 | Phase 15 | Complete |

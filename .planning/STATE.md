@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 14-graph-ui-redesign/14-01-PLAN.md
-last_updated: "2026-03-20T18:24:03.635Z"
+stopped_at: Completed 14-graph-ui-redesign/14-06-PLAN.md
+last_updated: "2026-03-20T20:46:46.438Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 24
-  completed_plans: 19
+  completed_plans: 22
   percent: 25
 ---
 
@@ -81,6 +81,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 16-rename-cli-consolidation P04 | 9 | 1 tasks | 3 files |
 | Phase 14-graph-ui-redesign P02 | 3 | 2 tasks | 2 files |
 | Phase 14-graph-ui-redesign P01 | 9 | 2 tasks | 36 files |
+| Phase 14-graph-ui-redesign P06 | 15 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Key v2.0 architectural decisions from research:
 - [Phase 14-graph-ui-redesign]: sys.modules stub for real_ladybug in test file — test isolation without native package requirement
 - [Phase 14-01]: migrate_dot_graphiti_to_recall() called at CLI startup in main_callback before load_config; safe no-op on repeat
 - [Phase 14-01]: LLMConfig.ui_api_port removed; single ui_port=8765 with backward-compat api_port->port TOML alias
+- [Phase 14-06]: DetailPanel breadcrumb state stored as PanelItem[]; fresh open resets to [item]; in-panel navigate appends; ancestor click slices
+- [Phase 14-06]: Episodes tab uses fetchDashboard(scope).recent_episodes — no dedicated episodes endpoint needed
+- [Phase 14-06]: Entities tab filters out Episodic node type from graph nodes array
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -167,6 +171,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-20T18:24:03.632Z
-Stopped at: Completed 14-graph-ui-redesign/14-01-PLAN.md
+Last session: 2026-03-20T20:46:46.435Z
+Stopped at: Completed 14-graph-ui-redesign/14-06-PLAN.md
 Resume with: `/gsd:plan-phase 13`
