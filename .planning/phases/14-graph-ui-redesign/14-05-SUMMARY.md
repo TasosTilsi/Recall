@@ -112,6 +112,16 @@ None — `npm run build` passed with 0 TypeScript errors on first attempt.
 - GraphCanvas and GraphLegend are reusable components ready for embedding in other contexts
 - 14-06 (Entities/Relations/Episodes tabs + DetailPanel) can proceed — already completed
 
+## Self-Check: PASSED
+
+- FOUND: ui/src/routes/Dashboard.tsx (committed in ba28043)
+- FOUND: ui/src/routes/Graph.tsx (committed in 52d6eea)
+- FOUND: ui/src/components/graph/GraphCanvas.tsx (committed in 52d6eea)
+- FOUND: ui/src/components/graph/GraphLegend.tsx (committed in 52d6eea)
+- FOUND: .planning/phases/14-graph-ui-redesign/14-05-SUMMARY.md (committed in 7888ace)
+- FOUND: ba28043 in git log
+- FOUND: 52d6eea in git log
+
 ---
 *Phase: 14-graph-ui-redesign*
 *Completed: 2026-03-20*
