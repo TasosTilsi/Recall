@@ -199,11 +199,11 @@ class TestStatePath:
         """Verify get_state_path returns correct path."""
         state_path = get_state_path()
 
-        # Should be ~/.graphiti/llm_state.json
-        expected = Path.home() / ".graphiti" / "llm_state.json"
+        # Should be ~/.recall/llm_state.json (migrated from ~/.graphiti in Phase 14-01)
+        expected = Path.home() / ".recall" / "llm_state.json"
         assert state_path == expected
         assert state_path.name == "llm_state.json"
-        assert state_path.parent.name == ".graphiti"
+        assert state_path.parent.name == ".recall"
 
 
 # ---------------------------------------------------------------------------

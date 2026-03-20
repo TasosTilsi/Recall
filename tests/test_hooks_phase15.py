@@ -151,7 +151,7 @@ def test_all_hooks_fail_open_on_bad_input():
 
 def test_capture_entry_writes_jsonl(tmp_path):
     """PostToolUse: Write tool appends 1 line to pending_tool_captures.jsonl."""
-    (tmp_path / ".graphiti").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".recall").mkdir(parents=True, exist_ok=True)
     hook_input = json.dumps({
         "tool_name": "Write",
         "tool_input": {"file_path": "/tmp/test.py"},
@@ -162,7 +162,7 @@ def test_capture_entry_writes_jsonl(tmp_path):
     result = _run_hook(CAPTURE_ENTRY, hook_input, timeout=3)
     assert result.returncode == 0
 
-    jsonl_file = tmp_path / ".graphiti" / "pending_tool_captures.jsonl"
+    jsonl_file = tmp_path / ".recall" / "pending_tool_captures.jsonl"
     assert jsonl_file.exists(), f"jsonl file not created at {jsonl_file}"
 
     lines = [line.strip() for line in jsonl_file.read_text().splitlines() if line.strip()]
@@ -175,7 +175,7 @@ def test_capture_entry_writes_jsonl(tmp_path):
 
 def test_capture_entry_sanitizes_content(tmp_path):
     """PostToolUse: secret-containing content must be sanitized before writing."""
-    (tmp_path / ".graphiti").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".recall").mkdir(parents=True, exist_ok=True)
     hook_input = json.dumps({
         "tool_name": "Bash",
         "tool_input": {"command": "echo GRAPHITI_API_KEY=super_secret_value"},
@@ -186,7 +186,7 @@ def test_capture_entry_sanitizes_content(tmp_path):
     result = _run_hook(CAPTURE_ENTRY, hook_input, timeout=3)
     assert result.returncode == 0
 
-    jsonl_file = tmp_path / ".graphiti" / "pending_tool_captures.jsonl"
+    jsonl_file = tmp_path / ".recall" / "pending_tool_captures.jsonl"
     content = jsonl_file.read_text() if jsonl_file.exists() else ""
     # Security invariant: raw secret value must not appear in stored content
     assert "super_secret_value" not in content, (
@@ -196,7 +196,7 @@ def test_capture_entry_sanitizes_content(tmp_path):
 
 def test_capture_entry_ignores_non_captured_tools(tmp_path):
     """PostToolUse: Read tool must not create a jsonl entry."""
-    (tmp_path / ".graphiti").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".recall").mkdir(parents=True, exist_ok=True)
     hook_input = json.dumps({
         "tool_name": "Read",
         "tool_input": {"file_path": "/tmp/test.py"},
@@ -207,7 +207,7 @@ def test_capture_entry_ignores_non_captured_tools(tmp_path):
     result = _run_hook(CAPTURE_ENTRY, hook_input, timeout=3)
     assert result.returncode == 0
 
-    jsonl_file = tmp_path / ".graphiti" / "pending_tool_captures.jsonl"
+    jsonl_file = tmp_path / ".recall" / "pending_tool_captures.jsonl"
     if jsonl_file.exists():
         content = jsonl_file.read_text().strip()
         assert content == "", f"Read tool should not create entries: {content!r}"

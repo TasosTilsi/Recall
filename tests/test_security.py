@@ -344,7 +344,7 @@ class TestAllowlist:
     def test_allowlist_creation(self, tmp_path):
         """Test creating and initializing allowlist."""
         allowlist = Allowlist(tmp_path)
-        assert allowlist.path == tmp_path / ".graphiti" / "allowlist.json"
+        assert allowlist.path == tmp_path / ".recall" / "allowlist.json"
 
     def test_add_to_allowlist(self, tmp_path):
         """Test adding entry to allowlist."""
@@ -557,7 +557,7 @@ class TestIntegration:
         assert "1234567890abcdefghijklmnopqrstuv123456" not in result.sanitized_content
 
         # Verify audit log exists
-        audit_path = tmp_path / ".graphiti" / "audit.log"
+        audit_path = tmp_path / ".recall" / "audit.log"
         assert audit_path.exists()
 
     def test_file_processing_workflow(self, tmp_path):
@@ -652,5 +652,5 @@ class TestIntegration:
         assert "[REDACTED:" in results["config.yaml"].sanitized_content
 
         # Verify audit trail
-        audit_log = project / ".graphiti" / "audit.log"
+        audit_log = project / ".recall" / "audit.log"
         assert audit_log.exists()
