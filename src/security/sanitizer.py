@@ -73,7 +73,7 @@ class ContentSanitizer:
         self._detector = SecretDetector()
         self._allowlist = Allowlist(project_root) if enable_allowlist else None
         # Pass project_root to audit logger for proper log location
-        log_dir = project_root / ".graphiti" if project_root else None
+        log_dir = project_root / ".recall" if project_root else None
         self._audit = get_audit_logger(log_dir)
 
     def sanitize(

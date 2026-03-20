@@ -39,7 +39,7 @@ from src.models import GraphScope
 logger = structlog.get_logger()
 
 # Metadata file stores last_captured_turn per session_id
-METADATA_FILE = Path.home() / ".graphiti" / "capture_metadata.json"
+METADATA_FILE = Path.home() / ".recall" / "capture_metadata.json"
 
 
 def _load_metadata() -> dict:

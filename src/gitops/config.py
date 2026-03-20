@@ -13,8 +13,8 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Gitignore content for .graphiti directory
-GRAPHITI_GITIGNORE = """# Graphiti Knowledge Graph - Git Ignores
+# Gitignore content for .recall directory
+GRAPHITI_GITIGNORE = """# Recall Knowledge Graph - Git Ignores
 # Transient per-developer state (not shared)
 
 # SQLite queue database (per-developer processing state)
@@ -36,7 +36,7 @@ audit.log
 
 
 def generate_gitignore(project_root: Path) -> Path:
-    """Generate .gitignore file for .graphiti directory.
+    """Generate .gitignore file for .recall directory.
 
     Args:
         project_root: Root directory of the project
@@ -44,7 +44,7 @@ def generate_gitignore(project_root: Path) -> Path:
     Returns:
         Path to the created .gitignore file
     """
-    graphiti_dir = project_root / ".graphiti"
+    graphiti_dir = project_root / ".recall"
     graphiti_dir.mkdir(parents=True, exist_ok=True)
 
     gitignore_path = graphiti_dir / ".gitignore"

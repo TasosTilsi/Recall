@@ -21,13 +21,13 @@ Key features:
 Usage:
     # Process pending commits directly
     entities = await process_pending_commits(
-        pending_file=Path("~/.graphiti/pending_commits"),
+        pending_file=Path("~/.recall/pending_commits"),
         batch_size=10,
     )
 
     # Enqueue for background processing
     job_id = enqueue_git_processing(
-        pending_file=Path("~/.graphiti/pending_commits")
+        pending_file=Path("~/.recall/pending_commits")
     )
 """
 
@@ -133,7 +133,7 @@ async def process_pending_commits(
     5. Summarize and store each batch
 
     Args:
-        pending_file: Path to pending commits file. None = default (~/.graphiti/pending_commits)
+        pending_file: Path to pending commits file. None = default (~/.recall/pending_commits)
         batch_size: Number of commits per batch. Default: 10 (locked user decision)
         max_lines_per_file: Max lines per file in diff. Default: 500 (Claude's discretion)
         scope: GraphScope for storage. None = auto-detect from project_root

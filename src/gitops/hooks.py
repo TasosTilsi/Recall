@@ -103,13 +103,13 @@ def scan_staged_secrets(project_root: Path) -> list[str]:
 
 
 def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
-    """Check .graphiti/ directory size and return warnings if thresholds exceeded.
+    """Check .recall/ directory size and return warnings if thresholds exceeded.
 
-    Monitors .graphiti/ size to inform developers when they should run
-    'graphiti compact' to clean up deduplicated entities.
+    Monitors .recall/ size to inform developers when they should run
+    'recall compact' to clean up deduplicated entities.
 
     Args:
-        project_root: Path to project root containing .graphiti directory.
+        project_root: Path to project root containing .recall directory.
 
     Returns:
         Tuple of (size_mb, warning_message). warning_message is None if below thresholds
@@ -119,7 +119,7 @@ def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
         return (0.0, None)
 
     try:
-        graphiti_dir = project_root / ".graphiti"
+        graphiti_dir = project_root / ".recall"
 
         if not graphiti_dir.exists():
             return (0.0, None)
@@ -137,12 +137,12 @@ def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
         if size_mb > SIZE_STRONG_WARNING_MB:
             return (
                 size_mb,
-                f"STRONG_WARNING: .graphiti/ is {size_mb:.1f}MB. Run 'graphiti compact' to clean up.",
+                f"STRONG_WARNING: .recall/ is {size_mb:.1f}MB. Run 'recall compact' to clean up.",
             )
         elif size_mb > SIZE_WARNING_MB:
             return (
                 size_mb,
-                f"WARNING: .graphiti/ is {size_mb:.1f}MB. Consider running 'graphiti compact'.",
+                f"WARNING: .recall/ is {size_mb:.1f}MB. Consider running 'recall compact'.",
             )
         else:
             return (size_mb, None)

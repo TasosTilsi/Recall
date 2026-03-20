@@ -47,7 +47,7 @@ def get_retention_manager() -> "RetentionManager":
     """Return the singleton RetentionManager, creating it on first call."""
     global _manager
     if _manager is None:
-        db_path = Path.home() / ".graphiti" / "retention.db"
+        db_path = Path.home() / ".recall" / "retention.db"
         _manager = RetentionManager(db_path=db_path)
     return _manager
 

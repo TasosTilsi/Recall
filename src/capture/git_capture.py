@@ -18,7 +18,7 @@ import structlog
 logger = structlog.get_logger()
 
 # Default pending commits file location
-DEFAULT_PENDING_FILE = Path.home() / ".graphiti" / "pending_commits"
+DEFAULT_PENDING_FILE = Path.home() / ".recall" / "pending_commits"
 
 
 def read_and_clear_pending_commits(pending_file: Path | None = None) -> list[str]:
@@ -28,11 +28,11 @@ def read_and_clear_pending_commits(pending_file: Path | None = None) -> list[str
     If new commits are appended during processing, they're preserved in the original file.
     
     Args:
-        pending_file: Path to pending commits file. Defaults to ~/.graphiti/pending_commits
-    
+        pending_file: Path to pending commits file. Defaults to ~/.recall/pending_commits
+
     Returns:
         List of commit SHAs (empty list if file doesn't exist or is empty)
-    
+
     Example:
         >>> commits = read_and_clear_pending_commits()
         >>> # Process commits
@@ -225,8 +225,8 @@ def append_pending_commit(
     
     Args:
         commit_sha: Git commit SHA to append
-        pending_file: Path to pending commits file. Defaults to ~/.graphiti/pending_commits
-    
+        pending_file: Path to pending commits file. Defaults to ~/.recall/pending_commits
+
     Example:
         >>> append_pending_commit('abc123def456')
         >>> # Commit hash now in queue for background processing

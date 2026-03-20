@@ -24,7 +24,7 @@ class AllowlistEntry:
 class Allowlist:
     """Per-project allowlist management.
 
-    Stores allowlist in .graphiti/allowlist.json with:
+    Stores allowlist in .recall/allowlist.json with:
     - SHA256 hashes (never plain text secrets)
     - Required comments for each entry
     - Audit metadata (date, who added)
@@ -37,7 +37,7 @@ class Allowlist:
             project_root: Project root directory. Uses cwd if None.
         """
         self._root = project_root or Path.cwd()
-        self._path = self._root / ".graphiti" / "allowlist.json"
+        self._path = self._root / ".recall" / "allowlist.json"
         self._entries: dict[str, AllowlistEntry] = {}
         self._load()
 
