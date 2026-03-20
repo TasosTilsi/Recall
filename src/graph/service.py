@@ -1269,3 +1269,266 @@ class GraphService:
         except Exception as e:
             logger.warning("get_entity_by_uuid failed", error=str(e), uuid=uuid)
             return None
+
+    async def list_episodes(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+        limit: int = 50,
+    ) -> list[dict]:
+        """List episode (Episodic) nodes. Never calls _get_graphiti().
+
+        Returns list of dicts with: uuid, name, source_description, content,
+        created_at, source. Sorted newest-first.
+        """
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return []
+        try:
+            driver = self._graph_manager.get_driver(scope, project_root)
+            group_id = self._get_group_id(scope, project_root)
+            results, _, _ = await driver.execute_query(
+                """
+                MATCH (e:Episodic)
+                WHERE e.group_id = $group_id
+                RETURN e.uuid AS uuid, e.name AS name,
+                       e.source_description AS source_description,
+                       e.content AS content, e.created_at AS created_at,
+                       e.source AS source
+                ORDER BY e.created_at DESC
+                LIMIT $limit
+                """,
+                group_id=group_id,
+                limit=limit,
+            )
+            return [
+                {
+                    "uuid": row["uuid"],
+                    "name": row["name"] or "",
+                    "source_description": row["source_description"] or "",
+                    "content": row["content"] or "",
+                    "created_at": str(row["created_at"] or ""),
+                    "source": str(row["source"] or ""),
+                }
+                for row in results
+            ]
+        except Exception as e:
+            logger.warning("list_episodes failed", error=str(e), scope=str(scope))
+            return []
+
+    async def get_episode_detail(
+        self,
+        uuid: str,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> dict | None:
+        """Fetch a single Episodic node with its entity mentions. Never calls _get_graphiti()."""
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return None
+        try:
+            driver = self._graph_manager.get_driver(scope, project_root)
+            # Episode base record
+            results, _, _ = await driver.execute_query(
+                """
+                MATCH (e:Episodic {uuid: $uuid})
+                RETURN e.uuid AS uuid, e.name AS name,
+                       e.source_description AS source_description,
+                       e.content AS content, e.created_at AS created_at,
+                       e.source AS source
+                """,
+                uuid=uuid,
+            )
+            if not results:
+                return None
+            row = results[0]
+            episode = {
+                "uuid": row["uuid"],
+                "name": row["name"] or "",
+                "source_description": row["source_description"] or "",
+                "content": row["content"] or "",
+                "created_at": str(row["created_at"] or ""),
+                "source": str(row["source"] or ""),
+                "entities": [],
+            }
+            # Fetch entity mentions via MENTIONS edges
+            try:
+                mention_results, _, _ = await driver.execute_query(
+                    """
+                    MATCH (ep:Episodic {uuid: $uuid})-[:MENTIONS]->(e:Entity)
+                    RETURN e.uuid AS uuid, e.name AS name, e.labels AS tags
+                    """,
+                    uuid=uuid,
+                )
+                episode["entities"] = [
+                    {"uuid": r["uuid"], "name": r["name"] or "", "tags": r["tags"] or []}
+                    for r in mention_results
+                ]
+            except Exception:
+                pass  # MENTIONS edges may not exist for all episodes
+            return episode
+        except Exception as e:
+            logger.warning("get_episode_detail failed", error=str(e), uuid=uuid)
+            return None
+
+    async def get_time_series_counts(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+        days: int = 30,
+    ) -> list[dict]:
+        """Return daily counts of entities, edges, and episodes over `days` window.
+
+        Returns list of dicts: [{day: "YYYY-MM-DD", entity_count: N, edge_count: N, episode_count: N}]
+        sorted oldest-first. Never calls _get_graphiti().
+
+        Note: LadybugDB date() function support is unverified — aggregates at Python level
+        from raw created_at timestamps as a fallback.
+        """
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return []
+        try:
+            driver = self._graph_manager.get_driver(scope, project_root)
+            group_id = self._get_group_id(scope, project_root)
+            from datetime import timedelta
+            since = (datetime.now() - timedelta(days=days)).isoformat()
+
+            # Fetch raw created_at for entities
+            entity_results, _, _ = await driver.execute_query(
+                "MATCH (e:Entity) WHERE e.group_id = $group_id AND e.created_at >= $since RETURN e.created_at AS ts",
+                group_id=group_id, since=since,
+            )
+            edge_results, _, _ = await driver.execute_query(
+                """MATCH (a:Entity {group_id: $group_id})-[:RELATES_TO]->(rel:RelatesToNode_)
+                   WHERE rel.created_at >= $since RETURN rel.created_at AS ts""",
+                group_id=group_id, since=since,
+            )
+            ep_results, _, _ = await driver.execute_query(
+                "MATCH (e:Episodic) WHERE e.group_id = $group_id AND e.created_at >= $since RETURN e.created_at AS ts",
+                group_id=group_id, since=since,
+            )
+
+            # Aggregate by day in Python
+            entity_by_day: dict = defaultdict(int)
+            edge_by_day: dict = defaultdict(int)
+            ep_by_day: dict = defaultdict(int)
+
+            def _day(ts) -> str:
+                if ts is None:
+                    return ""
+                s = str(ts)
+                return s[:10] if len(s) >= 10 else s
+
+            for row in entity_results:
+                d = _day(row["ts"])
+                if d:
+                    entity_by_day[d] += 1
+            for row in edge_results:
+                d = _day(row["ts"])
+                if d:
+                    edge_by_day[d] += 1
+            for row in ep_results:
+                d = _day(row["ts"])
+                if d:
+                    ep_by_day[d] += 1
+
+            all_days = sorted(set(entity_by_day) | set(edge_by_day) | set(ep_by_day))
+            return [
+                {
+                    "day": d,
+                    "entity_count": entity_by_day[d],
+                    "edge_count": edge_by_day[d],
+                    "episode_count": ep_by_day[d],
+                }
+                for d in all_days
+            ]
+        except Exception as e:
+            logger.warning("get_time_series_counts failed", error=str(e), scope=str(scope))
+            return []
+
+    async def get_top_connected_entities(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+        limit: int = 10,
+    ) -> list[dict]:
+        """Return top N entities ranked by edge count. Never calls _get_graphiti().
+
+        Returns list of dicts: [{uuid, name, edge_count}] sorted descending.
+        """
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return []
+        try:
+            driver = self._graph_manager.get_driver(scope, project_root)
+            group_id = self._get_group_id(scope, project_root)
+            results, _, _ = await driver.execute_query(
+                """
+                MATCH (a:Entity {group_id: $group_id})-[:RELATES_TO]->(rel:RelatesToNode_)
+                RETURN a.uuid AS uuid, a.name AS name, count(rel) AS edge_count
+                ORDER BY edge_count DESC
+                LIMIT $limit
+                """,
+                group_id=group_id,
+                limit=limit,
+            )
+            return [
+                {"uuid": row["uuid"], "name": row["name"] or "", "edge_count": int(row["edge_count"] or 0)}
+                for row in results
+            ]
+        except Exception as e:
+            logger.warning("get_top_connected_entities failed", error=str(e), scope=str(scope))
+            return []
+
+    async def get_retention_summary(
+        self,
+        scope: GraphScope,
+        project_root: Optional[Path],
+    ) -> dict:
+        """Return retention status counts for entities. Never calls _get_graphiti().
+
+        Returns dict: {pinned: N, normal: N, stale: N, archived: N}
+        Uses retention manager for pin/stale/archive state; entity count from driver.
+        """
+        db_path = self._resolve_db_path(scope, project_root)
+        if not db_path or not db_path.exists():
+            return {"pinned": 0, "normal": 0, "stale": 0, "archived": 0}
+        try:
+            driver = self._graph_manager.get_driver(scope, project_root)
+            group_id = self._get_group_id(scope, project_root)
+
+            # Total entity count
+            results, _, _ = await driver.execute_query(
+                "MATCH (e:Entity) WHERE e.group_id = $group_id RETURN e.uuid AS uuid",
+                group_id=group_id,
+            )
+            all_uuids = {row["uuid"] for row in results}
+            total = len(all_uuids)
+
+            # Retention state from manager
+            pinned_count = 0
+            stale_count = 0
+            archived_count = 0
+            try:
+                from src.retention import get_retention_manager
+                retention = get_retention_manager()
+                pinned_uuids = retention.get_pin_state_uuids(group_id)
+                archived_uuids = retention.get_archive_state_uuids(group_id)
+                stale_uuids = set(retention.get_stale_uuids(group_id)) if hasattr(retention, "get_stale_uuids") else set()
+                pinned_count = len(pinned_uuids & all_uuids)
+                archived_count = len(archived_uuids & all_uuids)
+                stale_count = len(stale_uuids & all_uuids)
+            except Exception:
+                pass
+
+            normal_count = total - pinned_count - stale_count - archived_count
+            return {
+                "pinned": pinned_count,
+                "normal": max(0, normal_count),
+                "stale": stale_count,
+                "archived": archived_count,
+            }
+        except Exception as e:
+            logger.warning("get_retention_summary failed", error=str(e), scope=str(scope))
+            return {"pinned": 0, "normal": 0, "stale": 0, "archived": 0}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PostToolUse hook — fire-and-forget tool capture via jsonl append.
 
-Appends sanitized tool call content to .graphiti/pending_tool_captures.jsonl.
+Appends sanitized tool call content to .recall/pending_tool_captures.jsonl.
 Security filtering applied before write. No LLM calls, no blocking operations.
 Target: <200ms (well within 1s PostToolUse timeout budget).
 
@@ -27,7 +27,7 @@ CAPTURED_TOOLS = {"Write", "Edit", "Bash", "WebFetch"}
 OUTPUT_TRUNCATE_CHARS = 500
 ARGS_TRUNCATE_CHARS = 200
 
-PENDING_CAPTURES_FILENAME = ".graphiti/pending_tool_captures.jsonl"
+PENDING_CAPTURES_FILENAME = ".recall/pending_tool_captures.jsonl"
 
 
 def _extract_key_args(tool_name: str, tool_input: dict) -> str:

@@ -30,10 +30,10 @@ def _config_app_default(
     """View and modify LLM configuration.
 
     Examples:
-        graphiti config                        # Show all settings
-        graphiti config --get cloud.endpoint   # Get specific value
-        graphiti config --set retry.max_attempts=5  # Set value
-        graphiti config init                   # Generate default llm.toml
+        recall config                        # Show all settings
+        recall config --get cloud.endpoint   # Get specific value
+        recall config --set retry.max_attempts=5  # Set value
+        recall config init                   # Generate default config.toml
     """
     if ctx.invoked_subcommand is None:
         config_command(set_value=set_value, get_key=get_key, format=format)
@@ -72,7 +72,8 @@ VALID_CONFIG_KEYS = {
 
 def _get_config_path() -> Path:
     """Get the path to the LLM config file."""
-    return Path.home() / ".graphiti" / "llm.toml"
+    from src.config.paths import CONFIG_PATH
+    return CONFIG_PATH  # ~/.recall/config.toml
 
 
 def _get_nested_value(config_dict: dict, key_path: str):

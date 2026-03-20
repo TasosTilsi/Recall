@@ -37,8 +37,8 @@ def _approx_tokens(text: str) -> int:
 
 
 def _read_session_id(project_root: Path) -> Optional[str]:
-    """Read session UUID from .graphiti/.current_session_id."""
-    session_file = project_root / ".graphiti" / ".current_session_id"
+    """Read session UUID from .recall/.current_session_id."""
+    session_file = project_root / ".recall" / ".current_session_id"
     if session_file.exists():
         return session_file.read_text().strip() or None
     return None

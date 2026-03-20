@@ -34,14 +34,14 @@ class SecurityAuditLogger:
         """Initialize audit logger with file rotation.
 
         Args:
-            log_dir: Directory for audit logs. Defaults to .graphiti/
+            log_dir: Directory for audit logs. Defaults to .recall/
         """
         if self._initialized:
             return
         self._initialized = True
 
-        # Default to project-local .graphiti directory
-        self._log_dir = log_dir or Path(".graphiti")
+        # Default to project-local .recall directory
+        self._log_dir = log_dir or Path(".recall")
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._log_path = self._log_dir / AUDIT_LOG_FILENAME
 

@@ -23,7 +23,7 @@ def init_command(
     Steps performed:
     1. Install 4 Claude Code hook scripts to ~/.claude/settings.json
     2. Run full git history index (bootstrap the graph from git log)
-    3. Write ~/.graphiti/llm.toml template if missing (static template — edit to customize)
+    3. Write ~/.recall/config.toml template if missing (static template — edit to customize)
     4. Register MCP server in Claude Desktop config (~/.claude.json)
 
     Examples:
@@ -72,7 +72,7 @@ def init_command(
     console.print("[cyan]Step 3/4:[/cyan] Checking LLM configuration...")
     try:
         from pathlib import Path
-        config_path = Path.home() / ".graphiti" / "llm.toml"
+        config_path = Path.home() / ".recall" / "config.toml"
         if config_path.exists() and not force:
             console.print(f"[dim]  Config already exists at {config_path} — skipping[/dim]")
         else:
@@ -108,7 +108,7 @@ mode = "decisions-only"
 # uri  = "bolt://neo4j:changeme@localhost:7687"
 '''
             config_path.write_text(template)
-            print_success(f"  Config template written to {config_path} — edit to customize")
+            print_success(f"  Config template written to {config_path} (edit to customize)")
     except Exception as e:
         print_warning(f"  Config generation failed: {e}")
 

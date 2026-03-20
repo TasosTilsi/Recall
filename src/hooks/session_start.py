@@ -2,7 +2,7 @@
 """SessionStart hook — generates session UUID and runs incremental git sync.
 
 Runs when Claude Code opens a new session. Writes session UUID to
-.graphiti/.current_session_id for use by other hooks. Calls GitIndexer
+.recall/.current_session_id for use by other hooks. Calls GitIndexer
 directly for incremental git sync (no subprocess — more robust in hook context).
 
 Fail-open: any exception produces no stdout output and exits 0.
@@ -25,9 +25,9 @@ logger = structlog.get_logger()
 
 
 def _write_session_id(project_root: Path) -> str:
-    """Generate UUID v4 and write to .graphiti/.current_session_id. Overwrites if exists."""
+    """Generate UUID v4 and write to .recall/.current_session_id. Overwrites if exists."""
     session_id = str(uuid.uuid4())
-    session_file = project_root / ".graphiti" / ".current_session_id"
+    session_file = project_root / ".recall" / ".current_session_id"
     session_file.parent.mkdir(parents=True, exist_ok=True)
     session_file.write_text(session_id)
     logger.debug("session_id_written", session_id=session_id, path=str(session_file))

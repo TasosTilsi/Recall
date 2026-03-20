@@ -1,6 +1,6 @@
 """JSON state management for SHA cursor, processed set, and cooldown tracking.
 
-Manages the index-state.json file stored in .graphiti/ to track which commits
+Manages the index-state.json file stored in .recall/ to track which commits
 have been indexed, the last indexed SHA for incremental runs, and cooldown
 timing to prevent excessive re-runs.
 """
@@ -31,7 +31,7 @@ class IndexState:
 
 def _state_file_path(project_root: Path) -> Path:
     """Return the absolute path to the state file."""
-    return project_root / ".graphiti" / STATE_FILE_NAME
+    return project_root / ".recall" / STATE_FILE_NAME
 
 
 def load_state(project_root: Path) -> IndexState:
@@ -40,7 +40,7 @@ def load_state(project_root: Path) -> IndexState:
     Returns a fresh IndexState if the file does not exist or is malformed.
 
     Args:
-        project_root: Root directory of the project (contains .graphiti/)
+        project_root: Root directory of the project (contains .recall/)
 
     Returns:
         IndexState populated from disk, or a fresh default instance
@@ -71,7 +71,7 @@ def save_state(project_root: Path, state: IndexState) -> None:
     a crash mid-write does not corrupt the state file.
 
     Args:
-        project_root: Root directory of the project (contains .graphiti/)
+        project_root: Root directory of the project (contains .recall/)
         state: IndexState to persist
     """
     state_path = _state_file_path(project_root)
@@ -87,7 +87,7 @@ def is_within_cooldown(project_root: Path, cooldown_minutes: int = 5) -> bool:
     """Check whether the last run was within the cooldown window.
 
     Args:
-        project_root: Root directory of the project (contains .graphiti/)
+        project_root: Root directory of the project (contains .recall/)
         cooldown_minutes: Cooldown window in minutes (default 5)
 
     Returns:
@@ -144,7 +144,7 @@ def clear_index_state(project_root: Path) -> None:
     Used by --full flag to force a complete re-index from the beginning.
 
     Args:
-        project_root: Root directory of the project (contains .graphiti/)
+        project_root: Root directory of the project (contains .recall/)
     """
     state_path = _state_file_path(project_root)
     state_path.unlink(missing_ok=True)

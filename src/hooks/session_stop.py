@@ -28,7 +28,7 @@ import structlog
 
 logger = structlog.get_logger()
 
-PENDING_CAPTURES_FILENAME = ".graphiti/pending_tool_captures.jsonl"
+PENDING_CAPTURES_FILENAME = ".recall/pending_tool_captures.jsonl"
 SESSION_SUMMARY_PROMPT = """\
 Summarize this development session in 2-3 sentences. Focus on:
 - What was built or changed (specific files, features, fixes)
@@ -42,7 +42,7 @@ Summary (2-3 sentences):"""
 
 
 def _read_session_id(project_root: Path) -> Optional[str]:
-    session_file = project_root / ".graphiti" / ".current_session_id"
+    session_file = project_root / ".recall" / ".current_session_id"
     if session_file.exists():
         return session_file.read_text().strip() or None
     return None
