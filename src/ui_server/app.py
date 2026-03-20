@@ -39,8 +39,8 @@ def create_app(
         scope_label: Human-readable scope label for display ("project (myrepo)" or "global")
         scope: "project" or "global" — passed to routes for Kuzu DB path resolution
         project_root: Project root path when scope="project"
-        static_dir: Override for Next.js out/ directory (defaults to ui/out/ at repo root)
-        dev_mode: If True, adds CORS headers for next dev at localhost:3000
+        static_dir: Override for Vite out/ directory (defaults to ui/out/ at repo root)
+        dev_mode: If True, adds CORS headers for Vite dev at localhost:5173
     """
     app = FastAPI(title="Graphiti UI API", docs_url=None, redoc_url=None)
 
@@ -49,11 +49,11 @@ def create_app(
     app.state.project_root = project_root
     app.state.scope_label = scope_label
 
-    # CORS — only for local next dev workflow
+    # CORS — only for local Vite dev workflow
     if dev_mode:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://localhost:3000"],
+            allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite and legacy dev
             allow_methods=["GET"],
             allow_headers=["*"],
         )
