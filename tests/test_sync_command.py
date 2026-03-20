@@ -1,6 +1,11 @@
-"""Tests for the graphiti sync CLI command (Phase 15-01).
+"""Tests for the recall index CLI command (Phase 16).
 
-Tests the sync command which is an alias for incremental git indexing.
+The old `graphiti sync` command is removed in Phase 16. Incremental git
+indexing is now available as the hidden `recall index` command:
+  - `recall index`          incremental (new commits only)
+  - `recall index --force`  full re-index from scratch
+
+These tests replace the original sync-command tests.
 """
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,31 +21,37 @@ runner = CliRunner()
 # ==================== Registration Tests ====================
 
 
-def test_sync_command_registered():
-    """sync must be registered as a CLI command."""
-    cmd_names = [c.name for c in app.registered_commands]
-    assert "sync" in cmd_names, f"sync not registered; found: {cmd_names}"
+def test_index_command_registered():
+    """index must be registered as a CLI command (hidden=True)."""
+    all_names = [c.name for c in app.registered_commands]
+    assert "index" in all_names, f"index not registered; found: {all_names}"
+
+
+def test_sync_command_not_registered():
+    """sync must NOT be registered — it was removed in Phase 16."""
+    all_names = [c.name for c in app.registered_commands]
+    assert "sync" not in all_names, f"sync still registered; Phase 16 should have removed it"
 
 
 # ==================== Help Tests ====================
 
 
-def test_sync_help_exits_zero():
-    """graphiti sync --help must exit 0."""
-    result = runner.invoke(app, ["sync", "--help"])
+def test_index_help_exits_zero():
+    """recall index --help must exit 0."""
+    result = runner.invoke(app, ["index", "--help"])
     assert result.exit_code == 0
-    assert "sync" in result.output.lower() or "incremental" in result.output.lower()
+    assert "force" in result.output.lower() or "incremental" in result.output.lower()
 
 
 # ==================== Non-git directory Tests ====================
 
 
-@patch("src.cli.commands.sync.resolve_scope")
-def test_sync_non_git_directory_exits_error(mock_resolve_scope):
-    """sync in a non-git directory must exit with error code 1."""
+@patch("src.cli.commands.index.resolve_scope")
+def test_index_non_git_directory_exits_error(mock_resolve_scope):
+    """index in a non-git directory must exit with error code 1."""
     mock_resolve_scope.return_value = (None, None)
 
-    result = runner.invoke(app, ["sync"])
+    result = runner.invoke(app, ["index"])
 
     assert result.exit_code == 1
     assert "git" in result.output.lower() or "repository" in result.output.lower()
@@ -49,10 +60,11 @@ def test_sync_non_git_directory_exits_error(mock_resolve_scope):
 # ==================== Incremental Indexing Tests ====================
 
 
-@patch("src.cli.commands.sync.GitIndexer")
-@patch("src.cli.commands.sync.resolve_scope")
-def test_sync_calls_indexer_incremental(mock_resolve_scope, mock_indexer_cls):
-    """sync must call GitIndexer.run() with full=False."""
+@patch("src.indexer.GitIndexer")
+@patch("git.Repo")
+@patch("src.cli.commands.index.resolve_scope")
+def test_index_calls_indexer_incremental(mock_resolve_scope, mock_repo, mock_indexer_cls):
+    """index must call GitIndexer.run() with full=False by default."""
     from src.models import GraphScope
 
     mock_resolve_scope.return_value = (GraphScope.PROJECT, Path("/some/project"))
@@ -65,17 +77,21 @@ def test_sync_calls_indexer_incremental(mock_resolve_scope, mock_indexer_cls):
     }
     mock_indexer_cls.return_value = mock_indexer
 
-    result = runner.invoke(app, ["sync"])
+    result = runner.invoke(app, ["index"])
 
     assert result.exit_code == 0
     mock_indexer_cls.assert_called_once_with(project_root=Path("/some/project"))
-    mock_indexer.run.assert_called_once_with(full=False)
+    call_kwargs = mock_indexer.run.call_args
+    assert call_kwargs.kwargs.get("full") is False or (
+        call_kwargs.args and call_kwargs.args[0] is False
+    ), f"Expected full=False, got: {call_kwargs}"
 
 
-@patch("src.cli.commands.sync.GitIndexer")
-@patch("src.cli.commands.sync.resolve_scope")
-def test_sync_shows_commits_processed(mock_resolve_scope, mock_indexer_cls):
-    """sync must display how many commits were processed."""
+@patch("src.indexer.GitIndexer")
+@patch("git.Repo")
+@patch("src.cli.commands.index.resolve_scope")
+def test_index_shows_commits_processed(mock_resolve_scope, mock_repo, mock_indexer_cls):
+    """index must display how many commits were processed."""
     from src.models import GraphScope
 
     mock_resolve_scope.return_value = (GraphScope.PROJECT, Path("/some/project"))
@@ -88,7 +104,7 @@ def test_sync_shows_commits_processed(mock_resolve_scope, mock_indexer_cls):
     }
     mock_indexer_cls.return_value = mock_indexer
 
-    result = runner.invoke(app, ["sync"])
+    result = runner.invoke(app, ["index"])
 
     assert result.exit_code == 0
     assert "7" in result.output
@@ -97,10 +113,11 @@ def test_sync_shows_commits_processed(mock_resolve_scope, mock_indexer_cls):
 # ==================== Exception Handling Tests ====================
 
 
-@patch("src.cli.commands.sync.GitIndexer")
-@patch("src.cli.commands.sync.resolve_scope")
-def test_sync_handles_exception_gracefully(mock_resolve_scope, mock_indexer_cls):
-    """sync must catch exceptions and exit with code 1."""
+@patch("src.indexer.GitIndexer")
+@patch("git.Repo")
+@patch("src.cli.commands.index.resolve_scope")
+def test_index_handles_exception_gracefully(mock_resolve_scope, mock_repo, mock_indexer_cls):
+    """index must catch exceptions and exit with code 1."""
     from src.models import GraphScope
 
     mock_resolve_scope.return_value = (GraphScope.PROJECT, Path("/some/project"))
@@ -108,7 +125,7 @@ def test_sync_handles_exception_gracefully(mock_resolve_scope, mock_indexer_cls)
     mock_indexer.run.side_effect = RuntimeError("Connection refused")
     mock_indexer_cls.return_value = mock_indexer
 
-    result = runner.invoke(app, ["sync"])
+    result = runner.invoke(app, ["index"])
 
     assert result.exit_code == 1
-    assert "sync failed" in result.output.lower() or "connection refused" in result.output.lower()
+    assert "index" in result.output.lower() or "connection refused" in result.output.lower()

@@ -102,8 +102,17 @@ Plans:
   3. User can filter the entity list and graph by retention status (pinned, archived, stale) using UI controls — the filter state persists within the session
   4. The UI backend reads all entity data via `GraphService` methods (no direct DB driver calls) — swapping the underlying backend in Phase 12 requires zero UI code changes
 
-**Research flag**: Medium research needed — shadcn/ui integration with Next.js static export, SSR guards for graph libraries, and query patterns against the new backend API.
-**Plans**: TBD
+**Research flag**: Research complete — see 14-RESEARCH.md and 14-UI-SPEC.md.
+**Plans**: 7 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Directory rename .graphiti → .recall + LLMConfig ui_port cleanup (~20 files)
+- [ ] 14-02-PLAN.md — New GraphService read-only methods (list_episodes, get_episode_detail, get_time_series_counts, get_top_connected_entities, get_retention_summary)
+- [ ] 14-03-PLAN.md — API routes rewrite (4 endpoints) + app.py CORS + tests
+- [ ] 14-04-PLAN.md — Vite scaffold + shadcn init + shell layout + route stubs
+- [ ] 14-05-PLAN.md — Dashboard tab (9 charts) + Graph tab (Sigma.js WebGL)
+- [ ] 14-06-PLAN.md — Entities/Relations/Episodes tabs + DetailPanel (breadcrumb, 3 modes)
+- [ ] 14-07-PLAN.md — Search tab + final build + human smoke test
 
 ---
 

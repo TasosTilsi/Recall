@@ -43,35 +43,42 @@ def _fake_stale_nodes(n: int) -> list[dict]:
 
 class TestRetn01CompactExpire:
     def test_compact_expire_archives_stale_nodes(self, runner: CliRunner):
-        """RETN-01: compact --expire calls archive_nodes and prints 'Archived N'."""
+        """RETN-01: list --compact calls archive_nodes and prints 'Archived N'.
+
+        Phase 16: `compact --expire` absorbed into `list --compact`.
+        """
         from src.cli import app
 
         stale = _fake_stale_nodes(2)
         mock_service = MagicMock()
 
         with (
-            patch("src.cli.commands.compact.get_service", return_value=mock_service),
+            patch("src.cli.commands.list_cmd.get_service", return_value=mock_service),
             patch(
-                "src.cli.commands.compact.run_graph_operation",
+                "src.cli.commands.list_cmd.run_graph_operation",
                 side_effect=[stale, 2],
             ),
+            patch("src.cli.utils.confirm_action", return_value=True),
         ):
-            result = runner.invoke(app, ["compact", "--expire", "--force"])
+            result = runner.invoke(app, ["list", "--compact"])
 
         assert result.exit_code == 0, f"stdout:\n{result.stdout}"
         assert "Archived 2" in result.stdout
 
     def test_compact_expire_no_stale_nodes(self, runner: CliRunner):
-        """RETN-01: compact --expire exits cleanly when no stale nodes exist."""
+        """RETN-01: list --compact exits cleanly when no stale nodes exist.
+
+        Phase 16: `compact --expire` absorbed into `list --compact`.
+        """
         from src.cli import app
 
         mock_service = MagicMock()
 
         with (
-            patch("src.cli.commands.compact.get_service", return_value=mock_service),
-            patch("src.cli.commands.compact.run_graph_operation", return_value=[]),
+            patch("src.cli.commands.list_cmd.get_service", return_value=mock_service),
+            patch("src.cli.commands.list_cmd.run_graph_operation", return_value=[]),
         ):
-            result = runner.invoke(app, ["compact", "--expire", "--force"])
+            result = runner.invoke(app, ["list", "--compact"])
 
         assert result.exit_code == 0
         assert "No stale nodes" in result.stdout
@@ -83,17 +90,20 @@ class TestRetn01CompactExpire:
 
 class TestRetn02StalePreview:
     def test_stale_shows_node_names(self, runner: CliRunner):
-        """RETN-02: stale command displays stale node names."""
+        """RETN-02: list --stale displays stale node names.
+
+        Phase 16: `stale` command absorbed into `list --stale`.
+        """
         from src.cli import app
 
         stale = _fake_stale_nodes(3)
         mock_service = MagicMock()
 
         with (
-            patch("src.cli.commands.stale.get_service", return_value=mock_service),
-            patch("src.cli.commands.stale.run_graph_operation", return_value=stale),
+            patch("src.cli.commands.list_cmd.get_service", return_value=mock_service),
+            patch("src.cli.commands.list_cmd.run_graph_operation", return_value=stale),
         ):
-            result = runner.invoke(app, ["stale"])
+            result = runner.invoke(app, ["list", "--stale"])
 
         assert result.exit_code == 0, f"stdout:\n{result.stdout}"
         assert "StaleNode0" in result.stdout
@@ -102,32 +112,38 @@ class TestRetn02StalePreview:
         assert "Showing 25 of" not in result.stdout
 
     def test_stale_shows_cap_summary_for_many_nodes(self, runner: CliRunner):
-        """RETN-02: stale command shows 'Showing 25 of 30' when results > 25."""
+        """RETN-02: list --stale shows 'Showing 25 of 30' when results > 25.
+
+        Phase 16: `stale` command absorbed into `list --stale`.
+        """
         from src.cli import app
 
         stale = _fake_stale_nodes(30)
         mock_service = MagicMock()
 
         with (
-            patch("src.cli.commands.stale.get_service", return_value=mock_service),
-            patch("src.cli.commands.stale.run_graph_operation", return_value=stale),
+            patch("src.cli.commands.list_cmd.get_service", return_value=mock_service),
+            patch("src.cli.commands.list_cmd.run_graph_operation", return_value=stale),
         ):
-            result = runner.invoke(app, ["stale"])
+            result = runner.invoke(app, ["list", "--stale"])
 
         assert result.exit_code == 0, f"stdout:\n{result.stdout}"
         assert "Showing 25 of 30" in result.stdout
 
     def test_stale_no_nodes_shows_success(self, runner: CliRunner):
-        """RETN-02: stale command shows success message when graph is fresh."""
+        """RETN-02: list --stale shows success message when graph is fresh.
+
+        Phase 16: `stale` command absorbed into `list --stale`.
+        """
         from src.cli import app
 
         mock_service = MagicMock()
 
         with (
-            patch("src.cli.commands.stale.get_service", return_value=mock_service),
-            patch("src.cli.commands.stale.run_graph_operation", return_value=[]),
+            patch("src.cli.commands.list_cmd.get_service", return_value=mock_service),
+            patch("src.cli.commands.list_cmd.run_graph_operation", return_value=[]),
         ):
-            result = runner.invoke(app, ["stale"])
+            result = runner.invoke(app, ["list", "--stale"])
 
         assert result.exit_code == 0
         assert "No stale nodes" in result.stdout
