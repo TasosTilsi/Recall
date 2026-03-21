@@ -46,7 +46,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 16 (completed 2026-03-20)
 - [x] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14 (completed 2026-03-20)
 - [x] **Phase 17: Fix Stale Binary References** — `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server; MEM-03 docs corrected; test skip reason fixed [Gap Closure] (completed 2026-03-21)
-- [ ] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure]
+- [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
 - [ ] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure]
 
 ## Phase Details
@@ -262,5 +262,5 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
 | 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
-| 18. Formal Verification — Phases 14 & 16 | 1/2 | In Progress|  | — |
+| 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete   | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | Pending | | — |

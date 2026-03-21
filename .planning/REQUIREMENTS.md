@@ -99,9 +99,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-03 | Phase 17 (gap closure) | Complete |
 | MEM-04 | Phase 15 | Complete |
 | MEM-05 | Phase 15 | Complete |
-| CLI-01 | Phase 18 (gap closure) | Pending |
-| CLI-02 | Phase 18 (gap closure) | Pending |
-| CLI-03 | Phase 18 (gap closure) | Pending |
+| CLI-01 | Phase 18 (gap closure) | Complete |
+| CLI-02 | Phase 18 (gap closure) | Complete |
+| CLI-03 | Phase 18 (gap closure) | Complete |
 
 **Coverage:**
 - v2.0 requirements: 18 total
