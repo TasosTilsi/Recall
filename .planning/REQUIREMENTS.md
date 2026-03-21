@@ -22,8 +22,8 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 ### Memory System
 
 - [x] **MEM-01**: All 6 Claude Code hooks (SessionStart, SessionResume, UserPromptSubmit, PostToolUse, Notification, SessionEnd) fire and return within 100ms (fire-and-forget)
-- [x] **MEM-02**: Tool observations are compressed by local Ollama into structured summaries and stored in the chosen DB backend
-- [x] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
+- [ ] **MEM-02**: Tool observations are compressed by local Ollama into structured summaries and stored in the chosen DB backend
+- [ ] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
 - [x] **MEM-04**: SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext`
 - [x] **MEM-05**: Memory features are additive — existing installs with no memory data continue working unchanged
 
@@ -37,7 +37,7 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 - [x] **UI-01**: User can view entities in a dual-view layout (table view + graph view) — replaces react-force-graph-2d
 - [x] **UI-02**: User can toggle between project and global scope in the redesigned UI
-- [x] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
+- [ ] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
 - [x] **UI-04**: UI reads entity data via driver-agnostic API (no direct Kuzu reads) — works with any v2.0 backend
 
 ## Future Requirements
@@ -90,24 +90,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-02 | Phase 13 | Complete |
 | PROV-03 | Phase 13 | Complete |
 | PROV-04 | Phase 13 | Complete |
-| UI-01 | Phase 14 | Complete |
-| UI-02 | Phase 14 | Complete |
-| UI-03 | Phase 14 | Complete |
-| UI-04 | Phase 14 | Complete |
+| UI-01 | Phase 18 (gap closure) | Pending |
+| UI-02 | Phase 18 (gap closure) | Pending |
+| UI-03 | Phase 19 (gap closure) | Pending |
+| UI-04 | Phase 18 (gap closure) | Pending |
 | MEM-01 | Phase 15 | Complete |
-| MEM-02 | Phase 15 | Complete |
-| MEM-03 | Phase 15 | Complete |
+| MEM-02 | Phase 17 (gap closure) | Pending |
+| MEM-03 | Phase 17 (gap closure) | Pending |
 | MEM-04 | Phase 15 | Complete |
 | MEM-05 | Phase 15 | Complete |
-| CLI-01 | Phase 16 | Complete |
-| CLI-02 | Phase 16 | Complete |
-| CLI-03 | Phase 16 | Complete |
+| CLI-01 | Phase 18 (gap closure) | Pending |
+| CLI-02 | Phase 18 (gap closure) | Pending |
+| CLI-03 | Phase 18 (gap closure) | Pending |
 
 **Coverage:**
 - v2.0 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0 ✓
+- Pending (gap closure): MEM-02, MEM-03 (Phase 17), UI-01, UI-02, UI-04, CLI-01, CLI-02, CLI-03 (Phase 18), UI-03 (Phase 19)
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-20 — CLI-02 corrected to 10 commands (init, search, list, delete, pin, unpin, health, config, ui, note) per locked decision in 16-CONTEXT.md*
+*Last updated: 2026-03-21 — Gap closure phases 17–19 assigned; MEM-02, MEM-03, UI-03 reset to Pending; UI-01/02/04, CLI-01/02/03 traceability updated to Phase 18*

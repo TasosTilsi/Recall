@@ -45,6 +45,9 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [ ] **Phase 14: Graph UI Redesign** — shadcn/ui dual-view table + graph replacing react-force-graph-2d; reads via driver-agnostic API
 - [x] **Phase 15: Local Memory System** — 4 Claude Code hook scripts (pure Python), Option C context injection, incremental git indexing; executed before Phase 16 (completed 2026-03-20)
 - [x] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14 (completed 2026-03-20)
+- [ ] **Phase 17: Fix Stale Binary References** — `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server; MEM-03 docs corrected; test skip reason fixed [Gap Closure]
+- [ ] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure]
+- [ ] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure]
 
 ## Phase Details
 
@@ -163,6 +166,40 @@ Plans:
 
 ---
 
+### Phase 17: Fix Stale Binary References
+**Goal:** All `_GRAPHITI_CLI` / `graphiti` binary references updated to `recall`/`_RECALL_CLI` — queue CLI replay unblocked, MCP server runtime restored, Phase 15 verification docs corrected, stale test skip reason removed.
+**Requirements:** MEM-02, MEM-03
+**Gap Closure:** Closes gaps from audit — Gap 2 (worker.py), Gap 3 (mcp_server), MEM-03 doc, test_backend_config skip
+
+Plans:
+- [ ] 17-01-PLAN.md — Fix `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server/tools.py + mcp_server/context.py; update graphiti_capture to call `note` command
+- [ ] 17-02-PLAN.md — Update Phase 15 VERIFICATION.md MEM-03 reference (`graphiti memory search` → `recall search`); fix stale skip reason in test_backend_config.py
+
+---
+
+### Phase 18: Formal Verification — Phases 14 & 16
+**Goal:** Produce VERIFICATION.md for Phase 14 (Graph UI Redesign) and Phase 16 (Rename & CLI Consolidation), upgrading 11 requirements from partial to satisfied and clearing the audit blockers.
+**Requirements:** UI-01, UI-02, UI-04, CLI-01, CLI-02, CLI-03
+**Gap Closure:** Closes audit Gap 1 — missing VERIFICATION.md for phases 14 and 16
+
+Plans:
+- [ ] 18-01-PLAN.md — Produce Phase 14 VERIFICATION.md (verify UI-01, UI-02, UI-04 against live implementation)
+- [ ] 18-02-PLAN.md — Produce Phase 16 VERIFICATION.md (verify CLI-01, CLI-02, CLI-03 against live implementation)
+
+---
+
+### Phase 19: Wire UI-03 Retention Filter
+**Goal:** The redesigned Entities view allows users to filter by retention status (pinned/archived/stale) — `retention_status` field added to API response and filter dropdown added to Entities.tsx.
+**Requirements:** UI-03
+**Gap Closure:** Closes audit Gap 4 — UI-03 partial → satisfied
+
+Plans:
+- [ ] 19-01-PLAN.md — Add `retention_status` field to `GraphService.list_entities_readonly()` response + `/api/graph` node shape
+- [ ] 19-02-PLAN.md — Add retention filter dropdown to `Entities.tsx`; wire filter state to entity list and graph view
+- [ ] 19-03-PLAN.md — Integration tests + human smoke test
+
+---
+
 ## v2.0 Strategic Direction (updated 2026-03-19)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
@@ -224,3 +261,6 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 14. Graph UI Redesign | 6/7 | In Progress|  | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
+| 17. Fix Stale Binary References | 0/2 | Pending | | — |
+| 18. Formal Verification — Phases 14 & 16 | 0/2 | Pending | | — |
+| 19. Wire UI-03 Retention Filter | 0/3 | Pending | | — |
