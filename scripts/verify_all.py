@@ -15,6 +15,7 @@ Runs:
     Phase 11: Graph UI            (UI-01 · UI-02 · UI-03)                — no Ollama required
     Phase 12: DB Migration        (DB-01 · DB-02)                        — Ollama optional
     Phase 13: Multi-Provider LLM  (PROV-01 · PROV-02 · PROV-03 · PROV-04) — no live provider required
+    Phase 14: Graph UI Redesign      (UI-01 · UI-02 · UI-04)                — no live server required
     Phase 16: Rename & CLI Consolidation (CLI-01 · CLI-02 · CLI-03)      — no live CLI required
 """
 
@@ -41,6 +42,7 @@ SCRIPTS_TO_RUN = [
     ("Phase 11", "verify_phase_11.py", "Graph UI",                    "UI-01 · UI-02 · UI-03"),
     ("Phase 12", "verify_phase_12.py", "DB Migration",                "DB-01 · DB-02"),
     ("Phase 13", "verify_phase_13.py", "Multi-Provider LLM",          "PROV-01 · PROV-02 · PROV-03 · PROV-04"),
+    ("Phase 14", "verify_phase_14.py", "Graph UI Redesign",           "UI-01 · UI-02 · UI-04"),
     ("Phase 16", "verify_phase_16.py", "Rename & CLI Consolidation",  "CLI-01 · CLI-02 · CLI-03"),
 ]
 
