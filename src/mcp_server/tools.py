@@ -36,12 +36,12 @@ except ImportError:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _run_graphiti(
+def _run_recall(
     args: list[str],
     timeout: int = 30,
     cwd: str | None = None,
 ) -> tuple[int, str, str]:
-    """Run graphiti CLI and return (returncode, stdout, stderr).
+    """Run recall CLI and return (returncode, stdout, stderr).
 
     CWD priority:
     1. GRAPHITI_PROJECT_ROOT env var (explicit override, set by callers who
@@ -60,7 +60,7 @@ def _run_graphiti(
     effective_cwd = os.environ.get("GRAPHITI_PROJECT_ROOT") or cwd
     try:
         result = subprocess.run(
-            [_GRAPHITI_CLI] + args,
+            [_RECALL_CLI] + args,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -68,7 +68,7 @@ def _run_graphiti(
         )
     except FileNotFoundError:
         raise RuntimeError(
-            "graphiti CLI not found. Run 'pip install graphiti-knowledge-graph' to install."
+            "recall CLI not found. Run 'pip install graphiti-knowledge-graph' to install."
         )
     return result.returncode, result.stdout, result.stderr
 
@@ -110,7 +110,7 @@ def _parse_json_or_raw(stdout: str, cmd_name: str) -> str:
     try:
         data = json.loads(stdout)
     except json.JSONDecodeError:
-        logger.warning("graphiti %s returned non-JSON output; returning raw stdout", cmd_name)
+        logger.warning("recall %s returned non-JSON output; returning raw stdout", cmd_name)
         return stdout.strip()
     return encode_response(data)
 
@@ -119,7 +119,7 @@ def _parse_json_or_raw(stdout: str, cmd_name: str) -> str:
 # Read-oriented tools (5)
 # ---------------------------------------------------------------------------
 
-def graphiti_search(
+def recall_search(
     query: str,
     limit: int = 10,
     exact: bool = False,
@@ -137,22 +137,22 @@ def graphiti_search(
         TOON-encoded search results or JSON for small result sets.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["search", query, "--limit", str(limit), "--format", "json"]
     if exact:
         cmd.append("--exact")
     cmd.extend(_scope_flags(scope))
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=30, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti search failed: {stderr.strip()}")
+        raise RuntimeError(f"recall search failed: {stderr.strip()}")
 
     return _parse_json_or_raw(stdout, "search")
 
 
-def graphiti_list(
+def recall_list(
     limit: int = 15,
     scope: str = "auto",
 ) -> str:
@@ -166,20 +166,20 @@ def graphiti_list(
         TOON-encoded entity list or JSON for small result sets.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["list", "--limit", str(limit), "--format", "json"]
     cmd.extend(_scope_flags(scope))
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=30, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti list failed: {stderr.strip()}")
+        raise RuntimeError(f"recall list failed: {stderr.strip()}")
 
     return _parse_json_or_raw(stdout, "list")
 
 
-def graphiti_show(name_or_id: str) -> str:
+def recall_show(name_or_id: str) -> str:
     """Show details for a single entity by name or ID.
 
     Args:
@@ -189,20 +189,20 @@ def graphiti_show(name_or_id: str) -> str:
         JSON-encoded entity details (single object, not TOON).
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["show", name_or_id, "--format", "json"]
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=30, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti show failed: {stderr.strip()}")
+        raise RuntimeError(f"recall show failed: {stderr.strip()}")
 
     # Single item — encode_response() returns JSON (not TOON) for single dicts
     return _parse_json_or_raw(stdout, "show")
 
 
-def graphiti_summarize(scope: str = "auto") -> str:
+def recall_summarize(scope: str = "auto") -> str:
     """Get a summary of the knowledge graph contents.
 
     Args:
@@ -212,22 +212,22 @@ def graphiti_summarize(scope: str = "auto") -> str:
         JSON-encoded summary dict.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["summarize", "--format", "json"]
     cmd.extend(_scope_flags(scope))
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=60, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=60, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti summarize failed: {stderr.strip()}")
+        raise RuntimeError(f"recall summarize failed: {stderr.strip()}")
 
     # Summary is a single dict object — return as JSON (not TOON)
     return _parse_json_or_raw(stdout, "summarize")
 
 
-def graphiti_health() -> str:
-    """Check the health status of the graphiti system.
+def recall_health() -> str:
+    """Check the health status of the recall system.
 
     Health check failures are informational — this function never raises even
     on non-zero exit. The stderr message is returned as a warning string so
@@ -238,12 +238,12 @@ def graphiti_health() -> str:
     """
     cmd = ["health", "--format", "json"]
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=15, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=15, cwd=_get_cwd())
 
     if returncode != 0:
         # Health check failure is informational — return warning, don't raise
-        warning = stderr.strip() or stdout.strip() or "graphiti health check returned non-zero exit code."
-        logger.warning("graphiti health non-zero: %s", warning)
+        warning = stderr.strip() or stdout.strip() or "recall health check returned non-zero exit code."
+        logger.warning("recall health non-zero: %s", warning)
         return f"Warning: {warning}"
 
     return stdout.strip()
@@ -253,12 +253,12 @@ def graphiti_health() -> str:
 # Write / action tools (5)
 # ---------------------------------------------------------------------------
 
-def graphiti_add(
+def recall_note(
     content: str,
     tags: str = "",
     scope: str = "auto",
 ) -> str:
-    """Add knowledge to the graph.
+    """Add a note to the knowledge graph.
 
     Args:
         content: The knowledge content to add.
@@ -269,22 +269,22 @@ def graphiti_add(
         Success message from the CLI, or a default message.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
-    cmd = ["add", content]
+    cmd = ["note", content]
     if tags:
         cmd.extend(["--tags", tags])
     cmd.extend(_scope_flags(scope))
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=60, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=60, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti add failed: {stderr.strip()}")
+        raise RuntimeError(f"recall note failed: {stderr.strip()}")
 
-    return stdout.strip() or "Knowledge added successfully."
+    return stdout.strip() or "Note added successfully."
 
 
-def graphiti_delete(
+def recall_delete(
     name_or_id: str,
     force: bool = True,
 ) -> str:
@@ -301,19 +301,19 @@ def graphiti_delete(
         Success message from the CLI, or a default message.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["delete", name_or_id, "--force"]
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=30, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti delete failed: {stderr.strip()}")
+        raise RuntimeError(f"recall delete failed: {stderr.strip()}")
 
     return stdout.strip() or "Entity deleted."
 
 
-def graphiti_stale(scope: str = "auto") -> str:
+def recall_stale(scope: str = "auto") -> str:
     """Preview nodes eligible for TTL archiving.
 
     Returns TOON-encoded list of stale nodes with name, age (days), and score.
@@ -326,19 +326,19 @@ def graphiti_stale(scope: str = "auto") -> str:
         TOON-encoded stale node list or JSON for small result sets.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["stale", "--format", "json", "--all"] + _scope_flags(scope)
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=30, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=30, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti stale failed: {stderr.strip() or stdout.strip()}")
+        raise RuntimeError(f"recall stale failed: {stderr.strip() or stdout.strip()}")
 
     return _parse_json_or_raw(stdout, "stale")
 
 
-def graphiti_compact(scope: str = "auto") -> str:
+def recall_compact(scope: str = "auto") -> str:
     """Compact the knowledge graph by deduplicating entities.
 
     This operation can be slow (LLM-assisted deduplication). Uses a 120-second
@@ -351,15 +351,15 @@ def graphiti_compact(scope: str = "auto") -> str:
         Success message from the CLI, or a default message.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["compact"]
     cmd.extend(_scope_flags(scope))
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=120, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=120, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti compact failed: {stderr.strip()}")
+        raise RuntimeError(f"recall compact failed: {stderr.strip()}")
 
     return stdout.strip() or "Knowledge graph compacted."
 

@@ -34,16 +34,14 @@ def test_bolt_uri_parsed_correctly():
     assert password == "changeme"
 
 
-@pytest.mark.skip(reason="Wave 3: Neo4j fail-fast not yet implemented")
 def test_neo4j_unreachable_raises_on_init(tmp_path):
     """GraphManager._make_driver() with neo4j type and unreachable URI raises SystemExit."""
-    import tomllib
-    from src.llm.config import load_config
+    from unittest.mock import patch
+    from src.llm.config import LLMConfig
     from src.storage.graph_manager import GraphManager
-    toml_content = '[backend]\ntype = "neo4j"\nuri = "bolt://neo4j:bad@127.0.0.1:19999"\n'
-    cfg_file = tmp_path / "llm.toml"
-    cfg_file.write_text(toml_content)
-    config = load_config(config_path=cfg_file)
-    manager = GraphManager(config=config)
-    with pytest.raises(SystemExit):
-        manager.get_driver(scope=None, project_root=None)  # triggers Neo4j reachability check
+    from src.models import GraphScope
+    neo4j_config = LLMConfig(backend_type="neo4j", backend_uri="bolt://neo4j:bad@127.0.0.1:19999")
+    manager = GraphManager()
+    with patch("src.llm.config.load_config", return_value=neo4j_config):
+        with pytest.raises(SystemExit):
+            manager.get_driver(scope=GraphScope.GLOBAL)  # triggers Neo4j reachability check
