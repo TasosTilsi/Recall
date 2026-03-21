@@ -1,8 +1,8 @@
-"""graphiti mcp install — zero-config MCP server registration for Claude Code.
+"""recall mcp install — zero-config MCP server registration for Claude Code.
 
 Writes the stdio server entry to ~/.claude.json so Claude Code auto-starts
-the graphiti MCP server. Also installs SKILL.md to ~/.claude/skills/graphiti/
-to teach Claude how to use graphiti autonomously.
+the recall MCP server. Also installs SKILL.md to ~/.claude/skills/recall/
+to teach Claude how to use recall autonomously.
 """
 import json
 import shutil
@@ -13,9 +13,9 @@ from pathlib import Path
 # Written to ~/.claude/skills/graphiti/SKILL.md (user-scope: all projects).
 SKILL_MD_CONTENT = """\
 ---
-name: graphiti
+name: recall
 description: >
-  graphiti is this user's personal knowledge graph for coding projects.
+  recall is this user's personal knowledge graph for coding projects.
   Use when: starting a new session (inject context), after key decisions or
   architecture discussions (capture knowledge), when user mentions a specific
   file or topic (surface relevant knowledge), or when explicitly asked about
@@ -23,31 +23,31 @@ description: >
   the user — always present results as natural human-readable prose.
 ---
 
-## What graphiti does
+## What recall does
 
-graphiti stores and retrieves project knowledge: decisions made, architecture
+recall stores and retrieves project knowledge: decisions made, architecture
 patterns chosen, bug fixes, library preferences, and workflow discoveries.
 It learns from conversations and git commit history.
 
 ## When to act (automatic behaviors)
 
-**Session start**: Call `graphiti_search` with query "decisions architecture recent"
+**Session start**: Call `recall_search` with query "decisions architecture recent"
 to load relevant context. If results exist, weave them into your understanding
-silently — do not announce "I queried graphiti." Only mention findings if
+silently — do not announce "I queried recall." Only mention findings if
 they change how you approach the user's question.
 
 **After key moments**: After architecture decisions, important bug resolutions,
-library choices, or stated preferences, call `graphiti_add` with a concise
+library choices, or stated preferences, call `recall_note` with a concise
 summary. Keep the entry focused on the "why", not the "what". Example:
 "Decided to use Kuzu instead of SQLite for graph storage because of native
 graph query support and embedded deployment model."
 
 **Topic surfacing**: When the user mentions a file, feature, or concept you
-haven't encountered in this session, call `graphiti_search` proactively.
+haven't encountered in this session, call `recall_search` proactively.
 Only surface findings if they are actually relevant to the current task.
 
 **Explicit requests**: When asked "what do you know about X", "check your
-memory", or "do you remember when we decided Y" — always use graphiti.
+memory", or "do you remember when we decided Y" — always use recall.
 
 ## How to present results
 
@@ -62,27 +62,26 @@ translate tool results into natural conversational prose:
 
 | Tool | Purpose | When to use |
 |------|---------|-------------|
-| `graphiti_search(query, limit=10)` | Semantic search | Session start, topic surfacing |
-| `graphiti_add(content, tags="")` | Store knowledge | After decisions, bug fixes |
-| `graphiti_list(limit=15)` | List all items | Overview, browsing |
-| `graphiti_show(name_or_id)` | Show one item | Detail view |
-| `graphiti_delete(name_or_id)` | Remove an item | Cleanup |
-| `graphiti_summarize()` | Graph summary | Status overview |
-| `graphiti_compact()` | Deduplicate | Maintenance |
-| `graphiti_capture()` | Capture conversation | Non-blocking, use sparingly |
-| `graphiti_health()` | System check | Debugging |
-| `graphiti_config(key, value="")` | Get/set config | Configuration |
+| `recall_search(query, limit=10)` | Semantic search | Session start, topic surfacing |
+| `recall_note(content, tags="")` | Store knowledge | After decisions, bug fixes |
+| `recall_list(limit=15)` | List all items | Overview, browsing |
+| `recall_show(name_or_id)` | Show one item | Detail view |
+| `recall_delete(name_or_id)` | Remove an item | Cleanup |
+| `recall_summarize()` | Graph summary | Status overview |
+| `recall_compact()` | Deduplicate | Maintenance |
+| `recall_health()` | System check | Debugging |
+| `recall_config(key, value="")` | Get/set config | Configuration |
 
 ## Token self-management
 
 Always use `--limit` flags. Default (10-15 items) is fine for most searches.
 For broad exploratory searches, use `--limit 5`. Never fetch more than 20 items.
-The `graphiti://context` resource at session start already respects the 8K
+The `recall://context` resource at session start already respects the 8K
 token budget — you do not need to manually limit it.
 
 ## Scope
 
-graphiti supports two scopes:
+recall supports two scopes:
 - **project** (default in git repos): knowledge specific to this project
 - **global**: preferences and patterns that apply across all projects
 
@@ -91,35 +90,35 @@ for project-specific decisions.
 """
 
 
-def _find_graphiti_executable() -> tuple[str, list[str]]:
-    """Find the graphiti executable and return (command, extra_args).
+def _find_recall_executable() -> tuple[str, list[str]]:
+    """Find the recall executable and return (command, extra_args).
 
     Returns:
         Tuple of (command, extra_args) where command is the executable path
         and extra_args are prepended before the caller's args.
     """
     # First check PATH
-    path = shutil.which("graphiti")
+    path = shutil.which("recall")
     if path:
         return path, []
     # Check the same venv/prefix as the running Python interpreter
     exe_dir = Path(sys.executable).parent
-    venv_graphiti = exe_dir / "graphiti"
-    if venv_graphiti.exists():
-        return str(venv_graphiti), []
+    venv_recall = exe_dir / "recall"
+    if venv_recall.exists():
+        return str(venv_recall), []
     # Last resort: use the console_scripts entry point via python -c
     return sys.executable, ["-c", "from src.cli import cli_entry; cli_entry()"]
 
 
-def _install_project_hooks(graphiti_cmd: str, force: bool = False) -> bool:
+def _install_project_hooks(recall_cmd: str, force: bool = False) -> bool:
     """Write the Claude Code Stop hook to .claude/settings.json in the current directory.
 
     The hook reads transcript_path and session_id from the Stop event JSON (stdin)
-    and fires `graphiti capture --auto` asynchronously so it never blocks Claude.
+    and fires `recall note` asynchronously so it never blocks Claude.
 
     Args:
-        graphiti_cmd: Full absolute path to the graphiti executable.
-        force: Overwrite an existing graphiti Stop hook if already present.
+        recall_cmd: Full absolute path to the recall executable.
+        force: Overwrite an existing recall Stop hook if already present.
 
     Returns:
         True if the hook was written/updated, False if already present and force=False.
@@ -140,25 +139,25 @@ def _install_project_hooks(graphiti_cmd: str, force: bool = False) -> bool:
         "INPUT=$(cat); "
         'transcript=$(echo "$INPUT" | jq -r \'.transcript_path\'); '
         'session=$(echo "$INPUT" | jq -r \'.session_id\'); '
-        f'"{graphiti_cmd}" capture --auto --transcript-path "$transcript" --session-id "$session"'
+        f'"{recall_cmd}" note --transcript-path "$transcript" --session-id "$session"'
     )
 
     stop_hooks: list = config.get("hooks", {}).get("Stop", [])
 
     # Check whether our hook is already installed (keyed by executable path)
-    graphiti_already_installed = any(
-        graphiti_cmd in h.get("command", "")
+    recall_already_installed = any(
+        recall_cmd in h.get("command", "")
         for entry in stop_hooks
         for h in entry.get("hooks", [])
     )
-    if graphiti_already_installed and not force:
+    if recall_already_installed and not force:
         return False
 
-    # Remove stale graphiti Stop entries before re-adding (handles force=True and
+    # Remove stale recall Stop entries before re-adding (handles force=True and
     # path changes after venv recreation).
     stop_hooks = [
         entry for entry in stop_hooks
-        if not any("graphiti" in h.get("command", "") for h in entry.get("hooks", []))
+        if not any("recall" in h.get("command", "") for h in entry.get("hooks", []))
     ]
 
     stop_hooks.append({
@@ -183,11 +182,11 @@ def _install_project_hooks(graphiti_cmd: str, force: bool = False) -> bool:
 
 
 def install_mcp_server(force: bool = False) -> dict:
-    """Write graphiti MCP server config to ~/.claude.json and install SKILL.md.
+    """Write recall MCP server config to ~/.claude.json and install SKILL.md.
 
     This enables zero-config Claude Code integration:
-    1. Adds 'graphiti' entry to mcpServers in ~/.claude.json
-    2. Writes SKILL.md to ~/.claude/skills/graphiti/SKILL.md
+    1. Adds 'recall' entry to mcpServers in ~/.claude.json
+    2. Writes SKILL.md to ~/.claude/skills/recall/SKILL.md
     3. Writes Stop hook to .claude/settings.json in the current directory
 
     Args:
@@ -198,7 +197,7 @@ def install_mcp_server(force: bool = False) -> dict:
         'hooks_installed' boolean results
     """
     results = {"claude_json_updated": False, "skill_md_installed": False, "hooks_installed": False}
-    command, extra_args = _find_graphiti_executable()
+    command, extra_args = _find_recall_executable()
 
     # --- 1. Write to ~/.claude.json ---
     claude_json_path = Path.home() / ".claude.json"
@@ -212,9 +211,9 @@ def install_mcp_server(force: bool = False) -> dict:
     if "mcpServers" not in config:
         config["mcpServers"] = {}
 
-    already_present = "graphiti" in config["mcpServers"]
+    already_present = "recall" in config["mcpServers"]
     if not already_present or force:
-        config["mcpServers"]["graphiti"] = {
+        config["mcpServers"]["recall"] = {
             "type": "stdio",
             "command": command,
             "args": extra_args + ["mcp", "serve"],
@@ -224,7 +223,7 @@ def install_mcp_server(force: bool = False) -> dict:
         results["claude_json_updated"] = True
 
     # --- 2. Install SKILL.md ---
-    skill_dir = Path.home() / ".claude" / "skills" / "graphiti"
+    skill_dir = Path.home() / ".claude" / "skills" / "recall"
     skill_path = skill_dir / "SKILL.md"
 
     if not skill_path.exists() or force:
