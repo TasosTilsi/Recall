@@ -95,12 +95,12 @@ def test_list_stale_flag_calls_show_stale(mock_show_stale):
 
 def test_note_command_appends_to_jsonl(tmp_path):
     """CLI-02: recall note appends JSON line to pending_tool_captures.jsonl."""
-    (tmp_path / ".graphiti").mkdir()
+    (tmp_path / ".recall").mkdir()
     with patch("src.cli.commands.note_cmd.resolve_scope", return_value=(MagicMock(), tmp_path)):
         result = runner.invoke(app, ["note", "decision: use JWT auth"])
     assert result.exit_code == 0
     # Verify the file was created with JSON content
-    pending_file = tmp_path / ".graphiti" / "pending_tool_captures.jsonl"
+    pending_file = tmp_path / ".recall" / "pending_tool_captures.jsonl"
     assert pending_file.exists(), "pending_tool_captures.jsonl should be created"
     lines = pending_file.read_text().strip().splitlines()
     assert len(lines) >= 1
