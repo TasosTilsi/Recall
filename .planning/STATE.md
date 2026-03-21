@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: completed
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-03-21T17:36:08.101Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-03-21T17:39:29.119Z"
 last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 26
-  completed_plans: 25
+  completed_plans: 26
   percent: 25
 ---
 
@@ -84,6 +84,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 14-graph-ui-redesign P06 | 15 | 2 tasks | 7 files |
 | Phase 14-graph-ui-redesign PP05 | 15 | 2 tasks | 4 files |
 | Phase 17-fix-stale-binary-references P02 | 2 | 2 tasks | 2 files |
+| Phase 17-fix-stale-binary-references P01 | 5 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 14-05]: ActivityHeatmap built as custom SVG grid (no library) — 52-week calendar, blue intensity scale
 - [Phase 14-05]: Sigma FA2 physics runs in setTimeout(100ms) after renderer init — non-blocking, non-fatal
 - [Phase 17-02]: patch src.llm.config.load_config not src.storage.graph_manager.load_config because load_config is a lazy local import inside _make_driver
+- [Phase 17-01]: graphiti_capture (Popen fire-and-forget) deleted — recall_note is the single write tool post-Phase 16
+- [Phase 17-01]: Resource URI graphiti://context left unchanged — changing it would break existing Claude Desktop configs
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -176,6 +179,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-21T17:36:08.098Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-03-21T17:39:29.117Z
+Stopped at: Completed 17-01-PLAN.md
 Resume with: `/gsd:plan-phase 13`
