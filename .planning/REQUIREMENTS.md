@@ -90,10 +90,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-02 | Phase 13 | Complete |
 | PROV-03 | Phase 13 | Complete |
 | PROV-04 | Phase 13 | Complete |
-| UI-01 | Phase 18 (gap closure) | Pending |
-| UI-02 | Phase 18 (gap closure) | Pending |
+| UI-01 | Phase 18 (gap closure) | Complete |
+| UI-02 | Phase 18 (gap closure) | Complete |
 | UI-03 | Phase 19 (gap closure) | Pending |
-| UI-04 | Phase 18 (gap closure) | Pending |
+| UI-04 | Phase 18 (gap closure) | Complete |
 | MEM-01 | Phase 15 | Complete |
 | MEM-02 | Phase 17 (gap closure) | Complete |
 | MEM-03 | Phase 17 (gap closure) | Complete |
