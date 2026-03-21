@@ -1,4 +1,4 @@
-"""MCP tool handler functions that wrap the graphiti CLI via subprocess.
+"""MCP tool handler functions that wrap the recall CLI via subprocess.
 
 Each function in this module is a plain Python callable that will be registered
 with FastMCP using @mcp.tool() decorators in server.py (Plan 03).
@@ -20,10 +20,10 @@ from typing import Optional
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-# Resolve the graphiti CLI from the same venv bin/ as the running Python.
-# Using the bare name "graphiti" fails when Claude Code's PATH doesn't include
+# Resolve the recall CLI from the same venv bin/ as the running Python.
+# Using the bare name "recall" fails when Claude Code's PATH doesn't include
 # the virtualenv (which is the common case for MCP stdio servers).
-_GRAPHITI_CLI = str(Path(sys.executable).parent / "graphiti")
+_RECALL_CLI = str(Path(sys.executable).parent / "recall")
 
 try:
     from src.mcp_server.toon_utils import encode_response

@@ -41,7 +41,7 @@ human_verification:
 | `src/hooks/session_stop.py` | Stop/PreCompact hook: drain captures + session summary | VERIFIED | Exists, pending_tool_captures.jsonl drain, source="session_summary" episode stored, no print() calls |
 | `src/hooks/installer.py` | install_global_hooks() + is_global_hooks_installed() | VERIFIED | install_global_hooks() at line 247, is_global_hooks_installed() at line 329, _is_graphiti_hook() at line 235 |
 | `src/cli/commands/sync.py` | graphiti sync CLI command (incremental alias) | VERIFIED | GitIndexer.run(full=False) at line 27; registered in __init__.py at line 151 |
-| `src/cli/commands/memory.py` | graphiti memory search sub-command | VERIFIED | memory_app Typer instance + memory_search_command; service.search() via run_graph_operation() |
+| `src/cli/commands/memory.py` | recall search sub-command | VERIFIED | memory_app Typer instance + memory_search_command; service.search() via run_graph_operation() |
 | `src/queue/worker.py` | BackgroundWorker capture_tool_use handler | VERIFIED | _handle_capture_tool_use at line 376, dispatch at line 282-283, service.add() with sanitized content |
 | `tests/test_hooks_phase15.py` | 16 unit tests MEM-01..MEM-05 | VERIFIED | 16 test functions present, all pass |
 | `tests/conftest.py` | graphiti_tmp_dir fixture | VERIFIED | fixture at line 8 |
