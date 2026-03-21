@@ -183,8 +183,8 @@ Plans:
 **Gap Closure:** Closes audit Gap 1 — missing VERIFICATION.md for phases 14 and 16
 
 Plans:
-- [ ] 18-01-PLAN.md — Produce Phase 14 VERIFICATION.md (verify UI-01, UI-02, UI-04 against live implementation)
-- [ ] 18-02-PLAN.md — Produce Phase 16 VERIFICATION.md (verify CLI-01, CLI-02, CLI-03 against live implementation)
+- [ ] 18-01-PLAN.md — Create scripts/verify_phase_14.py + Phase 14 VERIFICATION.md (UI-01, UI-02, UI-04)
+- [ ] 18-02-PLAN.md — Run verify_phase_16.py + produce Phase 16 VERIFICATION.md (CLI-01, CLI-02, CLI-03)
 
 ---
 
@@ -261,6 +261,6 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 14. Graph UI Redesign | 6/7 | In Progress|  | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
-| 17. Fix Stale Binary References | 2/2 | Complete   | 2026-03-21 | — |
+| 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
 | 18. Formal Verification — Phases 14 & 16 | 0/2 | Pending | | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | Pending | | — |
