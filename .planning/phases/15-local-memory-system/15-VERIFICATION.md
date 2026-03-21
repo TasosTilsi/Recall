@@ -67,7 +67,7 @@ human_verification:
 |-------------|-------------|-------------|--------|---------|
 | MEM-01 | 15-02, 15-03, 15-05 | All 6 hooks fire and return within 100ms (fire-and-forget) | SATISFIED | All 4 hooks are fail-open (exit 0 on any exception); capture_entry <1s verified by test; session_start no stdout verified by test; inject_context outputs valid JSON verified by test |
 | MEM-02 | 15-03, 15-05 | Tool observations compressed by Ollama into summaries stored in DB | SATISFIED | capture_entry.py appends sanitized entries to jsonl; session_stop.py drains and enqueues capture_tool_use jobs; BackgroundWorker._handle_capture_tool_use calls service.add(); session_summary generated via LLM chat() |
-| MEM-03 | 15-04, 15-05 | `graphiti memory search <query>` returns results via 3-layer progressive disclosure | SATISFIED | memory_app registered in CLI; memory_search_command calls service.search() via run_graph_operation(); test_memory_app_registered and test_memory_search_command_importable both pass |
+| MEM-03 | 15-04, 15-05 | `recall search <query>` returns results via 3-layer progressive disclosure | SATISFIED | memory_app registered in CLI; memory_search_command calls service.search() via run_graph_operation(); test_memory_app_registered and test_memory_search_command_importable both pass |
 | MEM-04 | 15-01, 15-02, 15-05 | SessionStart hook injects up to 8K tokens of relevant past observations via additionalContext | SATISFIED | inject_context.py outputs {"context": XML} JSON; TOKEN_BUDGET=4000; Option C format with <session_context>, <continuity>, <relevant_history>; test_inject_context_token_budget verifies budget enforcement |
 | MEM-05 | 15-01, 15-04, 15-05 | Memory features additive — existing installs with no memory data work unchanged | SATISFIED | install_global_hooks() preserves non-graphiti entries (verified by test); hooks additive to existing ~/.claude/settings.json; test_install_preserves_existing_non_graphiti_entries passes |
 
@@ -105,7 +105,7 @@ Phase 15 goal is fully achieved. All four Claude Code hook scripts exist as subs
 - `capture_entry.py` sanitizes and appends tool call data to `.graphiti/pending_tool_captures.jsonl` in under 1 second — no LLM calls, no blocking.
 - `session_stop.py` drains pending captures into BackgroundWorker jobs and generates a session summary episode via the LLM.
 
-The install pipeline is complete: `graphiti hooks install` calls `install_global_hooks()` which writes all 5 hook type entries (SessionStart, UserPromptSubmit, PostToolUse, PreCompact, Stop) to `~/.claude/settings.json` while preserving any non-graphiti entries. `graphiti memory search` provides the MEM-03 CLI search interface. `graphiti sync` provides the MEM-04 incremental git indexing entrypoint.
+The install pipeline is complete: `graphiti hooks install` calls `install_global_hooks()` which writes all 5 hook type entries (SessionStart, UserPromptSubmit, PostToolUse, PreCompact, Stop) to `~/.claude/settings.json` while preserving any non-graphiti entries. `recall search` provides the MEM-03 CLI search interface. `graphiti sync` provides the MEM-04 incremental git indexing entrypoint.
 
 All 5 requirements (MEM-01 through MEM-05) are satisfied. Human E2E approval documented.
 
