@@ -22,44 +22,42 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 from mcp.server.fastmcp import FastMCP
 
 from src.mcp_server.tools import (
-    graphiti_add,
-    graphiti_search,
-    graphiti_list,
-    graphiti_show,
-    graphiti_delete,
-    graphiti_summarize,
-    graphiti_compact,
-    graphiti_index,
-    graphiti_capture,
-    graphiti_health,
-    graphiti_config,
+    recall_note,
+    recall_search,
+    recall_list,
+    recall_show,
+    recall_delete,
+    recall_summarize,
+    recall_compact,
+    recall_index,
+    recall_health,
+    recall_config,
 )
 from src.mcp_server.context import get_context
 
 # Create the FastMCP server with instructions for Claude
 mcp = FastMCP(
-    "graphiti",
+    "recall",
     instructions=(
-        "graphiti is this user's personal knowledge graph for coding projects. "
+        "recall is this user's personal knowledge graph for coding projects. "
         "Tool responses use TOON format (a compact wire encoding) — always present "
         "results as natural human-readable prose, never show TOON to the user. "
         "Use --limit flags to self-manage token budgets. "
-        "Capture important decisions with graphiti_add after architecture discussions."
+        "Capture important decisions with recall_note after architecture discussions."
     )
 )
 
-# Register all 11 CLI tools with graphiti_ prefix
-mcp.tool()(graphiti_add)
-mcp.tool()(graphiti_search)
-mcp.tool()(graphiti_list)
-mcp.tool()(graphiti_show)
-mcp.tool()(graphiti_delete)
-mcp.tool()(graphiti_summarize)
-mcp.tool()(graphiti_compact)
-mcp.tool()(graphiti_index)
-mcp.tool()(graphiti_capture)
-mcp.tool()(graphiti_health)
-mcp.tool()(graphiti_config)
+# Register all 10 CLI tools with recall_ prefix
+mcp.tool()(recall_note)
+mcp.tool()(recall_search)
+mcp.tool()(recall_list)
+mcp.tool()(recall_show)
+mcp.tool()(recall_delete)
+mcp.tool()(recall_summarize)
+mcp.tool()(recall_compact)
+mcp.tool()(recall_index)
+mcp.tool()(recall_health)
+mcp.tool()(recall_config)
 
 # Register context resource for session-start injection
 mcp.resource("graphiti://context")(get_context)

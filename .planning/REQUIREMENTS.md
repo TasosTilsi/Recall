@@ -23,7 +23,7 @@ Requirements for the v2.0 Rebuild milestone. Each maps to a roadmap phase.
 
 - [x] **MEM-01**: All 6 Claude Code hooks (SessionStart, SessionResume, UserPromptSubmit, PostToolUse, Notification, SessionEnd) fire and return within 100ms (fire-and-forget)
 - [ ] **MEM-02**: Tool observations are compressed by local Ollama into structured summaries and stored in the chosen DB backend
-- [ ] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
+- [x] **MEM-03**: `graphiti memory search <query>` returns results via 3-layer progressive disclosure MCP tools
 - [x] **MEM-04**: SessionStart hook injects up to 8K tokens of relevant past observations via `additionalContext`
 - [x] **MEM-05**: Memory features are additive — existing installs with no memory data continue working unchanged
 
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-04 | Phase 18 (gap closure) | Pending |
 | MEM-01 | Phase 15 | Complete |
 | MEM-02 | Phase 17 (gap closure) | Pending |
-| MEM-03 | Phase 17 (gap closure) | Pending |
+| MEM-03 | Phase 17 (gap closure) | Complete |
 | MEM-04 | Phase 15 | Complete |
 | MEM-05 | Phase 15 | Complete |
 | CLI-01 | Phase 18 (gap closure) | Pending |

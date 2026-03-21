@@ -261,6 +261,6 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 14. Graph UI Redesign | 6/7 | In Progress|  | — |
 | 15. Local Memory System | 5/5 | Complete    | 2026-03-20 | — |
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
-| 17. Fix Stale Binary References | 0/2 | Pending | | — |
+| 17. Fix Stale Binary References | 1/2 | In Progress|  | — |
 | 18. Formal Verification — Phases 14 & 16 | 0/2 | Pending | | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | Pending | | — |

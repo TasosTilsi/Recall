@@ -364,7 +364,7 @@ def recall_compact(scope: str = "auto") -> str:
     return stdout.strip() or "Knowledge graph compacted."
 
 
-def graphiti_index(
+def recall_index(
     full: bool = False,
     since: str = "",
 ) -> str:
@@ -384,7 +384,7 @@ def graphiti_index(
         Status message from the CLI with commits processed and entities created.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     cmd = ["index"]
     if full:
@@ -392,55 +392,16 @@ def graphiti_index(
     if since:
         cmd.extend(["--since", since])
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=300, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=300, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti index failed: {stderr.strip()}")
+        raise RuntimeError(f"recall index failed: {stderr.strip()}")
 
     return stdout.strip() or "Git history indexed successfully."
 
 
-def graphiti_capture() -> str:
-    """Capture current conversation context into the knowledge graph.
-
-    Runs asynchronously — returns immediately without waiting for completion.
-    Capture operations involve LLM summarization and can take 5-30 seconds.
-    Using subprocess.Popen (non-blocking) rather than subprocess.run (blocking)
-    ensures the MCP server remains responsive.
-
-    Both stdout and stderr are redirected to DEVNULL so the background process
-    does not inherit the stdio transport's file descriptors (which would corrupt
-    the JSON-RPC stream).
-
-    start_new_session=True detaches the subprocess from the MCP server process
-    group, preventing zombie processes when the server exits.
-
-    Returns:
-        Confirmation message that capture started in background.
-
-    Raises:
-        RuntimeError: If the graphiti CLI is not found or cannot be launched.
-    """
-    cwd = _get_cwd()
-    try:
-        subprocess.Popen(
-            [_GRAPHITI_CLI, "capture", "--quiet"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            cwd=cwd,
-        )
-        return "Conversation capture started in background."
-    except FileNotFoundError:
-        raise RuntimeError(
-            "graphiti CLI not found. Run 'pip install graphiti-knowledge-graph' to install."
-        )
-    except Exception as e:
-        raise RuntimeError(f"Failed to start capture: {e}")
-
-
-def graphiti_config(key: str, value: str = "") -> str:
-    """Get or set a graphiti configuration value.
+def recall_config(key: str, value: str = "") -> str:
+    """Get or set a recall configuration value.
 
     If value is empty, reads the current value of the key.
     If value is non-empty, sets the key to the given value.
@@ -453,32 +414,31 @@ def graphiti_config(key: str, value: str = "") -> str:
         Current value (for get) or confirmation (for set) from the CLI.
 
     Raises:
-        RuntimeError: If the graphiti CLI returns a non-zero exit code.
+        RuntimeError: If the recall CLI returns a non-zero exit code.
     """
     if value:
         cmd = ["config", "set", key, value]
     else:
         cmd = ["config", "get", key]
 
-    returncode, stdout, stderr = _run_graphiti(cmd, timeout=10, cwd=_get_cwd())
+    returncode, stdout, stderr = _run_recall(cmd, timeout=10, cwd=_get_cwd())
 
     if returncode != 0:
-        raise RuntimeError(f"graphiti config failed: {stderr.strip()}")
+        raise RuntimeError(f"recall config failed: {stderr.strip()}")
 
     return stdout.strip()
 
 
 __all__ = [
-    "graphiti_add",
-    "graphiti_search",
-    "graphiti_list",
-    "graphiti_show",
-    "graphiti_delete",
-    "graphiti_summarize",
-    "graphiti_stale",
-    "graphiti_compact",
-    "graphiti_index",
-    "graphiti_capture",
-    "graphiti_health",
-    "graphiti_config",
+    "recall_note",
+    "recall_search",
+    "recall_list",
+    "recall_show",
+    "recall_delete",
+    "recall_summarize",
+    "recall_stale",
+    "recall_compact",
+    "recall_index",
+    "recall_health",
+    "recall_config",
 ]
