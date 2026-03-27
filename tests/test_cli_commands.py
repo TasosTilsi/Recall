@@ -359,7 +359,7 @@ def test_health_verbose(mock_find_root, mock_cloud, mock_local, mock_db, mock_qu
     """Test health with --verbose flag."""
     mock_find_root.return_value = None
     mock_cloud.return_value = {"name": "Cloud Ollama", "status": "ok", "detail": "Connected"}
-    mock_local.return_value = {"name": "Local Ollama", "status": "ok", "detail": "Running", "models": ["llama3"]}
+    mock_local.return_value = {"name": "Local Ollama", "status": "ok", "detail": "Running", "models": [{"name": "llama3", "available": True, "is_default": True}]}
     mock_db.return_value = {"name": "Database (global)", "status": "ok", "detail": "Initialized"}
     mock_quota.return_value = {"name": "Quota", "status": "ok", "detail": "50% used"}
 

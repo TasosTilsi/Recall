@@ -16,11 +16,68 @@ from src.llm.provider import ProviderClient
 from src.storage import GraphSelector
 
 
+def _check_model_availability(config, provider: str) -> list[dict]:
+    """Check which configured models are available.
+
+    Args:
+        config: LLMConfig instance
+        provider: "cloud" or "local"
+
+    Returns:
+        List of dicts: {name, available, is_default}
+        First available model is marked as default.
+    """
+    models = config.cloud_models if provider == "cloud" else config.local_models
+
+    if provider == "cloud":
+        # Ping each cloud model with a minimal request
+        try:
+            headers = {"Authorization": f"Bearer {config.cloud_api_key}"}
+            available_models = set()
+            for m in models:
+                try:
+                    resp = httpx.post(
+                        f"{config.cloud_endpoint}/api/generate",
+                        headers=headers,
+                        json={"model": m, "prompt": "hi", "stream": False, "options": {"num_predict": 1}},
+                        timeout=10.0,
+                    )
+                    if resp.status_code == 200:
+                        available_models.add(m)
+                except Exception:
+                    pass
+        except Exception:
+            available_models = set()
+    else:
+        # Local — check against local Ollama model list
+        try:
+            client = get_client()
+            response = client.local_client.list()
+            raw = getattr(response, "models", None) or response.get("models", [])
+            available_models = {
+                getattr(m, "model", None) or m.get("name", "") for m in raw
+            }
+        except Exception:
+            available_models = set()
+
+    result = []
+    default_found = False
+    for m in models:
+        # Check exact name or with :latest suffix
+        avail = m in available_models or (f"{m}:latest" in available_models if ":" not in m else False)
+        is_default = avail and not default_found
+        if avail:
+            default_found = True
+        result.append({"name": m, "available": avail, "is_default": is_default})
+
+    return result
+
+
 def _check_ollama_cloud() -> dict:
     """Check cloud Ollama connectivity.
 
     Returns:
-        Dict with name, status, detail keys
+        Dict with name, status, detail, models keys
     """
     config = load_config()
 
@@ -30,6 +87,7 @@ def _check_ollama_cloud() -> dict:
             "name": "Cloud Ollama",
             "status": "warning",
             "detail": "No API key configured. Set OLLAMA_API_KEY environment variable.",
+            "models": [],
         }
 
     # Try to ping cloud endpoint
@@ -45,18 +103,21 @@ def _check_ollama_cloud() -> dict:
                 "name": "Cloud Ollama",
                 "status": "ok",
                 "detail": f"Connected to {config.cloud_endpoint}",
+                "models": _check_model_availability(config, "cloud"),
             }
         else:
             return {
                 "name": "Cloud Ollama",
                 "status": "error",
                 "detail": f"HTTP {response.status_code}. Check OLLAMA_API_KEY.",
+                "models": [],
             }
     except Exception as e:
         return {
             "name": "Cloud Ollama",
             "status": "error",
             "detail": f"Connection failed: {str(e)}. Check OLLAMA_API_KEY.",
+            "models": [],
         }
 
 
@@ -64,7 +125,7 @@ def _check_ollama_local() -> dict:
     """Check local Ollama connectivity.
 
     Returns:
-        Dict with name, status, detail keys
+        Dict with name, status, detail, models keys
     """
     config = load_config()
     client = get_client()
@@ -82,7 +143,7 @@ def _check_ollama_local() -> dict:
             "name": "Local Ollama",
             "status": "ok",
             "detail": f"Running at {config.local_endpoint}, {model_count} models available",
-            "models": model_names,  # Extra data for verbose mode
+            "models": _check_model_availability(config, "local"),
         }
     except Exception as e:
         return {
@@ -90,6 +151,7 @@ def _check_ollama_local() -> dict:
             "status": "error",
             "detail": f"Not running. Start with: ollama serve",
             "error": str(e),  # Extra data for verbose mode
+            "models": [],
         }
 
 
@@ -377,6 +439,18 @@ def health_command(
             check["detail"]
         )
 
+        # Show model detail rows for cloud/local checks
+        models = check.get("models", [])
+        if models:
+            for m in models:
+                avail_icon = "[green]✓[/green]" if m["available"] else "[red]✗[/red]"
+                default_tag = " [bold cyan](default)[/bold cyan]" if m["is_default"] else ""
+                table.add_row(
+                    f"  {m['name']}",
+                    avail_icon,
+                    f"{'available' if m['available'] else 'not installed'}{default_tag}"
+                )
+
     console.print(table)
 
     # Verbose mode: show expanded details
@@ -390,7 +464,13 @@ def health_command(
 
             # Show extra verbose data if available
             if "models" in check:
-                console.print(f"  Models: {', '.join(check['models'])}")
+                models = check["models"]
+                if models and isinstance(models[0], dict):
+                    for m in models:
+                        default_tag = " (default)" if m["is_default"] else ""
+                        console.print(f"  Model: {m['name']} — {'available' if m['available'] else 'not installed'}{default_tag}")
+                elif models:
+                    console.print(f"  Models: {', '.join(models)}")
             if "path" in check:
                 console.print(f"  Path: {check['path']}")
             if "size_mb" in check:

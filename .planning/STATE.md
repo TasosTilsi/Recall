@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 Phase: 19 (Wire UI-03 Retention Filter) — EXECUTING
 Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-03-27
+Last activity: 2026-03-27 - Completed quick task 2: Enhance health command to show available/default models
 
 Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases complete)
 
@@ -188,6 +188,12 @@ Key v2.0 architectural decisions from research:
 
 - **Phase 12 spike required before planning**: LadybugDB v0.15.1 may have diverged from Kuzu 0.11.3 API post-v0.12.0 — empirical verification mandatory before writing plan tasks
 - **retention.db UUID remapping**: After Phase 12 migration, old pin UUIDs will not match new entity UUIDs — either clear `retention.db` at migration time or implement a UUID remapping pass (decide during Phase 12 planning)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 2 | Enhance health command to show available/default models | 2026-03-27 | | [2-enhance-health-command-to-show-available](./quick/2-enhance-health-command-to-show-available/) |
 
 ## Session Continuity
 
