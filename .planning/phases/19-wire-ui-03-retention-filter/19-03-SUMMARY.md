@@ -172,3 +172,9 @@ Pre-existing test failures (out of scope for Phase 19):
 ---
 *Phase: 19-wire-ui-03-retention-filter*
 *Completed: 2026-03-27*
+
+## Self-Check: PASSED
+
+- tests/test_phase19_integration.py FOUND
+- src/hooks/installer.py FOUND (_is_recall_hook alias added)
+- Commits a12451b, 6a03b27, 67e1674 FOUND
