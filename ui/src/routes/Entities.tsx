@@ -8,10 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { DetailPanel, type PanelItem } from '@/components/panels/DetailPanel';
 import { ENTITY_TYPE_COLORS, RETENTION_COLORS } from '@/lib/colors';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Button } from '@/components/ui/button';
 
 type SortKey = 'label' | 'type' | 'created_at';
 type SortDir = 'asc' | 'desc';
+
+const STATUSES = ['Pinned', 'Normal', 'Stale', 'Archived'] as const;
 
 export default function Entities() {
   const { scope, setLastUpdated } = useAppContext();
@@ -22,6 +27,14 @@ export default function Entities() {
   const [sortKey, setSortKey] = useState<SortKey>('label');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [panelItem, setPanelItem] = useState<PanelItem | null>(null);
+  const [retentionFilter, setRetentionFilter] = useState<string[]>([]);
+  const [retentionOpen, setRetentionOpen] = useState(false);
+
+  const toggleStatus = (status: string) => {
+    setRetentionFilter(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -45,13 +58,19 @@ export default function Entities() {
 
   const filtered = useMemo(() => {
     let result = typeFilter === 'all' ? nodes : nodes.filter(n => n.type === typeFilter);
+    // Retention filter: empty = show all except Archived (default behavior)
+    if (retentionFilter.length === 0) {
+      result = result.filter(n => (n.retention_status ?? 'Normal') !== 'Archived');
+    } else {
+      result = result.filter(n => retentionFilter.includes(n.retention_status ?? 'Normal'));
+    }
     result = [...result].sort((a, b) => {
       const av = a[sortKey === 'created_at' ? 'id' : sortKey] ?? '';
       const bv = b[sortKey === 'created_at' ? 'id' : sortKey] ?? '';
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     });
     return result;
-  }, [nodes, typeFilter, sortKey, sortDir]);
+  }, [nodes, typeFilter, retentionFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -91,6 +110,32 @@ export default function Entities() {
             ))}
           </SelectContent>
         </Select>
+
+        <Popover open={retentionOpen} onOpenChange={setRetentionOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={retentionOpen}
+              className="h-7 w-36 text-xs bg-slate-800 border-slate-700 text-slate-200 justify-between">
+              {retentionFilter.length === 0 ? 'All statuses' : `${retentionFilter.length} selected`}
+              <ChevronsUpDown className="ml-auto h-3 w-3 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-36 p-0 bg-slate-800 border-slate-700">
+            <Command>
+              <CommandList>
+                <CommandGroup>
+                  {STATUSES.map(status => (
+                    <CommandItem key={status} onSelect={() => toggleStatus(status)}
+                      className="text-xs text-slate-200 cursor-pointer">
+                      <Check className={`mr-2 h-3 w-3 ${retentionFilter.includes(status) ? 'opacity-100' : 'opacity-0'}`} />
+                      {status}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
         <span className="text-xs text-slate-400 ml-auto">{filtered.length} entities</span>
       </div>
 
@@ -128,8 +173,12 @@ export default function Entities() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge className="text-xs" style={{ backgroundColor: `${RETENTION_COLORS.Normal}22`, color: RETENTION_COLORS.Normal, border: 'none' }}>
-                    Normal
+                  <Badge className="text-xs" style={{
+                    backgroundColor: `${RETENTION_COLORS[node.retention_status ?? 'Normal']}22`,
+                    color: RETENTION_COLORS[node.retention_status ?? 'Normal'],
+                    border: 'none',
+                  }}>
+                    {node.retention_status ?? 'Normal'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-slate-400">{node.scope}</TableCell>
