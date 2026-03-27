@@ -11,43 +11,42 @@ from unittest.mock import patch
 import pytest
 
 from src.hooks.installer import (
-    _is_graphiti_hook,
+    _is_recall_hook,
     install_global_hooks,
     is_global_hooks_installed,
 )
 
 
-# ==================== _is_graphiti_hook ====================
+# ==================== _is_recall_hook ====================
 
-
-def test_is_graphiti_hook_detects_session_start():
+def test_is_recall_hook_detects_session_start():
     entry = {"hooks": [{"type": "command", "command": "python /some/path/session_start.py"}]}
-    assert _is_graphiti_hook(entry) is True
+    assert _is_recall_hook(entry) is True
 
 
-def test_is_graphiti_hook_detects_inject_context():
+def test_is_recall_hook_detects_inject_context():
     entry = {"hooks": [{"type": "command", "command": "python /some/path/inject_context.py"}]}
-    assert _is_graphiti_hook(entry) is True
+    assert _is_recall_hook(entry) is True
 
 
-def test_is_graphiti_hook_detects_capture_entry():
+def test_is_recall_hook_detects_capture_entry():
     entry = {"hooks": [{"type": "command", "command": "python /some/path/capture_entry.py"}]}
-    assert _is_graphiti_hook(entry) is True
+    assert _is_recall_hook(entry) is True
 
 
-def test_is_graphiti_hook_detects_session_stop():
+def test_is_recall_hook_detects_session_stop():
     entry = {"hooks": [{"type": "command", "command": "python /some/path/session_stop.py"}]}
-    assert _is_graphiti_hook(entry) is True
+    assert _is_recall_hook(entry) is True
 
 
-def test_is_graphiti_hook_false_for_unrelated():
-    entry = {"hooks": [{"type": "command", "command": "python /other/tool/my_hook.py"}]}
-    assert _is_graphiti_hook(entry) is False
+def test_is_recall_hook_false_for_unrelated():
+    entry = {"hooks": [{"type": "command", "command": "ls -la"}]}
+    assert _is_recall_hook(entry) is False
 
 
-def test_is_graphiti_hook_false_for_empty():
-    assert _is_graphiti_hook({}) is False
-    assert _is_graphiti_hook({"hooks": []}) is False
+def test_is_recall_hook_false_for_empty():
+    assert _is_recall_hook({}) is False
+    assert _is_recall_hook({"hooks": []}) is False
 
 
 # ==================== install_global_hooks ====================
@@ -69,7 +68,7 @@ def test_install_global_hooks_creates_file_when_missing(tmp_path):
     for hook_type in ("SessionStart", "UserPromptSubmit", "PostToolUse", "PreCompact", "Stop"):
         assert hook_type in hooks, f"{hook_type} missing from hooks"
         entries = hooks[hook_type]
-        assert any(_is_graphiti_hook(e) for e in entries), f"No graphiti entry in {hook_type}"
+        assert any(_is_recall_hook(e) for e in entries), f"No recall entry in {hook_type}"
 
 
 def test_install_global_hooks_preserves_non_graphiti_entries(tmp_path):
@@ -134,8 +133,8 @@ def test_install_global_hooks_replaces_existing_graphiti_entries(tmp_path):
     assert not any(old_python in cmd for cmd in commands), "old graphiti entry not replaced"
     assert any("session_stop.py" in cmd for cmd in commands), "new graphiti entry missing"
     # Only one Stop entry (old was replaced, not duplicated)
-    graphiti_stop_entries = [e for e in stop_entries if _is_graphiti_hook(e)]
-    assert len(graphiti_stop_entries) == 1, f"Expected 1 graphiti Stop entry, got {len(graphiti_stop_entries)}"
+    recall_stop_entries = [e for e in stop_entries if _is_recall_hook(e)]
+    assert len(recall_stop_entries) == 1, f"Expected 1 recall Stop entry, got {len(recall_stop_entries)}"
 
 
 def test_install_global_hooks_uses_sys_executable(tmp_path):

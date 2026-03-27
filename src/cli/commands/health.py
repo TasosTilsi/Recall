@@ -238,6 +238,106 @@ def _check_database(scope_name: str, db_path: Path) -> dict:
         }
 
 
+def _check_embeddings() -> dict:
+    """Check embeddings model availability.
+
+    Returns:
+        Dict with name, status, detail keys
+    """
+    config = load_config()
+    client = get_client()
+
+    # Check if embeddings models are configured
+    if not config.embeddings_models:
+        return {
+            "name": "Embeddings",
+            "status": "warning",
+            "detail": "No embeddings models configured",
+        }
+
+    # Try to use the first embeddings model
+    try:
+        model = config.embeddings_models[0]
+        # Simple test: try to embed a short string
+        result = client.embed(model=model, input="test")
+        # Check if we got embeddings back (result is a dict with embeddings data)
+        if result and isinstance(result, dict) and len(result) > 0:
+            return {
+                "name": "Embeddings",
+                "status": "ok",
+                "detail": f"Model '{model}' responding",
+            }
+        else:
+            return {
+                "name": "Embeddings",
+                "status": "error",
+                "detail": f"Model '{model}' returned unexpected result",
+            }
+    except Exception as e:
+        return {
+            "name": "Embeddings",
+            "status": "error",
+            "detail": f"Failed to connect: {str(e)}",
+        }
+
+
+def _check_reranking() -> dict:
+    """Check reranking model availability.
+
+    Returns:
+        Dict with name, status, detail keys
+    """
+    config = load_config()
+    
+    # Check if reranking is enabled
+    if not config.reranking_enabled or config.reranking_backend == "none":
+        return {
+            "name": "Reranking",
+            "status": "warning",
+            "detail": "Disabled or not configured",
+        }
+
+    # Check based on backend
+    if config.reranking_backend == "bge":
+        try:
+            # Try to import and initialize BGE reranker
+            from graphiti_core.cross_encoder.bge_reranker_client import BGERerankerClient
+            # Just test if we can create the client (doesn't load model yet)
+            BGERerankerClient()
+            return {
+                "name": "Reranking",
+                "status": "ok",
+                "detail": "BGE backend configured",
+            }
+        except Exception as e:
+            return {
+                "name": "Reranking",
+                "status": "error",
+                "detail": f"BGE unavailable: {str(e)}",
+            }
+    elif config.reranking_backend == "openai":
+        # Check if OpenAI API key is available for reranking
+        import os
+        if os.getenv("OPENAI_API_KEY"):
+            return {
+                "name": "Reranking",
+                "status": "ok",
+                "detail": "OpenAI backend configured (API key found)",
+            }
+        else:
+            return {
+                "name": "Reranking",
+                "status": "warning",
+                "detail": "OpenAI backend configured but no API key",
+            }
+    else:
+        return {
+            "name": "Reranking",
+            "status": "error",
+            "detail": f"Unknown backend: {config.reranking_backend}",
+        }
+
+
 def _check_quota() -> dict:
     """Check LLM quota status.
 
@@ -360,9 +460,9 @@ def health_command(
     - LLM quota usage
 
     Examples:
-        graphiti health              # Quick pass/fail summary
-        graphiti health --verbose    # Full diagnostic details
-        graphiti health --format json  # JSON output
+        recall health              # Quick pass/fail summary
+        recall health --verbose    # Full diagnostic details
+        recall health --format json  # JSON output
     """
     # Run all health checks
     checks = []
@@ -376,6 +476,12 @@ def health_command(
         # Legacy mode — show Ollama cloud/local rows
         checks.append(_check_ollama_cloud())
         checks.append(_check_ollama_local())
+
+    # Check embeddings
+    checks.append(_check_embeddings())
+
+    # Check reranking
+    checks.append(_check_reranking())
 
     # Check global database
     checks.append(_check_database("global", GLOBAL_DB_DIR))

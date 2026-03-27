@@ -193,7 +193,7 @@ Key v2.0 architectural decisions from research:
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 2 | Enhance health command to show available/default models | 2026-03-27 | | [2-enhance-health-command-to-show-available](./quick/2-enhance-health-command-to-show-available/) |
+| 2 | Enhance health command to show available/default models | 2026-03-27 | 3fbd659 | [2-enhance-health-command-to-show-available](./quick/2-enhance-health-command-to-show-available/) |
 
 ## Session Continuity
 

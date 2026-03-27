@@ -1,6 +1,6 @@
-"""FastMCP server for graphiti knowledge graph.
+"""FastMCP server for recall knowledge graph.
 
-Entry point: `graphiti mcp serve` (via CLI command group in src/cli/commands/mcp.py)
+Entry point: `recall mcp serve` (via CLI command group in src/cli/commands/mcp.py)
 
 Transports:
   stdio          — default, Claude Code manages lifecycle
@@ -60,7 +60,7 @@ mcp.tool()(recall_health)
 mcp.tool()(recall_config)
 
 # Register context resource for session-start injection
-mcp.resource("graphiti://context")(get_context)
+mcp.resource("recall://context")(get_context)
 
 
 def main(transport: str = "stdio", port: int = 8000) -> None:

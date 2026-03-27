@@ -1,6 +1,6 @@
-"""Context resource for the graphiti MCP server.
+"""Context resource for the recall MCP server.
 
-Provides the graphiti://context resource: session-start context injection
+Provides the recall://context resource: session-start context injection
 from the local knowledge graph. Returns TOON-encoded decisions + architecture
 context (under token budget), or empty string for empty graphs.
 
@@ -87,7 +87,7 @@ def _get_token_budget() -> int:
 def get_context() -> str:
     """Session-start context from the local knowledge graph.
 
-    Called by FastMCP when Claude Code accesses graphiti://context.
+    Called by FastMCP when Claude Code accesses recall://context.
     Returns TOON-encoded decisions + architecture context, or empty string
     if graph is empty (silent — do not prompt user to fill the graph).
 

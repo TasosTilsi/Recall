@@ -335,14 +335,18 @@ def test_config_json(mock_load_config):
 @patch("src.cli.commands.health._check_database")
 @patch("src.cli.commands.health._check_ollama_local")
 @patch("src.cli.commands.health._check_ollama_cloud")
+@patch("src.cli.commands.health._check_embeddings")
+@patch("src.cli.commands.health._check_reranking")
 @patch("src.cli.commands.health.GraphSelector.find_project_root")
-def test_health_basic(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota):
+def test_health_basic(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota, mock_embeddings, mock_reranking):
     """Test health command basic invocation."""
     mock_find_root.return_value = None
     mock_cloud.return_value = {"name": "Cloud Ollama", "status": "ok", "detail": "Connected"}
     mock_local.return_value = {"name": "Local Ollama", "status": "ok", "detail": "Running"}
     mock_db.return_value = {"name": "Database (global)", "status": "ok", "detail": "Initialized"}
     mock_quota.return_value = {"name": "Quota", "status": "ok", "detail": "50% used"}
+    mock_embeddings.return_value = {"name": "Embeddings", "status": "ok", "detail": "Model 'nomic-embed-text' responding"}
+    mock_reranking.return_value = {"name": "Reranking", "status": "warning", "detail": "Disabled or not configured"}
 
     result = runner.invoke(app, ["health"])
 
@@ -354,14 +358,18 @@ def test_health_basic(mock_find_root, mock_cloud, mock_local, mock_db, mock_quot
 @patch("src.cli.commands.health._check_database")
 @patch("src.cli.commands.health._check_ollama_local")
 @patch("src.cli.commands.health._check_ollama_cloud")
+@patch("src.cli.commands.health._check_embeddings")
+@patch("src.cli.commands.health._check_reranking")
 @patch("src.cli.commands.health.GraphSelector.find_project_root")
-def test_health_verbose(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota):
+def test_health_verbose(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota, mock_embeddings, mock_reranking):
     """Test health with --verbose flag."""
     mock_find_root.return_value = None
     mock_cloud.return_value = {"name": "Cloud Ollama", "status": "ok", "detail": "Connected"}
     mock_local.return_value = {"name": "Local Ollama", "status": "ok", "detail": "Running", "models": [{"name": "llama3", "available": True, "is_default": True}]}
     mock_db.return_value = {"name": "Database (global)", "status": "ok", "detail": "Initialized"}
     mock_quota.return_value = {"name": "Quota", "status": "ok", "detail": "50% used"}
+    mock_embeddings.return_value = {"name": "Embeddings", "status": "ok", "detail": "Model 'nomic-embed-text' responding"}
+    mock_reranking.return_value = {"name": "Reranking", "status": "warning", "detail": "Disabled or not configured"}
 
     result = runner.invoke(app, ["health", "--verbose"])
 
@@ -372,14 +380,18 @@ def test_health_verbose(mock_find_root, mock_cloud, mock_local, mock_db, mock_qu
 @patch("src.cli.commands.health._check_database")
 @patch("src.cli.commands.health._check_ollama_local")
 @patch("src.cli.commands.health._check_ollama_cloud")
+@patch("src.cli.commands.health._check_embeddings")
+@patch("src.cli.commands.health._check_reranking")
 @patch("src.cli.commands.health.GraphSelector.find_project_root")
-def test_health_json(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota):
+def test_health_json(mock_find_root, mock_cloud, mock_local, mock_db, mock_quota, mock_embeddings, mock_reranking):
     """Test health with JSON output."""
     mock_find_root.return_value = None
     mock_cloud.return_value = {"name": "Cloud Ollama", "status": "ok", "detail": "Connected"}
     mock_local.return_value = {"name": "Local Ollama", "status": "ok", "detail": "Running"}
     mock_db.return_value = {"name": "Database (global)", "status": "ok", "detail": "Initialized"}
     mock_quota.return_value = {"name": "Quota", "status": "ok", "detail": "50% used"}
+    mock_embeddings.return_value = {"name": "Embeddings", "status": "ok", "detail": "Model 'nomic-embed-text' responding"}
+    mock_reranking.return_value = {"name": "Reranking", "status": "warning", "detail": "Disabled or not configured"}
 
     result = runner.invoke(app, ["health", "--format", "json"])
 
