@@ -255,6 +255,74 @@ class OllamaClient:
                 error_code=error.status_code,
             )
 
+    def _try_cloud(self, operation: str, **kwargs):
+        """Try operation across all cloud models with retry on each.
+
+        Iterates self.config.cloud_models in order. On 401, stops immediately
+        (fail fast) and falls back to local. On other errors, tries the next
+        cloud model. Only falls back to local after ALL cloud models fail.
+
+        Args:
+            operation: Operation name ("chat", "generate")
+            **kwargs: Arguments to pass to the operation (model= will be set per-model)
+
+        Returns:
+            Operation result on first successful cloud model.
+
+        Raises:
+            ResponseError: If a 401 is received (caller should fall back to local).
+            LLMUnavailableError: If all cloud models fail with non-401 errors.
+        """
+        last_error = None
+        for cloud_model in self.config.cloud_models:
+            try:
+                call_kwargs = {**kwargs, "model": cloud_model}
+                result = self._retry_cloud(operation, **call_kwargs)
+                return result
+            except (ResponseError, RetryError) as e:
+                # Extract the underlying ResponseError
+                if isinstance(e, RetryError):
+                    if hasattr(e.last_attempt, 'exception') and e.last_attempt.exception():
+                        e = e.last_attempt.exception()
+
+                last_error = e
+                if isinstance(e, ResponseError):
+                    self._handle_cloud_error(e, operation=operation)
+
+                    # 401 → fail fast: stop trying cloud models, fall back to local
+                    if e.status_code == 401:
+                        logger.info(
+                            "Cloud 401 — skipping remaining cloud models",
+                            model=cloud_model,
+                            operation=operation,
+                        )
+                        raise
+
+                    # 429 → cooldown set, no point trying other cloud models
+                    if e.status_code == 429:
+                        logger.info(
+                            "Cloud rate-limited — skipping remaining cloud models",
+                            model=cloud_model,
+                            operation=operation,
+                        )
+                        raise
+
+                    # Other errors (e.g. 400 bad request, model not found)
+                    # → try next cloud model
+                    logger.debug(
+                        "Cloud model failed, trying next",
+                        model=cloud_model,
+                        operation=operation,
+                        error=str(e.error),
+                    )
+
+        # All cloud models failed — raise the last error so caller falls back to local
+        if isinstance(last_error, ResponseError):
+            raise last_error
+        raise LLMUnavailableError(
+            f"All cloud models failed. Last error: {last_error}"
+        ) from last_error
+
     def _retry_cloud(self, operation: str, **kwargs):
         """Retry cloud operation with tenacity.
 
@@ -418,6 +486,10 @@ class OllamaClient:
     def chat(self, model: str | None = None, messages: list[dict] | None = None, **kwargs):
         """Send chat completion request with automatic failover.
 
+        Tries all cloud models in order. On 401, fails fast to local.
+        On other errors, tries next cloud model. Falls back to local only
+        after all cloud models are exhausted.
+
         Args:
             model: Model name (None = use cloud default or local fallback)
             messages: List of message dicts with 'role' and 'content'
@@ -433,21 +505,14 @@ class OllamaClient:
             # Try cloud if available
             if self._is_cloud_available("chat"):
                 try:
-                    cloud_model = model or self.config.cloud_models[0]
                     # Cloud models may not support Ollama's format= constrained generation.
                     # Strip it; cloud relies on the example injected into the prompt by
                     # OllamaLLMClient._inject_example() for structured-output guidance.
                     cloud_kwargs = {k: v for k, v in kwargs.items() if k != "format"}
-                    return self._retry_cloud("chat", model=cloud_model, messages=messages, **cloud_kwargs)
-                except (ResponseError, RetryError) as e:
-                    # Extract ResponseError from RetryError if needed
-                    if isinstance(e, RetryError):
-                        # Get the last exception from the retry
-                        if hasattr(e.last_attempt, 'exception') and e.last_attempt.exception():
-                            e = e.last_attempt.exception()
-                    if isinstance(e, ResponseError):
-                        self._handle_cloud_error(e, operation="chat")
+                    return self._try_cloud("chat", messages=messages, **cloud_kwargs)
+                except (ResponseError, LLMUnavailableError):
                     # Fall through to local
+                    pass
 
             # Fallback to local
             return self._try_local("chat", model, messages=messages, **kwargs)
@@ -466,6 +531,10 @@ class OllamaClient:
     def generate(self, model: str | None = None, prompt: str | None = None, **kwargs):
         """Send generate request with automatic failover.
 
+        Tries all cloud models in order. On 401, fails fast to local.
+        On other errors, tries next cloud model. Falls back to local only
+        after all cloud models are exhausted.
+
         Args:
             model: Model name (None = use cloud default or local fallback)
             prompt: Prompt text
@@ -481,16 +550,10 @@ class OllamaClient:
             # Try cloud if available
             if self._is_cloud_available("generate"):
                 try:
-                    cloud_model = model or self.config.cloud_models[0]
-                    return self._retry_cloud("generate", model=cloud_model, prompt=prompt, **kwargs)
-                except (ResponseError, RetryError) as e:
-                    # Extract ResponseError from RetryError if needed
-                    if isinstance(e, RetryError):
-                        if hasattr(e.last_attempt, 'exception') and e.last_attempt.exception():
-                            e = e.last_attempt.exception()
-                    if isinstance(e, ResponseError):
-                        self._handle_cloud_error(e, operation="generate")
+                    return self._try_cloud("generate", prompt=prompt, **kwargs)
+                except (ResponseError, LLMUnavailableError):
                     # Fall through to local
+                    pass
 
             # Fallback to local
             return self._try_local("generate", model, prompt=prompt, **kwargs)
