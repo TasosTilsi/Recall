@@ -14,6 +14,7 @@ interface GraphCanvasProps {
   colorMode?: 'type' | 'scope';
   onNodeClick?: (nodeData: { id: string; label: string; type: string }) => void;
   onEdgeClick?: (edgeData: { id: string; source: string; target: string; name: string }) => void;
+  onRendererReady?: (renderer: Sigma) => void;
 }
 
 const EPISODE_COLOR = '#475569';  // slate-600
@@ -29,6 +30,7 @@ export function GraphCanvas({
   colorMode = 'type',
   onNodeClick,
   onEdgeClick,
+  onRendererReady,
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +69,7 @@ export function GraphCanvas({
         color: dim ? color + '33' : color,
         type: 'circle',
         borderColor: getRetentionBorderColor(n.retention_status),
-        borderSize: n.retention_status && n.retention_status !== 'Normal' ? 2 : 0,
+        borderSize: n.retention_status && n.retention_status !== 'Normal' ? 4 : 0,
       });
     });
 
@@ -116,6 +118,8 @@ export function GraphCanvas({
       defaultNodeColor: '#94a3b8',
     });
 
+    onRendererReady?.(renderer);
+
     // Click handlers
     renderer.on('clickNode', ({ node }) => {
       const attrs = graph.getNodeAttributes(node);
@@ -147,7 +151,7 @@ export function GraphCanvas({
       clearTimeout(fa2Timer);
       renderer.kill();
     };
-  }, [nodes, edges, showEpisodes, searchQuery, colorMode, onNodeClick, onEdgeClick]);
+  }, [nodes, edges, showEpisodes, searchQuery, colorMode, onNodeClick, onEdgeClick, onRendererReady]);
 
   if (nodes.length === 0) {
     return (

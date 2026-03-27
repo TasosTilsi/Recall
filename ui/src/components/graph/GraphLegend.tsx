@@ -20,7 +20,7 @@ export function GraphLegend({ colorMode }: GraphLegendProps) {
     : Object.entries(ENTITY_TYPE_COLORS).map(([name, color]) => ({ name, color }));
 
   return (
-    <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-3">
+    <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-3">
       {/* Entity type / scope legend */}
       <div
         className="p-3 rounded-lg flex flex-col gap-1.5"

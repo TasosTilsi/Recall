@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { fetchGraph } from '@/api/client';
 import type { GraphData } from '@/types/api';
@@ -7,6 +7,8 @@ import { GraphLegend } from '@/components/graph/GraphLegend';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import Sigma from 'sigma';
+import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 export default function GraphView() {
   const { scope, setLastUpdated } = useAppContext();
@@ -16,6 +18,7 @@ export default function GraphView() {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [colorMode, setColorMode] = useState<'type' | 'scope'>('type');
   const [selectedNode, setSelectedNode] = useState<{ id: string; label: string; type: string } | null>(null);
+  const rendererRef = useRef<Sigma | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,6 +45,10 @@ export default function GraphView() {
 
   const handleNodeClick = useCallback((nodeData: { id: string; label: string; type: string }) => {
     setSelectedNode(nodeData);
+  }, []);
+
+  const handleRendererReady = useCallback((r: Sigma) => {
+    rendererRef.current = r;
   }, []);
 
   // Suppress unused variable warning — selectedNode is stored for future detail panel use
@@ -101,8 +108,34 @@ export default function GraphView() {
           showEpisodes={showEpisodes}
           colorMode={colorMode}
           onNodeClick={handleNodeClick}
+          onRendererReady={handleRendererReady}
         />
         <GraphLegend colorMode={colorMode} />
+        {/* Zoom controls */}
+        <div className="absolute bottom-4 right-4 z-10 flex flex-col rounded-lg overflow-hidden"
+             style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)' }}>
+          <button
+            onClick={() => rendererRef.current?.getCamera().animatedZoom({ duration: 200 })}
+            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+            title="Zoom in"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => rendererRef.current?.getCamera().animatedUnzoom({ duration: 200 })}
+            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+            title="Zoom out"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => rendererRef.current?.getCamera().animatedReset({ duration: 200 })}
+            className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
+            title="Fit to screen"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
