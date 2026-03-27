@@ -176,7 +176,12 @@ class LadybugDriver(GraphDriver):
 
         # Create database and setup schema (tables + indices via SCHEMA_QUERIES)
         # read_only=True allows concurrent readers alongside an active writer process.
-        self.db = lb.Database(db, read_only=read_only)
+        # throw_on_wal_replay_failure=False lets readers open with stale-but-readable
+        # data when the writer is mid-transaction (WAL in intermediate state).
+        db_kwargs = dict(read_only=read_only)
+        if read_only:
+            db_kwargs['throw_on_wal_replay_failure'] = False
+        self.db = lb.Database(db, **db_kwargs)
         if not read_only:
             self.setup_schema()
 
