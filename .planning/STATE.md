@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: completed
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-03-21T21:08:06.479Z"
-last_activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
+status: executing
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-03-27T17:45:09.994Z"
+last_activity: 2026-03-27
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 7
-  total_plans: 28
-  completed_plans: 28
+  total_plans: 31
+  completed_plans: 29
   percent: 25
 ---
 
@@ -21,13 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Milestone v2.0 Rebuild — Phase 12 complete; next: `/gsd:plan-phase 13`
+**Current focus:** Phase 19 — Wire UI-03 Retention Filter
 
 ## Current Position
 
-Phase: Phase 12 DB Migration — Complete (2026-03-17)
-Status: Phase 12 DB Migration complete (human approved). Next action: `/gsd:plan-phase 13`
-Last activity: 2026-03-17 — Phase 12 DB Migration complete; KuzuDB replaced with LadybugDB; human smoke test approved
+Phase: 19 (Wire UI-03 Retention Filter) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-03-27
 
 Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases complete)
 
@@ -43,6 +44,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 ## Performance Metrics
 
 **Velocity (v1.1 reference):**
+
 - Total plans completed: 14 (v1.1)
 - Average duration: ~9 min/plan
 - Total execution time: 8 days
@@ -87,6 +89,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | Phase 17-fix-stale-binary-references P01 | 5 | 2 tasks | 5 files |
 | Phase 18-formal-verification-phases-14-16 P01 | 3 | 2 tasks | 3 files |
 | Phase 18-formal-verification-phases-14-16 P02 | 4 | 1 tasks | 2 files |
+| Phase 19-wire-ui-03-retention-filter P19-01 | 4 | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -157,6 +160,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 18-01]: verify_phase_14.py follows verify_phase_16.py structure exactly — same Runner class, colored output, argparse flags
 - [Phase 18-01]: 14-VERIFICATION.md cites 14-07-SUMMARY.md checkpoint human-verify approved as authoritative evidence for UI visual/interactive checks
 - [Phase 18-02]: test_note_command_appends_to_jsonl used .graphiti/ directory but note_cmd.py writes to .recall/ — fixed test path to match actual implementation
+- [Phase 19-01]: Stale computed inline from created_at vs retention_days — no get_stale_uuids method in RetentionManager
+- [Phase 19-01]: get_retention_manager promoted to module-level import for testability (patch target)
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -184,6 +189,6 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last session: 2026-03-21T21:04:46.132Z
-Stopped at: Completed 18-02-PLAN.md
+Last session: 2026-03-27T17:45:09.989Z
+Stopped at: Completed 19-01-PLAN.md
 Resume with: `/gsd:plan-phase 13`
