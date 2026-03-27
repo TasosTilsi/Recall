@@ -195,7 +195,7 @@ Plans:
 
 Plans:
 - [x] 19-01-PLAN.md — Add `retention_status` field to `GraphService.list_entities_readonly()` response + `/api/graph` node shape
-- [ ] 19-02-PLAN.md — Add retention filter dropdown to `Entities.tsx`; wire filter state to entity list and graph view
+- [x] 19-02-PLAN.md — Add retention filter dropdown to `Entities.tsx`; wire filter state to entity list and graph view
 - [ ] 19-03-PLAN.md — Integration tests + human smoke test
 
 ---
@@ -263,4 +263,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 16. Rename & CLI Consolidation | 4/4 | Complete   | 2026-03-20 | — |
 | 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
-| 19. Wire UI-03 Retention Filter | 0/3 | 1/3 | In Progress|  |
+| 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
