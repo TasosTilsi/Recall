@@ -1147,7 +1147,7 @@ class GraphService:
             return []
 
         try:
-            driver = self.graph_manager.get_driver(scope, project_root)
+            driver = self._graph_manager.get_driver(scope, project_root)
             group_id = self._get_group_id(scope, project_root)
 
             query = """
@@ -1186,7 +1186,7 @@ class GraphService:
             return []
 
         try:
-            driver = self.graph_manager.get_driver(scope, project_root)
+            driver = self._graph_manager.get_driver(scope, project_root)
             group_id = self._get_group_id(scope, project_root)
 
             limit_clause = f"LIMIT {limit}" if limit else ""

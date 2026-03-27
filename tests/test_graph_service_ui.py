@@ -305,6 +305,75 @@ class TestGetTopConnectedEntities:
 # ---------------------------------------------------------------------------
 
 
+class TestListEntitiesRetentionStatus:
+    """Phase 19 — retention_status field on list_entities_readonly()."""
+
+    @pytest.fixture
+    def mock_service(self, tmp_path):
+        """GraphService with mocked driver — returns service object directly (not tuple)."""
+        service = GraphService.__new__(GraphService)
+        service._graph_manager = MagicMock()
+        mock_driver = MagicMock()
+        mock_driver.execute_query = AsyncMock(return_value=([], None, None))
+        service._graph_manager.get_driver.return_value = mock_driver
+        db_path = tmp_path / "graphiti.lbdb"
+        db_path.mkdir()
+        service._resolve_db_path = MagicMock(return_value=db_path)
+        service._get_group_id = MagicMock(return_value="test-group-id")
+        return service
+
+    @pytest.mark.asyncio
+    async def test_retention_status_present_on_entities(self, mock_service):
+        """Every entity dict has a retention_status key."""
+        mock_driver = mock_service._graph_manager.get_driver.return_value
+        mock_driver.execute_query = AsyncMock(return_value=(
+            [{"uuid": "u1", "name": "E1", "tags": ["Decision"], "summary": "", "scope": "project", "created_at": "2025-01-01T00:00:00Z"}],
+            None, None,
+        ))
+        result = await mock_service.list_entities_readonly(GraphScope.PROJECT, Path("/tmp/proj"))
+        assert len(result) == 1
+        assert "retention_status" in result[0]
+        assert result[0]["retention_status"] in ("Pinned", "Normal", "Stale", "Archived")
+
+    @pytest.mark.asyncio
+    async def test_archived_entities_not_excluded(self, mock_service):
+        """Archived entities remain in the list (not filtered out server-side)."""
+        mock_driver = mock_service._graph_manager.get_driver.return_value
+        mock_driver.execute_query = AsyncMock(return_value=(
+            [
+                {"uuid": "u-archived", "name": "OldEntity", "tags": ["Entity"], "summary": "", "scope": "project", "created_at": "2024-01-01T00:00:00Z"},
+                {"uuid": "u-normal", "name": "NewEntity", "tags": ["Entity"], "summary": "", "scope": "project", "created_at": "2026-03-01T00:00:00Z"},
+            ],
+            None, None,
+        ))
+        with patch("src.graph.service.get_retention_manager") as mock_rm_fn:
+            rm = MagicMock()
+            rm.get_archive_state_uuids.return_value = {"u-archived"}
+            rm.get_pin_state_uuids.return_value = set()
+            mock_rm_fn.return_value = rm
+            result = await mock_service.list_entities_readonly(GraphScope.PROJECT, Path("/tmp/proj"))
+        uuids = [e["uuid"] for e in result]
+        assert "u-archived" in uuids, "Archived entity must NOT be excluded"
+        archived_entity = [e for e in result if e["uuid"] == "u-archived"][0]
+        assert archived_entity["retention_status"] == "Archived"
+
+    @pytest.mark.asyncio
+    async def test_priority_pinned_over_stale(self, mock_service):
+        """Pinned takes priority even if entity is old enough to be stale."""
+        mock_driver = mock_service._graph_manager.get_driver.return_value
+        mock_driver.execute_query = AsyncMock(return_value=(
+            [{"uuid": "u-pinned", "name": "OldPinned", "tags": ["Entity"], "summary": "", "scope": "project", "created_at": "2020-01-01T00:00:00Z"}],
+            None, None,
+        ))
+        with patch("src.graph.service.get_retention_manager") as mock_rm_fn:
+            rm = MagicMock()
+            rm.get_archive_state_uuids.return_value = set()
+            rm.get_pin_state_uuids.return_value = {"u-pinned"}
+            mock_rm_fn.return_value = rm
+            result = await mock_service.list_entities_readonly(GraphScope.PROJECT, Path("/tmp/proj"))
+        assert result[0]["retention_status"] == "Pinned"
+
+
 class TestGetRetentionSummary:
     """Tests for GraphService.get_retention_summary()."""
 

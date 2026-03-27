@@ -74,6 +74,23 @@ class TestGraphEndpoint:
             resp = TestClient(app).get("/api/graph?scope=global")
         assert resp.status_code == 200
 
+    def test_graph_node_shape_includes_retention_status(self):
+        """Graph node dict includes retention_status field."""
+        from fastapi.testclient import TestClient
+        from src.ui_server.app import create_app
+        with patch("src.ui_server.app.GraphService") as mock_cls:
+            mock_svc = MagicMock()
+            mock_svc.list_entities_readonly = AsyncMock(return_value=[
+                {"uuid": "u1", "name": "E1", "tags": ["Decision"], "scope": "project", "retention_status": "Pinned"},
+            ])
+            mock_svc.list_edges = AsyncMock(return_value=[])
+            mock_cls.return_value = mock_svc
+            app = create_app(scope_label="project", static_dir=None)
+            resp = TestClient(app).get("/api/graph")
+        node = resp.json()["nodes"][0]
+        assert "retention_status" in node
+        assert node["retention_status"] == "Pinned"
+
 
 class TestDashboardEndpoint:
     """GET /api/dashboard — all chart data."""
