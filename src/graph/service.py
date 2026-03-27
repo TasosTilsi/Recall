@@ -86,10 +86,10 @@ class GraphService:
     delete, summarize, compact, and stats operations.
     """
 
-    def __init__(self):
+    def __init__(self, read_only: bool = False):
         """Initialize GraphService with adapters and manager."""
         # Create storage manager
-        self._graph_manager = GraphManager()
+        self._graph_manager = GraphManager(read_only=read_only)
 
         # Create adapters (reused across all scopes)
         # Phase 13: factory routing — selects correct client based on [llm] config

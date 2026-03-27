@@ -68,12 +68,13 @@ class GraphManager:
     This class enforces that constraint per scope.
     """
 
-    def __init__(self):
+    def __init__(self, read_only: bool = False):
         self._global_driver = None
         self._project_driver = None
         self._current_project_root: Optional[Path] = None
+        self._read_only = read_only
 
-    def _make_driver(self, db_path: str):
+    def _make_driver(self, db_path: str, read_only: bool = False):
         """Create appropriate driver based on backend configuration.
 
         For LadybugDB (default): creates LadybugDriver at db_path.
@@ -100,7 +101,7 @@ class GraphManager:
             return Neo4jDriver(uri=clean_uri, user=user, password=password)
         else:
             # LadybugDB default
-            return LadybugDriver(db=db_path)
+            return LadybugDriver(db=db_path, read_only=read_only)
 
     def _clear_stale_v1_data(self) -> None:
         """Clear retention.db and SQLiteAckQueue on first v2.0 run.
@@ -144,10 +145,11 @@ class GraphManager:
         """Get or create the global scope driver."""
         if self._global_driver is None:
             GLOBAL_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-            if _is_first_v2_run():
+            if not self._read_only and _is_first_v2_run():
                 self._clear_stale_v1_data()
-            self._global_driver = self._make_driver(str(GLOBAL_DB_PATH))
-            _mark_v2_initialized()
+            self._global_driver = self._make_driver(str(GLOBAL_DB_PATH), read_only=self._read_only)
+            if not self._read_only:
+                _mark_v2_initialized()
         return self._global_driver
 
     def _get_project_driver(self, project_root: Optional[Path]):
@@ -168,7 +170,7 @@ class GraphManager:
         if self._project_driver is None:
             db_path = get_project_db_path(project_root)
             db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._project_driver = self._make_driver(str(db_path))
+            self._project_driver = self._make_driver(str(db_path), read_only=self._read_only)
             self._current_project_root = project_root
 
         return self._project_driver

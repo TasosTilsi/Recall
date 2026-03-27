@@ -167,14 +167,18 @@ class LadybugDriver(GraphDriver):
         self,
         db: str = ':memory:',
         max_concurrent_queries: int = 4,
+        read_only: bool = False,
     ) -> None:
         super().__init__()
         self._db_path = db
         self._max_concurrent_queries = max_concurrent_queries
+        self._read_only = read_only
 
         # Create database and setup schema (tables + indices via SCHEMA_QUERIES)
-        self.db = lb.Database(db)
-        self.setup_schema()
+        # read_only=True allows concurrent readers alongside an active writer process.
+        self.db = lb.Database(db, read_only=read_only)
+        if not read_only:
+            self.setup_schema()
 
         # AsyncConnection for graphiti-core async query execution
         self.client = lb.AsyncConnection(self.db, max_concurrent_queries=max_concurrent_queries)

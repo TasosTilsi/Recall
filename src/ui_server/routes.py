@@ -20,7 +20,7 @@ def _get_graph_service():
     Importing via the module ensures unittest.mock.patch takes effect at call time.
     """
     import src.ui_server.app as _app_module
-    return _app_module.GraphService()
+    return _app_module.GraphService(read_only=True)
 
 
 async def _await_if_coro(result):
