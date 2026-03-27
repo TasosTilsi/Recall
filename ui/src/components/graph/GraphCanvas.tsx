@@ -4,7 +4,7 @@ import Sigma from 'sigma';
 import circular from 'graphology-layout/circular';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import type { GraphNode, GraphEdge } from '@/types/api';
-import { getEntityColor } from '@/lib/colors';
+import { getEntityColor, getRetentionBorderColor } from '@/lib/colors';
 
 interface GraphCanvasProps {
   nodes: GraphNode[];
@@ -66,6 +66,8 @@ export function GraphCanvas({
         size: Math.max(ENTITY_SIZE_MIN, Math.min(ENTITY_SIZE_MAX, size)),
         color: dim ? color + '33' : color,
         type: 'circle',
+        borderColor: getRetentionBorderColor(n.retention_status),
+        borderSize: n.retention_status && n.retention_status !== 'Normal' ? 2 : 0,
       });
     });
 

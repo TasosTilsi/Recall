@@ -29,3 +29,8 @@ export const SOURCE_COLORS: Record<string, string> = {
 export function getEntityColor(type: string): string {
   return ENTITY_TYPE_COLORS[type] ?? ENTITY_TYPE_COLORS['Entity'];
 }
+
+export function getRetentionBorderColor(status: string | undefined): string | undefined {
+  if (!status || status === 'Normal') return undefined;
+  return RETENTION_COLORS[status];
+}
