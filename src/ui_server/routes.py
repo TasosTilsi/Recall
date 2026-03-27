@@ -62,6 +62,7 @@ async def get_graph(request: Request, scope: str = "project"):
             "label": e.get("name", ""),
             "type": (e.get("tags") or ["Entity"])[0],
             "scope": e.get("scope", scope_str),
+            "retention_status": e.get("retention_status", "Normal"),
         }
         for e in entities
     ]

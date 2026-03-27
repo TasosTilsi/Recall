@@ -1,9 +1,13 @@
+// Retention badge type
+export type RetentionStatus = 'Pinned' | 'Normal' | 'Stale' | 'Archived';
+
 // GraphData — /api/graph response
 export interface GraphNode {
   id: string;
   label: string;
   type: string;
   scope: string;
+  retention_status?: RetentionStatus;
 }
 
 export interface GraphEdge {
@@ -129,6 +133,3 @@ export interface SearchResults {
   relations: SearchRelationResult[];
   episodes: EpisodeSummary[];
 }
-
-// Retention badge type
-export type RetentionStatus = 'Pinned' | 'Normal' | 'Stale' | 'Archived';
