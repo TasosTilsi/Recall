@@ -97,7 +97,7 @@ class TestGraphManagerProject:
         try:
             driver = manager.get_driver(GraphScope.PROJECT, tmp_path)
             assert driver is not None
-            assert (tmp_path / ".graphiti").exists()
+            assert (tmp_path / ".recall").exists()
         finally:
             manager.close_all()
 
@@ -125,8 +125,8 @@ class TestGraphManagerProject:
             # Should be different drivers
             assert driver1 is not driver2
             # Both project directories should exist
-            assert (project1 / ".graphiti").exists()
-            assert (project2 / ".graphiti").exists()
+            assert (project1 / ".recall").exists()
+            assert (project2 / ".recall").exists()
         finally:
             manager.close_all()
 
@@ -146,7 +146,7 @@ class TestPersistence:
     @pytest.fixture
     def isolated_global_path(self, tmp_path, monkeypatch):
         """Use isolated global path for tests to avoid polluting user's real global DB."""
-        test_global = tmp_path / "test_global" / "graphiti.lbdb"
+        test_global = tmp_path / "test_global" / "recall.lbdb"
         monkeypatch.setattr("src.config.paths.GLOBAL_DB_PATH", test_global)
         monkeypatch.setattr("src.storage.graph_manager.GLOBAL_DB_PATH", test_global)
         return test_global
@@ -225,7 +225,7 @@ class TestIsolation:
     @pytest.fixture
     def isolated_global_path(self, tmp_path, monkeypatch):
         """Use isolated global path for tests."""
-        test_global = tmp_path / "test_global" / "graphiti.lbdb"
+        test_global = tmp_path / "test_global" / "recall.lbdb"
         monkeypatch.setattr("src.config.paths.GLOBAL_DB_PATH", test_global)
         monkeypatch.setattr("src.storage.graph_manager.GLOBAL_DB_PATH", test_global)
         return test_global

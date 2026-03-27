@@ -44,7 +44,7 @@ def mock_service(tmp_path):
     mock_driver.execute_query = AsyncMock(return_value=([], None, None))
     service._graph_manager.get_driver.return_value = mock_driver
     # _resolve_db_path returns a path that EXISTS by default
-    db_path = tmp_path / "graphiti.lbdb"
+    db_path = tmp_path / "recall.lbdb"
     db_path.mkdir()
     service._resolve_db_path = MagicMock(return_value=db_path)
     service._get_group_id = MagicMock(return_value="test-group-id")
@@ -316,7 +316,7 @@ class TestListEntitiesRetentionStatus:
         mock_driver = MagicMock()
         mock_driver.execute_query = AsyncMock(return_value=([], None, None))
         service._graph_manager.get_driver.return_value = mock_driver
-        db_path = tmp_path / "graphiti.lbdb"
+        db_path = tmp_path / "recall.lbdb"
         db_path.mkdir()
         service._resolve_db_path = MagicMock(return_value=db_path)
         service._get_group_id = MagicMock(return_value="test-group-id")

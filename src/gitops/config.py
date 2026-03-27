@@ -1,9 +1,9 @@
-"""Git configuration file generators for Graphiti.
+"""Git configuration file generators for Recall.
 
 This module provides utilities to generate and maintain .gitignore files
-for proper version control of Graphiti knowledge graphs.
+for proper version control of Recall knowledge graphs.
 
-LFS-related helpers (generate_gitattributes, GRAPHITI_GITATTRIBUTES) were
+LFS-related helpers (generate_gitattributes, RECALL_GITATTRIBUTES) were
 removed in Phase 7.1 as part of the architectural pivot to local-first indexing.
 """
 
@@ -14,7 +14,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Gitignore content for .recall directory
-GRAPHITI_GITIGNORE = """# Recall Knowledge Graph - Git Ignores
+RECALL_GITIGNORE = """# Recall Knowledge Graph - Git Ignores
 # Transient per-developer state (not shared)
 
 # SQLite queue database (per-developer processing state)
@@ -44,11 +44,11 @@ def generate_gitignore(project_root: Path) -> Path:
     Returns:
         Path to the created .gitignore file
     """
-    graphiti_dir = project_root / ".recall"
-    graphiti_dir.mkdir(parents=True, exist_ok=True)
+    recall_dir = project_root / ".recall"
+    recall_dir.mkdir(parents=True, exist_ok=True)
 
-    gitignore_path = graphiti_dir / ".gitignore"
-    gitignore_path.write_text(GRAPHITI_GITIGNORE.lstrip())
+    gitignore_path = recall_dir / ".gitignore"
+    gitignore_path.write_text(RECALL_GITIGNORE.lstrip())
 
     logger.info("generated_gitignore", path=str(gitignore_path))
     return gitignore_path

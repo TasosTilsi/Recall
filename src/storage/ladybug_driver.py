@@ -179,10 +179,10 @@ class LadybugDriver(GraphDriver):
         # AsyncConnection for graphiti-core async query execution
         self.client = lb.AsyncConnection(self.db, max_concurrent_queries=max_concurrent_queries)
 
-        # NOTE: _database is intentionally NOT set here.
-        # Graphiti.add_episode() calls driver.with_database(group_id) which creates a
-        # clone with _database set. That clone is used for group_id-scoped operations.
-        # Setting _database in __init__ would use db_path as group_id, which is wrong.
+        # Initialize _database so graphiti-core can compare group_id against it.
+        # graphiti.py:887 does `if group_id != self.driver._database` which crashes if
+        # the attribute is absent. clone() sets this to the actual group_id later.
+        self._database: str = ''
 
     def setup_schema(self) -> None:
         """Create all required tables and relations.
@@ -191,6 +191,7 @@ class LadybugDriver(GraphDriver):
         LadybugDB is a Kuzu fork with identical Cypher DDL syntax.
         """
         conn = lb.Connection(self.db)
+        conn.execute("INSTALL FTS; LOAD FTS;")
         conn.execute(SCHEMA_QUERIES)
         conn.close()
 
@@ -218,9 +219,9 @@ class LadybugDriver(GraphDriver):
 
         Returns (results, None, None) matching KuzuDriver contract.
         Each result row is a dict keyed by column alias.
-        kwargs are passed as query parameters (None-valued entries stripped).
+        kwargs are passed as query parameters.
         """
-        params = {k: v for k, v in kwargs.items() if v is not None}
+        params = dict(kwargs)
         # Strip neo4j-specific routing params that LadybugDB doesn't support
         params.pop('database_', None)
         params.pop('routing_', None)
@@ -249,12 +250,19 @@ class LadybugDriver(GraphDriver):
         """Create FTS and other indices required by graphiti-core.
 
         LadybugDB uses the same Cypher FTS index syntax as KuzuDB (identical fork).
-        Schema is created during setup_schema() called from __init__.
-        This method is kept for ABC compliance and future index additions.
         """
-        # Schema/indices are created in setup_schema() called from __init__.
-        # This is a no-op here (same pattern as KuzuDriver.build_indices_and_constraints).
-        pass
+        from graphiti_core.graph_queries import get_fulltext_indices
+
+        fts_queries = get_fulltext_indices(GraphProvider.KUZU)
+        conn = lb.Connection(self.db)
+        conn.execute("LOAD FTS;")  # FTS extension already installed in setup_schema
+        for q in fts_queries:
+            try:
+                conn.execute(q)
+            except Exception:
+                # Index may already exist from a previous run — safe to ignore
+                pass
+        conn.close()
 
     def delete_all_indexes(self, database_: str = '') -> None:
         """Delete all indexes (no-op for embedded LadybugDB)."""

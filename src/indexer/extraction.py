@@ -4,7 +4,7 @@ Each qualifying commit is processed in two passes:
   1. Structured Q&A pass: answers specific questions about the commit
   2. Free-form entity pass: extracts entities and relationships as facts
 
-Both passes call graphiti_instance.add_episode() and tag the episodes with
+Both passes call instance.add_episode() and tag the episodes with
 source_description starting with 'git-history-index:'.
 
 Large diffs (>300 lines) are summarized first before extraction to keep
@@ -76,14 +76,14 @@ Diff:
 """
 
 
-async def _summarize_diff(diff_content: str, graphiti_instance: Any) -> str:
+async def _summarize_diff(diff_content: str, instance: Any) -> str:
     """Summarize a large diff using the project LLM client.
 
     Falls back to simple truncation if the LLM call fails.
 
     Args:
         diff_content: Raw diff text
-        graphiti_instance: Graphiti instance (used to access LLM indirectly)
+        instance: Recall instance (used to access LLM indirectly)
 
     Returns:
         Summarized diff string (≤ DIFF_CONTENT_CHAR_LIMIT chars on failure)
@@ -112,7 +112,7 @@ async def extract_commit_knowledge(
     commit_message: str,
     commit_author: str,
     diff_content: str,
-    graphiti_instance: Any,
+    instance: Any,
     group_id: str,
     reference_time: datetime,
     capture_mode: str = "decisions-only",
@@ -132,8 +132,8 @@ async def extract_commit_knowledge(
         commit_message: Commit subject/body text
         commit_author: Author name or email
         diff_content: Raw diff text for this commit
-        graphiti_instance: Initialized Graphiti instance
-        group_id: Graphiti group_id for episode tagging
+        instance: Initialized Recall instance
+        group_id: Recall group_id for episode tagging
         reference_time: UTC datetime representing when the commit was made
 
     Returns:
@@ -151,7 +151,7 @@ async def extract_commit_knowledge(
                 lines=diff_content.count('\n'),
                 threshold=LARGE_DIFF_THRESHOLD_LINES,
             )
-            diff_content = await _summarize_diff(diff_content, graphiti_instance)
+            diff_content = await _summarize_diff(diff_content, instance)
 
         # Truncate to char limit for prompts
         diff_for_prompt = diff_content[:DIFF_CONTENT_CHAR_LIMIT]
@@ -164,7 +164,7 @@ async def extract_commit_knowledge(
             diff_content=diff_for_prompt,
         )
 
-        await graphiti_instance.add_episode(
+        await instance.add_episode(
             name=f"git-commit-structured-{sha_short}",
             episode_body=structured_text,
             source_description=f"git-history-index:structured:{sha_short}",
@@ -189,7 +189,7 @@ async def extract_commit_knowledge(
             diff_content=diff_for_prompt,
         )
 
-        await graphiti_instance.add_episode(
+        await instance.add_episode(
             name=f"git-commit-freeform-{sha_short}",
             episode_body=freeform_text,
             source_description=f"git-history-index:freeform:{sha_short}",

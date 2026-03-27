@@ -352,7 +352,7 @@ async def capture_conversation(
 
 
 async def capture_manual(transcript_path: Path | None = None) -> dict | None:
-    """Manual capture entry point for `graphiti capture` CLI.
+    """Manual capture entry point for `recall capture` CLI.
 
     If transcript_path not provided, attempts to find it from Claude Code
     environment:

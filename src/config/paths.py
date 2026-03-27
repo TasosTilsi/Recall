@@ -5,12 +5,12 @@ logger = logging.getLogger(__name__)
 
 # Global scope paths: ~/.recall/global/
 GLOBAL_DB_DIR = Path.home() / ".recall" / "global"
-GLOBAL_DB_PATH = GLOBAL_DB_DIR / "graphiti.lbdb"
+GLOBAL_DB_PATH = GLOBAL_DB_DIR / "recall.lbdb"
 CONFIG_PATH = Path.home() / ".recall" / "config.toml"
 
 # Project scope: uses .recall/ relative to project root
 PROJECT_DB_DIR_NAME = ".recall"
-PROJECT_DB_NAME = "graphiti.lbdb"
+PROJECT_DB_NAME = "recall.lbdb"
 
 
 def get_project_db_path(project_root: Path) -> Path:

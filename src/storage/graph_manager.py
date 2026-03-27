@@ -105,7 +105,7 @@ class GraphManager:
     def _clear_stale_v1_data(self) -> None:
         """Clear retention.db and SQLiteAckQueue on first v2.0 run.
 
-        Old KuzuDB UUIDs won't match new LadybugDB entity UUIDs.
+        Old LadybugDB UUIDs won't match new LadybugDB entity UUIDs.
         Fresh start is acceptable — no real users with data to preserve.
         """
         import shutil

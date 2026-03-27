@@ -1,4 +1,4 @@
-"""UI command — launches the Graphiti graph visualization server.
+"""UI command — launches the recall graph visualization server.
 
 Starts a FastAPI server serving both the REST API and the pre-built Next.js
 static UI. Runs in the foreground (blocks terminal). Ctrl+C to stop.
@@ -31,7 +31,7 @@ def ui_command(
 ):
     """Launch the graph visualization UI.
 
-    Opens a FastAPI server with the Graphiti knowledge graph visualization.
+    Opens a FastAPI server with the recall knowledge graph visualization.
     Visit http://localhost:<api_port> in your browser.
 
     Press Ctrl+C to stop.

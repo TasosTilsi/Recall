@@ -4,7 +4,7 @@ Provides non-destructive installation of capture hooks with marker-based detecti
 for idempotent and reversible operations.
 
 # NOTE: The post-commit git hook (install_git_hook / uninstall_git_hook) was removed in v2.0.
-# Git commit capture is superseded by incremental graphiti sync on SessionStart (Phase 15).
+# Git commit capture is superseded by incremental recall sync on SessionStart (Phase 15).
 # The 5 remaining hook types (pre-commit, post-merge, post-checkout, post-rewrite, Claude Stop)
 # are still installed and maintained.
 """
@@ -19,8 +19,8 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-HOOK_START_MARKER = "# GRAPHITI_HOOK_START"
-HOOK_END_MARKER = "# GRAPHITI_HOOK_END"
+HOOK_START_MARKER = "# RECALL_HOOK_START"
+HOOK_END_MARKER = "# RECALL_HOOK_END"
 
 
 def _get_hook_template(hook_type: str = "pre-commit") -> str:
@@ -39,14 +39,14 @@ def _get_hook_template(hook_type: str = "pre-commit") -> str:
     return template_path.read_text()
 
 
-def _get_graphiti_section(hook_type: str = "post-commit") -> str:
-    """Extract the graphiti section (between markers) from the template.
+def _get_recall_section(hook_type: str = "post-commit") -> str:
+    """Extract the recall section (between markers) from the template.
 
     Args:
         hook_type: Hook type (post-commit, pre-commit, post-merge)
 
     Returns:
-        Just the section between GRAPHITI_HOOK_START and GRAPHITI_HOOK_END markers (inclusive)
+        Just the section between RECALL_HOOK_START and RECALL_HOOK_END markers (inclusive)
     """
     template = _get_hook_template(hook_type)
 
@@ -55,7 +55,7 @@ def _get_graphiti_section(hook_type: str = "post-commit") -> str:
     end_idx = template.find(HOOK_END_MARKER)
 
     if start_idx == -1 or end_idx == -1:
-        raise ValueError("Template missing GRAPHITI_HOOK_START or GRAPHITI_HOOK_END marker")
+        raise ValueError("Template missing RECALL_HOOK_START or RECALL_HOOK_END marker")
 
     # Include the end marker line (find the newline after END marker)
     end_line_end = template.find('\n', end_idx)
@@ -68,13 +68,13 @@ def _get_graphiti_section(hook_type: str = "post-commit") -> str:
 
 
 def is_claude_hook_installed(project_path: Path) -> bool:
-    """Check if graphiti Claude Code Stop hook is installed in .claude/settings.json.
+    """Check if recall Claude Code Stop hook is installed in .claude/settings.json.
 
     Args:
         project_path: Path to project root
 
     Returns:
-        True if .claude/settings.json has a Stop hook entry with graphiti capture command
+        True if .claude/settings.json has a Stop hook entry with recall capture command
     """
     settings_path = project_path / ".claude" / "settings.json"
 
@@ -96,7 +96,7 @@ def is_claude_hook_installed(project_path: Path) -> bool:
     for entry in settings["hooks"]["Stop"]:
         if isinstance(entry, dict):
             for h in entry.get("hooks", []):
-                if isinstance(h, dict) and ("graphiti capture" in h.get("command", "") or "recall note" in h.get("command", "")):
+                if isinstance(h, dict) and ("recall note" in h.get("command", "") or "recall note" in h.get("command", "")):
                     return True
 
     return False
@@ -105,7 +105,7 @@ def is_claude_hook_installed(project_path: Path) -> bool:
 def install_claude_hook(project_path: Path) -> bool:
     """Create/update .claude/settings.json with Stop hook for auto-capture.
 
-    Adds graphiti capture command to Stop hooks array with async execution.
+    Adds recall note command to Stop hooks array with async execution.
     Project-local settings only (not global).
 
     Args:
@@ -120,7 +120,7 @@ def install_claude_hook(project_path: Path) -> bool:
     # NOTE: install_claude_hook() is legacy (v1.x project-local hook). recall init uses
     # install_global_hooks() instead. Kept for backward compatibility.
     # Recall Stop hook configuration (new format with matcher + hooks array)
-    graphiti_hook = {
+    recall_hook = {
         "matcher": "",
         "hooks": [
             {
@@ -151,29 +151,29 @@ def install_claude_hook(project_path: Path) -> bool:
     if "Stop" not in settings["hooks"]:
         settings["hooks"]["Stop"] = []
 
-    # Check if recall/graphiti hook already exists (idempotent) — check inside hooks array
+    # Check if recall hook already exists (idempotent) — check inside hooks array
     for entry in settings["hooks"]["Stop"]:
         if isinstance(entry, dict):
             for h in entry.get("hooks", []):
-                if "graphiti capture" in h.get("command", "") or "recall note" in h.get("command", ""):
-                    logger.info("Graphiti Claude Code hook already installed",
+                if "recall note" in h.get("command", "") or "recall note" in h.get("command", ""):
+                    logger.info("Recall Claude Code hook already installed",
                                project=str(project_path))
                     return False
 
-    # Add graphiti hook
-    settings["hooks"]["Stop"].append(graphiti_hook)
+    # Add recall hook
+    settings["hooks"]["Stop"].append(recall_hook)
 
     # Ensure directory exists and write settings
     settings_dir.mkdir(parents=True, exist_ok=True)
     with open(settings_path, 'w') as f:
         json.dump(settings, f, indent=2)
 
-    logger.info("Graphiti Claude Code Stop hook installed", project=str(project_path))
+    logger.info("Recall Claude Code Stop hook installed", project=str(project_path))
     return True
 
 
 def uninstall_claude_hook(project_path: Path) -> bool:
-    """Remove graphiti entry from .claude/settings.json hooks.Stop array.
+    """Remove recall entry from .claude/settings.json hooks.Stop array.
 
     Args:
         project_path: Path to project root
@@ -196,27 +196,27 @@ def uninstall_claude_hook(project_path: Path) -> bool:
                     path=str(settings_path), error=str(e))
         return False
 
-    # Check if graphiti hook exists
+    # Check if recall hook exists
     if "hooks" not in settings or "Stop" not in settings["hooks"]:
         logger.info("No Stop hooks found, nothing to uninstall",
                    project=str(project_path))
         return False
 
-    # Filter out graphiti/recall hooks (new format: entries with hooks array)
+    # Filter out recall hooks (new format: entries with hooks array)
     original_count = len(settings["hooks"]["Stop"])
     settings["hooks"]["Stop"] = [
         entry for entry in settings["hooks"]["Stop"]
         if not (
             isinstance(entry, dict)
             and any(
-                "graphiti capture" in h.get("command", "") or "recall note" in h.get("command", "")
+                "recall note" in h.get("command", "") or "recall note" in h.get("command", "")
                 for h in entry.get("hooks", [])
             )
         )
     ]
 
     if len(settings["hooks"]["Stop"]) == original_count:
-        logger.info("Graphiti hook not found in Stop hooks", project=str(project_path))
+        logger.info("Recall hook not found in Stop hooks", project=str(project_path))
         return False
 
     # Clean up empty structures
@@ -230,15 +230,15 @@ def uninstall_claude_hook(project_path: Path) -> bool:
     with open(settings_path, 'w') as f:
         json.dump(settings, f, indent=2)
 
-    logger.info("Graphiti Claude Code hook removed", project=str(project_path))
+    logger.info("Recall Claude Code hook removed", project=str(project_path))
     return True
 
 
 # Phase 15 global hook installation
 
 
-def _is_graphiti_hook(entry: dict) -> bool:
-    """Return True if entry contains any graphiti Phase 15 hook script command."""
+def _is_recall_hook(entry: dict) -> bool:
+    """Return True if entry contains any recall Phase 15 hook script command."""
     for h in entry.get("hooks", []):
         cmd = h.get("command", "")
         if any(script in cmd for script in [
@@ -256,7 +256,7 @@ _is_recall_hook = _is_graphiti_hook
 def install_global_hooks() -> bool:
     """Write all 5 Phase 15 hook entries to ~/.claude/settings.json (global install).
 
-    Preserves non-graphiti entries. Overwrites any existing graphiti hook entries
+    Preserves non-recall entries. Overwrites any existing recall hook entries
     (clean overwrite semantics — per user decision in CONTEXT.md).
 
     Returns:
@@ -302,7 +302,7 @@ def install_global_hooks() -> bool:
         }],
     }
 
-    # Load existing settings (preserve non-graphiti entries)
+    # Load existing settings (preserve non-recall entries)
     if settings_path.exists():
         try:
             with open(settings_path, 'r') as f:
@@ -317,10 +317,10 @@ def install_global_hooks() -> bool:
     if "hooks" not in settings:
         settings["hooks"] = {}
 
-    # For each hook type: remove existing graphiti entries, add new ones
+    # For each hook type: remove existing recall entries, add new ones
     for hook_type, new_entries in hook_entries.items():
         existing = settings["hooks"].get(hook_type, [])
-        cleaned = [e for e in existing if not _is_graphiti_hook(e)]
+        cleaned = [e for e in existing if not _is_recall_hook(e)]
         settings["hooks"][hook_type] = cleaned + new_entries
 
     try:
@@ -336,10 +336,10 @@ def install_global_hooks() -> bool:
 
 
 def is_global_hooks_installed() -> bool:
-    """Check if all 5 Phase 15 graphiti hooks are registered in ~/.claude/settings.json.
+    """Check if all 5 Phase 15 recall hooks are registered in ~/.claude/settings.json.
 
     Returns:
-        True if all 5 hook types have a graphiti entry, False otherwise
+        True if all 5 hook types have a recall entry, False otherwise
     """
     settings_path = Path.home() / ".claude" / "settings.json"
     if not settings_path.exists():
@@ -356,7 +356,7 @@ def is_global_hooks_installed() -> bool:
 
     for hook_type in required_hook_types:
         entries = hooks.get(hook_type, [])
-        if not any(_is_graphiti_hook(e) for e in entries):
+        if not any(_is_recall_hook(e) for e in entries):
             return False
 
     return True
@@ -390,7 +390,7 @@ def _install_hook(hook_type: str, repo_path: Path, force: bool = False) -> bool:
     if hook_path.exists():
         content = hook_path.read_text()
         if HOOK_START_MARKER in content:
-            logger.info(f"Graphiti {hook_type} hook already installed", repo=str(repo_path))
+            logger.info(f"Recall {hook_type} hook already installed", repo=str(repo_path))
             return False
 
     # Ensure hooks directory exists
@@ -399,7 +399,7 @@ def _install_hook(hook_type: str, repo_path: Path, force: bool = False) -> bool:
     if hook_path.exists():
         # Existing hook from another tool - append our section
         logger.info(
-            f"Existing {hook_type} hook found, appending graphiti section",
+            f"Existing {hook_type} hook found, appending recall section",
             path=str(hook_path)
         )
 
@@ -408,20 +408,20 @@ def _install_hook(hook_type: str, repo_path: Path, force: bool = False) -> bool:
         # Detect pre-commit framework
         if "# pre-commit" in existing_content or "pre-commit hook" in existing_content:
             logger.warning(
-                "pre-commit framework detected - appending graphiti hook",
+                "pre-commit framework detected - appending recall hook",
                 suggestion="Consider pre-commit integration for better compatibility"
             )
 
         # Insert our section before any trailing exit statement so it runs
-        graphiti_section = _get_graphiti_section(hook_type)
+        recall_section = _get_recall_section(hook_type)
         existing_trimmed = existing_content.rstrip()
         exit_match = re.search(r'(\n+)(exit\s+\d+\s*)$', existing_trimmed)
         if exit_match:
             before_exit = existing_trimmed[:exit_match.start()].rstrip()
             exit_line = exit_match.group(2).rstrip()
-            new_content = before_exit + "\n\n" + graphiti_section + "\n\n" + exit_line
+            new_content = before_exit + "\n\n" + recall_section + "\n\n" + exit_line
         else:
-            new_content = existing_trimmed + "\n\n" + graphiti_section
+            new_content = existing_trimmed + "\n\n" + recall_section
         hook_path.write_text(new_content)
 
     else:
@@ -433,19 +433,19 @@ def _install_hook(hook_type: str, repo_path: Path, force: bool = False) -> bool:
     # Set executable permission
     hook_path.chmod(0o755)
 
-    logger.info(f"Graphiti {hook_type} hook installed successfully", repo=str(repo_path))
+    logger.info(f"Recall {hook_type} hook installed successfully", repo=str(repo_path))
     return True
 
 
 def _is_hook_installed(hook_type: str, repo_path: Path) -> bool:
-    """Check if graphiti hook is installed (generalized helper).
+    """Check if recall hook is installed (generalized helper).
 
     Args:
         hook_type: Hook type (pre-commit, post-merge, etc.)
         repo_path: Path to git repository
 
     Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
+        True if hook exists and contains RECALL_HOOK_START marker
     """
     hook_path = repo_path / ".git" / "hooks" / hook_type
 
@@ -461,7 +461,7 @@ def _is_hook_installed(hook_type: str, repo_path: Path) -> bool:
 
 
 def _uninstall_hook(hook_type: str, repo_path: Path) -> bool:
-    """Remove graphiti section from a git hook (generalized helper).
+    """Remove recall section from a git hook (generalized helper).
 
     Args:
         hook_type: Hook type (pre-commit, post-merge, etc.)
@@ -472,13 +472,13 @@ def _uninstall_hook(hook_type: str, repo_path: Path) -> bool:
     """
     # Check if installed
     if not _is_hook_installed(hook_type, repo_path):
-        logger.info(f"Graphiti {hook_type} hook not installed, nothing to uninstall", repo=str(repo_path))
+        logger.info(f"Recall {hook_type} hook not installed, nothing to uninstall", repo=str(repo_path))
         return False
 
     hook_path = repo_path / ".git" / "hooks" / hook_type
     content = hook_path.read_text()
 
-    # Find graphiti section boundaries
+    # Find recall section boundaries
     start_idx = content.find(HOOK_START_MARKER)
     end_idx = content.find(HOOK_END_MARKER)
 
@@ -494,7 +494,7 @@ def _uninstall_hook(hook_type: str, repo_path: Path) -> bool:
     else:
         end_line_end += 1  # Include the newline
 
-    # Extract content before and after graphiti section
+    # Extract content before and after recall section
     before = content[:start_idx]
     after = content[end_line_end:]
 
@@ -506,14 +506,14 @@ def _uninstall_hook(hook_type: str, repo_path: Path) -> bool:
     remaining_content = remaining_content.strip()
 
     if not remaining_content or remaining_content == "#!/bin/sh" or remaining_content == "#!/bin/bash":
-        # Hook only contained graphiti content - remove entire file
+        # Hook only contained recall content - remove entire file
         hook_path.unlink()
-        logger.info(f"Removed entire {hook_type} hook (only graphiti content)",
+        logger.info(f"Removed entire {hook_type} hook (only recall content)",
                    path=str(hook_path))
     else:
-        # Other content exists - write back without graphiti section
+        # Other content exists - write back without recall section
         hook_path.write_text(remaining_content + "\n")
-        logger.info(f"Removed graphiti section from {hook_type} hook",
+        logger.info(f"Removed recall section from {hook_type} hook",
                    path=str(hook_path))
 
     return True
@@ -536,19 +536,19 @@ def install_precommit_hook(repo_path: Path, force: bool = False) -> bool:
 
 
 def is_precommit_hook_installed(repo_path: Path) -> bool:
-    """Check if graphiti pre-commit hook is installed.
+    """Check if recall pre-commit hook is installed.
 
     Args:
         repo_path: Path to git repository
 
     Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
+        True if hook exists and contains RECALL_HOOK_START marker
     """
     return _is_hook_installed("pre-commit", repo_path)
 
 
 def uninstall_precommit_hook(repo_path: Path) -> bool:
-    """Remove graphiti section from pre-commit hook.
+    """Remove recall section from pre-commit hook.
 
     Args:
         repo_path: Path to git repository
@@ -576,19 +576,19 @@ def install_postmerge_hook(repo_path: Path, force: bool = False) -> bool:
 
 
 def is_postmerge_hook_installed(repo_path: Path) -> bool:
-    """Check if graphiti post-merge hook is installed.
+    """Check if recall post-merge hook is installed.
 
     Args:
         repo_path: Path to git repository
 
     Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
+        True if hook exists and contains RECALL_HOOK_START marker
     """
     return _is_hook_installed("post-merge", repo_path)
 
 
 def uninstall_postmerge_hook(repo_path: Path) -> bool:
-    """Remove graphiti section from post-merge hook.
+    """Remove recall section from post-merge hook.
 
     Args:
         repo_path: Path to git repository
@@ -623,20 +623,20 @@ def install_postcheckout_hook(git_dir: Path) -> bool:
 
 
 def is_postcheckout_hook_installed(git_dir: Path) -> bool:
-    """Check if graphiti post-checkout hook is installed.
+    """Check if recall post-checkout hook is installed.
 
     Args:
         git_dir: Path to the .git directory of the repository
 
     Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
+        True if hook exists and contains RECALL_HOOK_START marker
     """
     repo_path = git_dir.parent if git_dir.name == ".git" else git_dir
     return _is_hook_installed("post-checkout", repo_path)
 
 
 def uninstall_postcheckout_hook(git_dir: Path) -> bool:
-    """Remove graphiti section from post-checkout hook.
+    """Remove recall section from post-checkout hook.
 
     Args:
         git_dir: Path to the .git directory of the repository
@@ -671,20 +671,20 @@ def install_postrewrite_hook(git_dir: Path) -> bool:
 
 
 def is_postrewrite_hook_installed(git_dir: Path) -> bool:
-    """Check if graphiti post-rewrite hook is installed.
+    """Check if recall post-rewrite hook is installed.
 
     Args:
         git_dir: Path to the .git directory of the repository
 
     Returns:
-        True if hook exists and contains GRAPHITI_HOOK_START marker
+        True if hook exists and contains RECALL_HOOK_START marker
     """
     repo_path = git_dir.parent if git_dir.name == ".git" else git_dir
     return _is_hook_installed("post-rewrite", repo_path)
 
 
 def uninstall_postrewrite_hook(git_dir: Path) -> bool:
-    """Remove graphiti section from post-rewrite hook.
+    """Remove recall section from post-rewrite hook.
 
     Args:
         git_dir: Path to the .git directory of the repository
@@ -700,11 +700,11 @@ def uninstall_postrewrite_hook(git_dir: Path) -> bool:
 
 
 def _remove_hook_section(hook_path: Path) -> bool:
-    """Remove all graphiti marker sections from a hook file.
+    """Remove all recall marker sections from a hook file.
 
-    Handles the case where a hook contains an old graphiti section that needs
+    Handles the case where a hook contains an old recall section that needs
     to be replaced with an updated version. Removes content between all
-    GRAPHITI_HOOK_START / GRAPHITI_HOOK_END marker pairs.
+    RECALL_HOOK_START / RECALL_HOOK_END marker pairs.
 
     Args:
         hook_path: Full path to the git hook file
@@ -724,7 +724,7 @@ def _remove_hook_section(hook_path: Path) -> bool:
     if HOOK_START_MARKER not in content:
         return False
 
-    # Remove all graphiti sections (handles edge case of multiple sections)
+    # Remove all recall sections (handles edge case of multiple sections)
     result = content
     while HOOK_START_MARKER in result:
         start_idx = result.find(HOOK_START_MARKER)
@@ -749,12 +749,12 @@ def _remove_hook_section(hook_path: Path) -> bool:
     result = result.strip()
 
     if not result or result in ("#!/bin/sh", "#!/bin/bash"):
-        # Hook only contained graphiti content — remove the file
+        # Hook only contained recall content — remove the file
         hook_path.unlink()
-        logger.info("Removed entire hook file (only graphiti content)", path=str(hook_path))
+        logger.info("Removed entire hook file (only recall content)", path=str(hook_path))
     else:
         hook_path.write_text(result + "\n")
-        logger.info("Removed graphiti section(s) from hook", path=str(hook_path))
+        logger.info("Removed recall section(s) from hook", path=str(hook_path))
 
     return True
 
@@ -764,7 +764,7 @@ def upgrade_postmerge_hook(git_dir: Path) -> bool:
 
     Phase 7 installed a post-merge hook that called auto_heal() or replayed
     journal entries. Phase 7.1 replaces this with a lightweight background
-    graphiti index trigger. This function detects old Phase 7 hooks and
+    recall index trigger. This function detects old Phase 7 hooks and
     upgrades them in place.
 
     Args:
@@ -791,10 +791,10 @@ def upgrade_postmerge_hook(git_dir: Path) -> bool:
         logger.error("Failed to read post-merge hook", path=str(hook_path), error=str(e))
         return False
 
-    # Only attempt upgrade if graphiti installed this hook (has our marker)
+    # Only attempt upgrade if recall installed this hook (has our marker)
     if HOOK_START_MARKER not in content:
         logger.info(
-            "post-merge hook not installed by graphiti, skipping upgrade",
+            "post-merge hook not installed by recall, skipping upgrade",
             path=str(hook_path)
         )
         return True

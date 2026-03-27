@@ -1,19 +1,19 @@
 #!/bin/sh
-# Graphiti Knowledge Graph - Pre-commit validation hook
+# Recall Knowledge Graph - Pre-commit validation hook
 # Scans staged files for secrets and checks repository size
 
-# GRAPHITI_HOOK_START
-# Skip if GRAPHITI_SKIP is set
-[ "$GRAPHITI_SKIP" = "1" ] && exit 0
+# RECALL_HOOK_START
+# Skip if RECALL_SKIP is set
+[ "$RECALL_SKIP" = "1" ] && exit 0
 
-# Locate graphiti binary; derive venv python from same directory
-GRAPHITI_BIN=$(command -v graphiti 2>/dev/null)
-[ -z "$GRAPHITI_BIN" ] && exit 0
-VENV_PYTHON="$(dirname "$GRAPHITI_BIN")/python"
+# Locate recall binary; derive venv python from same directory
+RECALL_BIN=$(command -v recall 2>/dev/null)
+[ -z "$RECALL_BIN" ] && exit 0
+VENV_PYTHON="$(dirname "$RECALL_BIN")/python"
 [ ! -x "$VENV_PYTHON" ] && exit 0
 
 # Check if hooks are enabled (use --get flag; exit 0 if key missing or false)
-"$GRAPHITI_BIN" config --get hooks.enabled 2>/dev/null | grep -q "true" || exit 0
+"$RECALL_BIN" config --get hooks.enabled 2>/dev/null | grep -q "true" || exit 0
 
 # Scan staged files for secrets (blocks commit if secrets found)
 "$VENV_PYTHON" -c "
@@ -31,9 +31,9 @@ SECRETS_EXIT=$?
 # Check repository size (warns but does not block)
 "$VENV_PYTHON" -c "
 from pathlib import Path
-from src.gitops.hooks import check_graphiti_size
-check_graphiti_size(Path('.'))
+from src.gitops.hooks import check_recall_size
+check_recall_size(Path('.'))
 " 2>&1
 
 exit 0
-# GRAPHITI_HOOK_END
+# RECALL_HOOK_END

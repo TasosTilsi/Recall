@@ -10,9 +10,9 @@ def test_ladybug_driver_creates_fresh_db(tmp_path):
     db_path = str(tmp_path / "test.lbdb")
     driver = LadybugDriver(db=db_path)
     assert driver is not None
-    # _database is NOT set in __init__ — it's set only via clone()/with_database()
-    # Use getattr to avoid AttributeError when _database is absent (correct behavior)
-    assert getattr(driver, '_database', None) is None  # not set until clone() called
+    # _database is initialized to '' in __init__ so graphiti-core can compare
+    # group_id against it. clone() sets it to the actual group_id.
+    assert driver._database == ''
     # clone() sets _database
     cloned = driver.clone("test_group")
     assert cloned._database == "test_group"

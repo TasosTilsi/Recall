@@ -227,8 +227,8 @@ def config_command(
     if set_value:
         if "=" not in set_value:
             print_error(
-                "Invalid format. Use: graphiti config --set key=value",
-                suggestion="Example: graphiti config --set retry.max_attempts=5"
+                "Invalid format. Use: recall config --set key=value",
+                suggestion="Example: recall config --set retry.max_attempts=5"
             )
             sys.exit(EXIT_BAD_ARGS)
 
@@ -240,7 +240,7 @@ def config_command(
         if key not in VALID_CONFIG_KEYS:
             print_error(
                 f"Unknown config key '{key}'.",
-                suggestion="Run 'graphiti config' to see valid keys."
+                suggestion="Run 'recall config' to see valid keys."
             )
             sys.exit(EXIT_BAD_ARGS)
 
@@ -277,7 +277,7 @@ def config_command(
         if get_key not in VALID_CONFIG_KEYS:
             print_error(
                 f"Unknown config key '{get_key}'.",
-                suggestion="Run 'graphiti config' to see valid keys."
+                suggestion="Run 'recall config' to see valid keys."
             )
             sys.exit(EXIT_BAD_ARGS)
 

@@ -1,17 +1,17 @@
 #!/bin/sh
-# GRAPHITI_HOOK_START
-# Graphiti: trigger background index on branch switch to keep knowledge graph current
+# RECALL_HOOK_START
+# Recall: trigger background index on branch switch to keep knowledge graph current
 # $3 = 0 means file checkout (not branch switch) — skip
-[ "$GRAPHITI_SKIP" = "1" ] && exit 0
-command -v graphiti >/dev/null 2>&1 || exit 0
+[ "$RECALL_SKIP" = "1" ] && exit 0
+command -v recall >/dev/null 2>&1 || exit 0
 
 # Only trigger on branch switches ($3=1), not file checkouts ($3=0)
 [ "$3" = "0" ] && exit 0
 
-graphiti config get hooks.enabled 2>/dev/null | grep -q "true" || exit 0
+recall config get hooks.enabled 2>/dev/null | grep -q "true" || exit 0
 
 # Background index — never block the checkout operation
-(graphiti index >/dev/null 2>&1) &
+(recall index >/dev/null 2>&1) &
 
 exit 0
-# GRAPHITI_HOOK_END
+# RECALL_HOOK_END

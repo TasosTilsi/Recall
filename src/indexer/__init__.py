@@ -1,4 +1,4 @@
-"""Git history indexer for bootstrapping Kuzu knowledge from past commits.
+"""Git history indexer for bootstrapping LadybugDB knowledge from past commits.
 
 Provides GitIndexer for on-demand git history traversal and knowledge extraction.
 Phase 6 post-commit hook handles ongoing real-time capture; this module

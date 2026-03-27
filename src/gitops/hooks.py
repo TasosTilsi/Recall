@@ -16,14 +16,14 @@ logger = structlog.get_logger()
 # Constants
 SIZE_WARNING_MB = 50
 SIZE_STRONG_WARNING_MB = 100
-SKIP_ENV_VAR = "GRAPHITI_SKIP"
+SKIP_ENV_VAR = "RECALL_SKIP"
 
 
 def _is_skip_enabled() -> bool:
-    """Check if GRAPHITI_SKIP environment variable is set to bypass all checks.
+    """Check if RECALL_SKIP environment variable is set to bypass all checks.
 
     Returns:
-        True if GRAPHITI_SKIP=1, False otherwise.
+        True if RECALL_SKIP=1, False otherwise.
     """
     return os.environ.get(SKIP_ENV_VAR) == "1"
 
@@ -32,13 +32,13 @@ def scan_staged_secrets(project_root: Path) -> list[str]:
     """Scan all staged files for secrets using Phase 2's sanitize_content.
 
     Runs on delta-only (staged files) for performance. Can be bypassed
-    with GRAPHITI_SKIP=1 for WIP commits.
+    with RECALL_SKIP=1 for WIP commits.
 
     Args:
         project_root: Path to project root containing .git directory.
 
     Returns:
-        List of secret detection warnings (empty if clean or GRAPHITI_SKIP=1).
+        List of secret detection warnings (empty if clean or RECALL_SKIP=1).
     """
     if _is_skip_enabled():
         return []
@@ -102,7 +102,7 @@ def scan_staged_secrets(project_root: Path) -> list[str]:
     return warnings
 
 
-def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
+def check_recall_size(project_root: Path) -> tuple[float, str | None]:
     """Check .recall/ directory size and return warnings if thresholds exceeded.
 
     Monitors .recall/ size to inform developers when they should run
@@ -113,20 +113,20 @@ def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
 
     Returns:
         Tuple of (size_mb, warning_message). warning_message is None if below thresholds
-        or if GRAPHITI_SKIP=1.
+        or if RECALL_SKIP=1.
     """
     if _is_skip_enabled():
         return (0.0, None)
 
     try:
-        graphiti_dir = project_root / ".recall"
+        recall_dir = project_root / ".recall"
 
-        if not graphiti_dir.exists():
+        if not recall_dir.exists():
             return (0.0, None)
 
         # Calculate total size excluding database directory
         total_bytes = 0
-        for file_path in graphiti_dir.rglob("*"):
+        for file_path in recall_dir.rglob("*"):
             if file_path.is_file() and "database" not in file_path.parts:
                 total_bytes += file_path.stat().st_size
 
@@ -149,5 +149,5 @@ def check_graphiti_size(project_root: Path) -> tuple[float, str | None]:
 
     except Exception as e:
         # On error, return zero size with no warning
-        logger.warning("graphiti_size_check_error", error=str(e))
+        logger.warning("recall_size_check_error", error=str(e))
         return (0.0, None)

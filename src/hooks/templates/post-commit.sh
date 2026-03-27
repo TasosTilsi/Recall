@@ -1,19 +1,19 @@
 #!/bin/sh
-# === Graphiti Capture Hook ===
-# Auto-installed by graphiti - captures commit hashes for background processing
-# To remove: graphiti hooks uninstall
+# === Recall Capture Hook ===
+# Auto-installed by recall - captures commit hashes for background processing
+# To remove: recall hooks uninstall
 
-# GRAPHITI_HOOK_START
+# RECALL_HOOK_START
 # Append current commit hash to pending file
-# Tries multiple ways to locate graphiti: venv, PATH, direct location
+# Tries multiple ways to locate recall: venv, PATH, direct location
 COMMIT_HASH=$(git rev-parse HEAD)
-PENDING_FILE="${HOME}/.graphiti/pending_commits"
+PENDING_FILE="${HOME}/.recall/pending_commits"
 
 # Ensure directory exists
 mkdir -p "$(dirname "$PENDING_FILE")"
 
 # Atomic append (O_APPEND semantics for small writes)
 echo "$COMMIT_HASH" >> "$PENDING_FILE"
-# GRAPHITI_HOOK_END
+# RECALL_HOOK_END
 
 exit 0

@@ -73,7 +73,7 @@ def delete_command(
         if result is None:
             print_error(
                 f"Entity '{entity_name}' not found.",
-                suggestion="Try 'graphiti list' to see available entities."
+                suggestion="Try 'recall list' to see available entities."
             )
             raise typer.Exit(EXIT_ERROR)
 

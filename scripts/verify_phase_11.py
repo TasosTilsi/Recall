@@ -50,7 +50,7 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
-LBDB_PATH = Path.home() / ".graphiti" / "global" / "graphiti.lbdb"
+LBDB_PATH = Path.home() / ".recall" / "global" / "recall.lbdb"
 RETENTION_DB = Path.home() / ".graphiti" / "retention.db"
 GROUP_ID = ROOT.name  # "graphiti-knowledge-graph"
 

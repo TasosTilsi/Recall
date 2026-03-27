@@ -44,7 +44,7 @@ def _run_recall(
     """Run recall CLI and return (returncode, stdout, stderr).
 
     CWD priority:
-    1. GRAPHITI_PROJECT_ROOT env var (explicit override, set by callers who
+    1. RECALL_PROJECT_ROOT env var (explicit override, set by callers who
        know the project root)
     2. The ``cwd`` argument (caller-supplied project directory)
     3. None (inherit the MCP server process CWD, which is Claude Code's CWD)
@@ -57,7 +57,7 @@ def _run_recall(
     Returns:
         Tuple of (returncode, stdout, stderr).
     """
-    effective_cwd = os.environ.get("GRAPHITI_PROJECT_ROOT") or cwd
+    effective_cwd = os.environ.get("RECALL_PROJECT_ROOT") or cwd
     try:
         result = subprocess.run(
             [_RECALL_CLI] + args,
@@ -76,9 +76,9 @@ def _run_recall(
 def _get_cwd() -> str | None:
     """Get project CWD for subprocess calls (scope detection).
 
-    Returns GRAPHITI_PROJECT_ROOT if set, else None (inherit process CWD).
+    Returns RECALL_PROJECT_ROOT if set, else None (inherit process CWD).
     """
-    return os.environ.get("GRAPHITI_PROJECT_ROOT") or None
+    return os.environ.get("RECALL_PROJECT_ROOT") or None
 
 
 def _scope_flags(scope: str) -> list[str]:
@@ -101,7 +101,7 @@ def _parse_json_or_raw(stdout: str, cmd_name: str) -> str:
     """Parse JSON stdout and encode via encode_response, or return raw on failure.
 
     Args:
-        stdout: Raw stdout string from the graphiti CLI subprocess.
+        stdout: Raw stdout string from the recall CLI subprocess.
         cmd_name: Command name used in the warning log (e.g. "search", "list").
 
     Returns:

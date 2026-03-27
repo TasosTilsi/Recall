@@ -40,27 +40,27 @@ from src.models import GraphScope
 logger = structlog.get_logger()
 
 
-def _get_graphiti_for_project(project_root: Path) -> tuple[Any, str]:
-    """Get a Graphiti instance and group_id for project scope.
+def _get_recall_instance_for_project(project_root: Path) -> tuple[Any, str]:
+    """Get a Recall instance and group_id for project scope.
 
-    Follows the same pattern as Phase 6 code (GraphService._get_graphiti).
+    Follows the same pattern as Phase 6 code (GraphService._get_recall_instance).
 
     Args:
         project_root: Root directory of the project
 
     Returns:
-        Tuple of (graphiti_instance, group_id)
+        Tuple of (instance, group_id)
     """
     from src.graph.service import get_service
 
     service = get_service()
-    graphiti = asyncio.run(service._get_graphiti(GraphScope.PROJECT, project_root))
+    graphiti = asyncio.run(service._get_recall_instance(GraphScope.PROJECT, project_root))
     group_id = service._get_group_id(GraphScope.PROJECT, project_root)
     return graphiti, group_id
 
 
 class GitIndexer:
-    """Indexes git commit history into the Graphiti knowledge graph.
+    """Indexes git commit history into the Recall knowledge graph.
 
     Provides incremental indexing via a SHA cursor stored in
     .recall/index-state.json. A quality gate skips bot commits,
@@ -112,7 +112,7 @@ class GitIndexer:
             Dict with keys:
               - commits_processed: int
               - commits_skipped: int
-              - entities_created: int (placeholder, graphiti doesn't count)
+              - entities_created: int (placeholder, recall doesn't count)
               - elapsed_seconds: float
               - skipped_reason: str (only present when returning early)
         """
@@ -172,17 +172,17 @@ class GitIndexer:
         if since_date:
             iter_kwargs["since"] = since_date
 
-        # Get graphiti instance and group_id once for the whole run
+        # Get recall instance and group_id once for the whole run
         try:
-            graphiti_instance, group_id = _get_graphiti_for_project(self.project_root)
+            instance, group_id = _get_recall_instance_for_project(self.project_root)
         except Exception as e:
-            self._logger.error("graphiti_init_failed", error=str(e))
+            self._logger.error("recall_init_failed", error=str(e))
             return {
                 "commits_processed": 0,
                 "commits_skipped": 0,
                 "entities_created": 0,
                 "elapsed_seconds": time.monotonic() - start_time,
-                "skipped_reason": "graphiti_init_failed",
+                "skipped_reason": "recall_init_failed",
             }
 
         commits_processed = 0
@@ -245,7 +245,7 @@ class GitIndexer:
                             commit_message=str(commit.message).strip(),
                             commit_author=commit.author.name or commit.author.email or "unknown",
                             diff_content=diff_content,
-                            graphiti_instance=graphiti_instance,
+                            instance=instance,
                             group_id=group_id,
                             reference_time=reference_time,
                             capture_mode=cfg.capture_mode,
@@ -263,7 +263,7 @@ class GitIndexer:
                                 commit_message=str(commit.message).strip(),
                                 commit_author=commit.author.name or commit.author.email or "unknown",
                                 diff_content=diff_content,
-                                graphiti_instance=graphiti_instance,
+                                instance=instance,
                                 group_id=group_id,
                                 reference_time=reference_time,
                                 capture_mode=cfg.capture_mode,
@@ -280,7 +280,7 @@ class GitIndexer:
 
                 # Only mark as processed if extraction succeeded.
                 # LLM failures (passes=0) leave the commit unprocessed so
-                # the next `graphiti index` run retries it when Ollama is available.
+                # the next `recall index` run retries it when Ollama is available.
                 extraction_ok = result.get("passes", 0) > 0
                 if extraction_ok:
                     add_processed_sha(state, commit.hexsha)
@@ -324,21 +324,21 @@ class GitIndexer:
 
         Clears the SHA cursor and processed-SHA set from disk. Then attempts
         to delete all Episodic nodes tagged with 'git-history-index' from the
-        Kuzu graph. If the graph deletion fails (e.g., unsupported Cypher
+        LadybugDB graph. If the graph deletion fails (e.g., unsupported Cypher
         syntax), logs a warning and continues — the SHA state is still cleared
-        so re-indexing will proceed (graphiti deduplication handles overlap).
+        so re-indexing will proceed (recall deduplication handles overlap).
         """
         self._logger.info("resetting_full_index")
 
         # Clear the on-disk state file
         clear_index_state(self.project_root)
 
-        # Attempt to delete existing git-history-index episodes from Kuzu
+        # Attempt to delete existing git-history-index episodes from LadybugDB
         try:
-            graphiti_instance, group_id = _get_graphiti_for_project(self.project_root)
+            instance, group_id = _get_recall_instance_for_project(self.project_root)
 
             async def _delete_episodes() -> None:
-                driver = graphiti_instance.driver
+                driver = instance.driver
                 records, _, _ = await driver.execute_query(
                     """
                     MATCH (e:Episodic)

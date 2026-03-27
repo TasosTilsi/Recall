@@ -21,8 +21,8 @@ def pin_command(
 ):
     """Protect a node from TTL archiving permanently.
 
-    Pinned nodes are excluded from 'graphiti stale' output and will
-    not be archived by 'graphiti compact --expire'.
+    Pinned nodes are excluded from 'recall stale' output and will
+    not be archived by 'recall compact --expire'.
     """
     scope, project_root = resolve_scope(global_scope, project_scope)
     scope_key = get_service()._get_group_id(scope, project_root)
@@ -36,7 +36,7 @@ def pin_command(
         raise typer.Exit(EXIT_ERROR)
 
     print_success(
-        f"Node {uuid} pinned. It will not appear in 'graphiti stale' and will not be archived."
+        f"Node {uuid} pinned. It will not appear in 'recall stale' and will not be archived."
     )
     raise typer.Exit(EXIT_SUCCESS)
 

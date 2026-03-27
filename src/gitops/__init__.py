@@ -1,4 +1,4 @@
-"""Git hygiene utilities for Graphiti.
+"""Git hygiene utilities for Recall.
 
 This module provides general-purpose git utilities:
 - Gitignore generation for .recall/ directory
@@ -15,12 +15,12 @@ from src.gitops.config import (
     generate_gitignore,
 )
 from src.gitops.hooks import (
-    check_graphiti_size,
+    check_recall_size,
     scan_staged_secrets,
 )
 
 __all__ = [
-    "check_graphiti_size",
+    "check_recall_size",
     "ensure_git_config",
     "generate_gitignore",
     "scan_staged_secrets",

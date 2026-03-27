@@ -1,6 +1,6 @@
-"""FastAPI route handlers for the Graphiti UI API.
+"""FastAPI route handlers for the Recall UI API.
 
-INVARIANT: No route handler may call the graphiti write path or any GraphService
+INVARIANT: No route handler may call the recall write path or any GraphService
 method that internally initializes the graph engine. All DB access MUST be read-only
 via list_entities_readonly(), list_edges(), get_entity_by_uuid(), list_episodes(),
 get_episode_detail(), get_time_series_counts(), get_top_connected_entities(),

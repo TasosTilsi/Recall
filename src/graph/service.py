@@ -2,7 +2,7 @@
 
 This service provides the main API that all CLI commands use for graph operations.
 It handles:
-- Per-scope Graphiti initialization (global vs project)
+- Per-scope recall instance initialization (global vs project)
 - Adapter wiring (OllamaLLMClient, OllamaEmbedder, LadybugDriver)
 - Async/sync bridging for CLI context
 - Content sanitization
@@ -81,7 +81,7 @@ def run_graph_operation(coro):
 class GraphService:
     """High-level service for graph operations.
 
-    Provides the main API used by CLI commands. Handles Graphiti initialization
+    Provides the main API used by CLI commands. Handles recall instance initialization
     per scope, adapter wiring, and exposes methods for add, search, list, get,
     delete, summarize, compact, and stats operations.
     """
@@ -98,8 +98,8 @@ class GraphService:
         self._embedder = make_embedder(config)
         self._cross_encoder = self._create_cross_encoder()
 
-        # Cache Graphiti instances per scope
-        self._graphiti_instances: dict[str, Graphiti] = {}
+        # Cache recall instances per scope
+        self._recall_instances: dict[str, Graphiti] = {}
 
         logger.debug("GraphService initialized")
 
@@ -146,7 +146,7 @@ class GraphService:
         return NoOpCrossEncoder()
 
     def _get_cache_key(self, scope: GraphScope, project_root: Optional[Path]) -> str:
-        """Get cache key for Graphiti instance.
+        """Get cache key for recall instance.
 
         Args:
             scope: Graph scope
@@ -161,20 +161,20 @@ class GraphService:
             # Use resolved path string as key
             return f"project:{project_root.resolve()}" if project_root else "project:none"
 
-    async def _get_graphiti(
+    async def _get_recall_instance(
         self, scope: GraphScope, project_root: Optional[Path] = None
     ) -> Graphiti:
-        """Get or create Graphiti instance for scope.
+        """Get or create recall instance for scope.
 
         On first use for a given scope, calls build_indices_and_constraints()
-        to ensure the FTS index and schema exist in the Kuzu database.
+        to ensure the FTS index and schema exist in the LadybugDB database.
 
         Args:
             scope: Graph scope
             project_root: Project root path (required for PROJECT scope)
 
         Returns:
-            Graphiti instance configured for the scope
+            Recall instance configured for the scope
 
         Raises:
             ValueError: If project_root not provided for PROJECT scope
@@ -182,18 +182,18 @@ class GraphService:
         cache_key = self._get_cache_key(scope, project_root)
 
         # Return cached instance if exists
-        if cache_key in self._graphiti_instances:
-            logger.debug("Using cached Graphiti instance", cache_key=cache_key)
-            return self._graphiti_instances[cache_key]
+        if cache_key in self._recall_instances:
+            logger.debug("Using cached recall instance", cache_key=cache_key)
+            return self._recall_instances[cache_key]
 
-        # Create new Graphiti instance
-        logger.debug("Creating new Graphiti instance", cache_key=cache_key)
+        # Create new recall instance
+        logger.debug("Creating new recall instance", cache_key=cache_key)
 
         # Get LadybugDriver for this scope
         driver = self._graph_manager.get_driver(scope, project_root)
 
         # Create Graphiti with our adapters
-        graphiti = Graphiti(
+        instance = Graphiti(
             graph_driver=driver,
             llm_client=self._llm_client,
             embedder=self._embedder,
@@ -202,12 +202,12 @@ class GraphService:
 
         # Build schema, indices, and FTS indexes on first use.
         # This is idempotent — safe to call on an existing database.
-        await graphiti.build_indices_and_constraints()
+        await instance.build_indices_and_constraints()
         logger.debug("Built indices and constraints", cache_key=cache_key)
 
         # Cache and return
-        self._graphiti_instances[cache_key] = graphiti
-        return graphiti
+        self._recall_instances[cache_key] = instance
+        return instance
 
     def _get_group_id(self, scope: GraphScope, project_root: Optional[Path]) -> str:
         """Get group ID for scope.
@@ -225,14 +225,14 @@ class GraphService:
             return project_root.name if project_root else "unknown_project"
 
     def _resolve_db_path(self, scope: GraphScope, project_root: Optional[Path]) -> Optional[Path]:
-        """Resolve the Kuzu database path for a given scope without calling _get_graphiti().
+        """Resolve the LadybugDB database path for a given scope without calling _get_recall_instance().
 
         Args:
             scope: Graph scope
             project_root: Project root path (required for PROJECT scope)
 
         Returns:
-            Path to the Kuzu database directory, or None if unresolvable
+            Path to the LadybugDB database directory, or None if unresolvable
         """
         if scope == GraphScope.GLOBAL:
             return GLOBAL_DB_PATH
@@ -323,8 +323,8 @@ class GraphService:
                 num_findings=len(sanitization_result.findings),
             )
 
-        # Get Graphiti instance
-        graphiti = await self._get_graphiti(scope, project_root)
+        # Get recall instance
+        instance = await self._get_recall_instance(scope, project_root)
         group_id = self._get_group_id(scope, project_root)
 
         # Generate episode name
@@ -332,7 +332,7 @@ class GraphService:
 
         try:
             # Add episode to graph
-            await graphiti.add_episode(
+            await instance.add_episode(
                 name=episode_name,
                 episode_body=sanitized_content,
                 source_description=source,
@@ -348,9 +348,9 @@ class GraphService:
                 retention = get_retention_manager()
                 archived_uuids = retention.get_archive_state_uuids(scope_key)
                 if archived_uuids:
-                    graphiti_instance = await self._get_graphiti(scope, project_root)
+                    instance = await self._get_recall_instance(scope, project_root)
                     current_entities = await EntityNode.get_by_group_ids(
-                        graphiti_instance._driver, group_ids=[group_id]
+                        instance._driver, group_ids=[group_id]
                     )
                     for entity in current_entities:
                         if entity.uuid in archived_uuids:
@@ -364,7 +364,7 @@ class GraphService:
                 logger.warning("retention_reactivation_check_failed", method="add")
 
             # Return success result
-            # Note: graphiti.add_episode doesn't return created nodes/edges count
+            # Note: instance.add_episode doesn't return created nodes/edges count
             # We'd need to query the graph to get accurate counts
             # For now, return placeholder values (will be improved in integration phase)
             return {
@@ -418,17 +418,17 @@ class GraphService:
             limit=limit,
         )
 
-        graphiti = await self._get_graphiti(scope, project_root)
+        instance = await self._get_recall_instance(scope, project_root)
         group_id = self._get_group_id(scope, project_root)
 
         try:
             if exact:
-                # TODO: Implement exact search via raw Kuzu query
+                # TODO: Implement exact search via raw LadybugDB query
                 # For now, fall back to semantic search
                 logger.warning("Exact search not yet implemented, using semantic search")
 
             # Semantic search
-            results = await graphiti.search(
+            results = await instance.search(
                 query=query,
                 group_ids=[group_id],
                 num_results=limit,
@@ -446,7 +446,7 @@ class GraphService:
                         or getattr(edge, "fact", "Unknown"),
                         "type": "relationship",
                         "snippet": getattr(edge, "fact", "")[:200],  # Truncate to 200 chars
-                        "score": 0.0,  # graphiti.search doesn't return scores
+                        "score": 0.0,  # instance.search doesn't return scores
                         "created_at": getattr(edge, "created_at", datetime.now()).isoformat()
                         if hasattr(edge, "created_at")
                         else datetime.now().isoformat(),
@@ -502,20 +502,20 @@ class GraphService:
         logger.info("Listing entities", scope=scope.value, limit=limit)
 
         try:
-            # Get graphiti instance and group_id
-            graphiti = await self._get_graphiti(scope, project_root)
+            # Get recall instance and group_id
+            instance = await self._get_recall_instance(scope, project_root)
             group_id = self._get_group_id(scope, project_root)
 
             # Query entities from graph using EntityNode.get_by_group_ids()
             entities = await EntityNode.get_by_group_ids(
-                graphiti.driver, group_ids=[group_id], limit=limit
+                instance.driver, group_ids=[group_id], limit=limit
             )
 
             # Convert EntityNode objects to dicts
             result_list = []
             for entity in entities:
                 # Count relationships for this entity
-                rel_records, _, _ = await graphiti.driver.execute_query(
+                rel_records, _, _ = await instance.driver.execute_query(
                     """
                     MATCH (n:Entity {uuid: $uuid})-[:RELATES_TO]->(e:RelatesToNode_)
                     RETURN count(e) AS rel_count
@@ -578,9 +578,9 @@ class GraphService:
         logger.info("Getting entity", name=name, scope=scope.value)
 
         try:
-            # Get graphiti instance and group_id
-            graphiti = await self._get_graphiti(scope, project_root)
-            driver = graphiti.driver
+            # Get recall instance and group_id
+            instance = await self._get_recall_instance(scope, project_root)
+            driver = instance.driver
             group_id = self._get_group_id(scope, project_root)
 
             # Query entities matching the name (case-insensitive partial match)
@@ -714,9 +714,9 @@ class GraphService:
         logger.info("Deleting entities", names=names, scope=scope.value)
 
         try:
-            # Get graphiti instance and group_id
-            graphiti = await self._get_graphiti(scope, project_root)
-            driver = graphiti.driver
+            # Get recall instance and group_id
+            instance = await self._get_recall_instance(scope, project_root)
+            driver = instance.driver
             group_id = self._get_group_id(scope, project_root)
 
             # Find UUIDs of entities to delete by matching names
@@ -737,7 +737,7 @@ class GraphService:
                 logger.info("No entities found to delete")
                 return 0
 
-            # Delete using graphiti_core's API (handles Kuzu-specific deletion)
+            # Delete using graphiti_core's API (handles LadybugDB-specific deletion)
             await Node.delete_by_uuids(driver, uuids_to_delete)
 
             logger.info("Deleted entities", count=len(uuids_to_delete))
@@ -772,13 +772,13 @@ class GraphService:
         """
         logger.info("Generating summary", scope=scope.value, topic=topic)
 
-        # Get graphiti instance and group_id
-        graphiti = await self._get_graphiti(scope, project_root)
+        # Get recall instance and group_id
+        instance = await self._get_recall_instance(scope, project_root)
         group_id = self._get_group_id(scope, project_root)
 
         # Load entities using EntityNode.get_by_group_ids
         entities = await EntityNode.get_by_group_ids(
-            graphiti.driver, group_ids=[group_id], limit=200
+            instance.driver, group_ids=[group_id], limit=200
         )
 
         if not entities:
@@ -854,9 +854,9 @@ class GraphService:
         logger.info("Compacting graph", scope=scope.value)
 
         try:
-            # Get graphiti instance, driver, and group_id
-            graphiti = await self._get_graphiti(scope, project_root)
-            driver = graphiti.driver
+            # Get recall instance, driver, and group_id
+            instance = await self._get_recall_instance(scope, project_root)
+            driver = instance.driver
             group_id = self._get_group_id(scope, project_root)
 
             # Load all entities
@@ -949,7 +949,7 @@ class GraphService:
 
         from src.retention import get_retention_manager
 
-        graphiti = await self._get_graphiti(scope, project_root)
+        instance = await self._get_recall_instance(scope, project_root)
         group_id = self._get_group_id(scope, project_root)
         scope_key = group_id
 
@@ -963,7 +963,7 @@ class GraphService:
         pinned_uuids = retention.get_pin_state_uuids(scope_key)
 
         entities = await EntityNode.get_by_group_ids(
-            graphiti.driver, group_ids=[group_id]
+            instance.driver, group_ids=[group_id]
         )
 
         now = datetime.now(_tz.utc)
@@ -1015,7 +1015,7 @@ class GraphService:
         scope: GraphScope,
         project_root: Optional[Path],
     ) -> int:
-        """Archive nodes in retention.db (SQLite-only — Kuzu graph is untouched).
+        """Archive nodes in retention.db (SQLite-only — LadybugDB graph is untouched).
 
         Args:
             uuids: List of entity UUIDs to archive
@@ -1074,9 +1074,9 @@ class GraphService:
         logger.info("Getting graph stats", scope=scope.value)
 
         try:
-            # Get graphiti instance and group_id
-            graphiti = await self._get_graphiti(scope, project_root)
-            driver = graphiti.driver
+            # Get recall instance and group_id
+            instance = await self._get_recall_instance(scope, project_root)
+            driver = instance.driver
             group_id = self._get_group_id(scope, project_root)
 
             # Count entities
@@ -1090,7 +1090,7 @@ class GraphService:
             )
             entity_count = entity_records[0]["cnt"] if entity_records else 0
 
-            # Count relationships (RelatesToNode_ nodes represent edges in Kuzu)
+            # Count relationships (RelatesToNode_ nodes represent edges in LadybugDB)
             rel_records, _, _ = await driver.execute_query(
                 """
                 MATCH (n:Entity)-[:RELATES_TO]->(e:RelatesToNode_)-[:RELATES_TO]->(m:Entity)
@@ -1146,7 +1146,7 @@ class GraphService:
         """List all relationship edges for the given scope.
 
         Returns edges as dicts with source, target, label, fact keys.
-        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
+        Uses driver.execute_query() — backend-agnostic (no direct ladybugdb calls).
         """
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
@@ -1183,9 +1183,9 @@ class GraphService:
     ) -> list[dict]:
         """List all entity nodes for the given scope.
 
-        Identical shape to list_entities() output but NEVER calls _get_graphiti().
+        Identical shape to list_entities() output but NEVER calls _get_recall_instance().
         Returns list of dicts with: uuid, name, tags, scope, summary, created_at, last_accessed_at.
-        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
+        Uses driver.execute_query() — backend-agnostic (no direct ladybugdb calls).
         """
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
@@ -1266,8 +1266,8 @@ class GraphService:
     ) -> dict | None:
         """Fetch a single entity node by UUID.
 
-        Does NOT call _get_graphiti(). Returns None if not found.
-        Uses driver.execute_query() — backend-agnostic (no direct kuzu calls).
+        Does NOT call _get_recall_instance(). Returns None if not found.
+        Uses driver.execute_query() — backend-agnostic (no direct ladybugdb calls).
         """
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
@@ -1305,7 +1305,7 @@ class GraphService:
         project_root: Optional[Path],
         limit: int = 50,
     ) -> list[dict]:
-        """List episode (Episodic) nodes. Never calls _get_graphiti().
+        """List episode (Episodic) nodes. Never calls _get_recall_instance().
 
         Returns list of dicts with: uuid, name, source_description, content,
         created_at, source. Sorted newest-first.
@@ -1351,7 +1351,7 @@ class GraphService:
         scope: GraphScope,
         project_root: Optional[Path],
     ) -> dict | None:
-        """Fetch a single Episodic node with its entity mentions. Never calls _get_graphiti()."""
+        """Fetch a single Episodic node with its entity mentions. Never calls _get_recall_instance()."""
         db_path = self._resolve_db_path(scope, project_root)
         if not db_path or not db_path.exists():
             return None
@@ -1409,7 +1409,7 @@ class GraphService:
         """Return daily counts of entities, edges, and episodes over `days` window.
 
         Returns list of dicts: [{day: "YYYY-MM-DD", entity_count: N, edge_count: N, episode_count: N}]
-        sorted oldest-first. Never calls _get_graphiti().
+        sorted oldest-first. Never calls _get_recall_instance().
 
         Note: LadybugDB date() function support is unverified — aggregates at Python level
         from raw created_at timestamps as a fallback.
@@ -1482,7 +1482,7 @@ class GraphService:
         project_root: Optional[Path],
         limit: int = 10,
     ) -> list[dict]:
-        """Return top N entities ranked by edge count. Never calls _get_graphiti().
+        """Return top N entities ranked by edge count. Never calls _get_recall_instance().
 
         Returns list of dicts: [{uuid, name, edge_count}] sorted descending.
         """
@@ -1515,7 +1515,7 @@ class GraphService:
         scope: GraphScope,
         project_root: Optional[Path],
     ) -> dict:
-        """Return retention status counts for entities. Never calls _get_graphiti().
+        """Return retention status counts for entities. Never calls _get_recall_instance().
 
         Returns dict: {pinned: N, normal: N, stale: N, archived: N}
         Uses retention manager for pin/stale/archive state; entity count from driver.

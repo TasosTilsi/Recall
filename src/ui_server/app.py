@@ -1,4 +1,4 @@
-"""FastAPI application factory for the Graphiti UI server."""
+"""FastAPI application factory for the Recall UI server."""
 import logging
 from pathlib import Path
 
@@ -37,12 +37,12 @@ def create_app(
 
     Args:
         scope_label: Human-readable scope label for display ("project (myrepo)" or "global")
-        scope: "project" or "global" — passed to routes for Kuzu DB path resolution
+        scope: "project" or "global" — passed to routes for LadybugDB path resolution
         project_root: Project root path when scope="project"
         static_dir: Override for Vite out/ directory (defaults to ui/out/ at repo root)
         dev_mode: If True, adds CORS headers for Vite dev at localhost:5173
     """
-    app = FastAPI(title="Graphiti UI API", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Recall UI API", docs_url=None, redoc_url=None)
 
     # Store scope context as app state for routes to access
     app.state.scope = scope

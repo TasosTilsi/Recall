@@ -171,7 +171,7 @@ def get_status() -> dict:
     - "warning": pending >= 80% capacity
     - "error": pending >= 100% capacity
 
-    Same pattern as `graphiti health` command (per user decision).
+    Same pattern as `recall health` command (per user decision).
 
     Returns:
         Dict with keys:

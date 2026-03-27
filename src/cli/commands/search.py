@@ -1,4 +1,4 @@
-"""Search command for Graphiti CLI.
+"""Search command for recall CLI.
 
 Searches the knowledge graph with semantic (default) or exact matching,
 supporting filters, result formatting, and pagination.
