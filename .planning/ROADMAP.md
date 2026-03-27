@@ -47,7 +47,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 16: Rename & CLI Consolidation** — rename `graphiti` → `recall` (alias `rc`), 9-command public surface, all plumbing hidden; executed after Phase 15, before Phase 14 (completed 2026-03-20)
 - [x] **Phase 17: Fix Stale Binary References** — `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server; MEM-03 docs corrected; test skip reason fixed [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
-- [ ] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure]
+- [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
 
 ## Phase Details
 
@@ -196,7 +196,7 @@ Plans:
 Plans:
 - [x] 19-01-PLAN.md — Add `retention_status` field to `GraphService.list_entities_readonly()` response + `/api/graph` node shape
 - [x] 19-02-PLAN.md — Add retention filter dropdown to `Entities.tsx`; wire filter state to entity list and graph view
-- [ ] 19-03-PLAN.md — Integration tests + human smoke test
+- [x] 19-03-PLAN.md — Integration tests + human smoke test
 
 ---
 
