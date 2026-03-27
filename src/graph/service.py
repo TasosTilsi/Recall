@@ -30,6 +30,12 @@ from src.models import GraphScope
 from src.security import sanitize_content as secure_content
 from src.storage import GraphManager
 
+# Retention manager — optional; functions fall back gracefully when absent
+try:
+    from src.retention import get_retention_manager
+except ImportError:  # pragma: no cover
+    get_retention_manager = None  # type: ignore[assignment]
+
 logger = structlog.get_logger(__name__)
 
 # Singleton instance
@@ -1212,17 +1218,40 @@ class GraphService:
                     "pinned": False,
                 })
 
-            # Apply retention filters — mirror list_entities() post-processing
+            # Apply retention status — compute per-entity classification
             try:
-                from src.retention import get_retention_manager
                 retention = get_retention_manager()
                 archived_uuids = retention.get_archive_state_uuids(group_id)
                 pinned_uuids = retention.get_pin_state_uuids(group_id)
-                entities = [e for e in entities if e.get("uuid") not in archived_uuids]
+                _cfg = load_config()
+                _retention_days = _cfg.retention_days
+                from datetime import timezone as _tz
+                _now = datetime.now(_tz.utc)
                 for e in entities:
-                    e["pinned"] = e["uuid"] in pinned_uuids
+                    uuid = e.get("uuid", "")
+                    if uuid in pinned_uuids:
+                        e["retention_status"] = "Pinned"
+                    elif uuid in archived_uuids:
+                        e["retention_status"] = "Archived"
+                    else:
+                        # Stale: older than retention_days?
+                        created_str = e.get("created_at")
+                        is_stale = False
+                        if created_str:
+                            try:
+                                created_dt = datetime.fromisoformat(str(created_str))
+                                if created_dt.tzinfo is None:
+                                    created_dt = created_dt.replace(tzinfo=_tz.utc)
+                                age_days = (_now - created_dt).total_seconds() / 86400.0
+                                if age_days > _retention_days:
+                                    is_stale = True
+                            except (ValueError, TypeError):
+                                pass
+                        e["retention_status"] = "Stale" if is_stale else "Normal"
+                    e["pinned"] = uuid in pinned_uuids
             except Exception:
-                pass
+                for e in entities:
+                    e.setdefault("retention_status", "Normal")
 
             return entities
         except Exception as e:
