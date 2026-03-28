@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-03-28T14:33:05.243Z",
+  "phase": "19",
+  "phase_name": "wire-ui-03-retention-filter",
+  "phase_dir": ".planning/phases/19-wire-ui-03-retention-filter",
+  "plan": null,
+  "task": null,
+  "total_tasks": 4,
+  "status": "paused",
+  "completed_tasks": [],
+  "remaining_tasks": [
+    {"id": 1, "name": "Entities tab — default view", "status": "blocked", "note": "DB empty — project deleted and needs test entities"},
+    {"id": 2, "name": "Entities tab — retention filter Combobox", "status": "not_started"},
+    {"id": 3, "name": "Graph tab — node border rings", "status": "not_started"},
+    {"id": 4, "name": "Graph tab — retention legend", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "DB is empty — user deleted .recall/recall.lbdb to recover from WAL corruption caused by killed recall init process",
+      "type": "human_action",
+      "workaround": "Add test entities via: python3 -c \"import asyncio,sys; sys.path.insert(0,'.'); from src.storage.selector import GraphSelector; from src.graph.service import GraphService; from src.models import GraphScope; svc=GraphService(); pr=GraphSelector.find_project_root(); asyncio.run(svc.add('Test entity about project architecture and LadybugDB graph backend', scope=GraphScope.PROJECT, project_root=pr))\""
+    },
+    {
+      "description": "session_start.py hook runs GitIndexer with no timeout — holds DB in write mode for 30+ minutes, blocking UI server and all concurrent access",
+      "type": "technical",
+      "workaround": "Kill any running 'recall init' processes before starting recall ui. Fix: wrap _run_sync() with multiprocessing timeout (4.5s as per CLAUDE.md design intent)"
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Add test entities with correct project_root before running recall ui",
+      "context": "DB was deleted. Entities must be added via GraphSelector.find_project_root() (not Path('.')) so group_id='graphiti-knowledge-graph' matches the UI query. Use the script in the blocker workaround field, or wait for recall init to index some git history.",
+      "blocking": true
+    },
+    {
+      "action": "Run recall ui and complete the 4 UAT tests in 19-UAT.md",
+      "context": "All 4 tests are pending. Test 1 (default view), Test 2 (retention filter), Test 3 (node rings), Test 4 (legend)",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Open LadybugDB in read_only=True + throw_on_wal_replay_failure=False from UI server",
+      "rationale": "UI server only reads data. Exclusive write lock held by indexer was blocking all UI queries. read_only allows concurrent access.",
+      "phase": "19"
+    },
+    {
+      "decision": "UI server routes already declared read-only in invariant docstring — formalized by passing read_only=True to GraphService",
+      "rationale": "The routes.py docstring already declared read-only intent, we just enforced it at the DB level",
+      "phase": "19"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": "Add test entities using the script in blockers.workaround, then run recall ui and complete UAT tests 1-4",
+  "context_notes": "Phase 19 code is fully implemented and all 41 tests pass. The UAT smoke test is blocked by DB infrastructure issues. Two bugfixes were committed this session (read_only mode for UI server). The session_start.py timeout bug needs a separate fix phase. After UAT passes, run /gsd:complete-milestone."
+}
