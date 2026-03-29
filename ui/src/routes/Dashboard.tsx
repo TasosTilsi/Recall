@@ -16,7 +16,7 @@ function StatCard({ label, value, delta }: { label: string; value: number; delta
   return (
     <Card
       className="p-4 flex flex-col gap-1 cursor-pointer hover:bg-slate-700 transition-colors"
-      style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}
+      style={{ backgroundColor: '#222a3d', border: 'none' }}
     >
       <span className="text-xs text-slate-400">{label}</span>
       <span className="text-2xl font-semibold text-white">{value.toLocaleString()}</span>
@@ -125,7 +125,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-6 overflow-auto" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 p-6 overflow-auto" style={{ backgroundColor: '#0b1326' }}>
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[0, 1, 2].map(i => <Skeleton key={i} className="h-24 rounded-lg bg-slate-800" />)}
         </div>
@@ -140,7 +140,7 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0b1326' }}>
         <p className="text-red-400 text-sm">{error}</p>
       </div>
     );
@@ -148,7 +148,7 @@ export default function Dashboard() {
 
   if (!data || data.counts.entities === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0b1326' }}>
         <h2 className="text-base font-semibold text-white">No knowledge yet.</h2>
         <p className="text-slate-400 text-sm">Run <code className="text-blue-400">recall add</code> or <code className="text-blue-400">recall index</code> to populate.</p>
       </div>
@@ -182,7 +182,7 @@ export default function Dashboard() {
   ].filter(d => d.value > 0);
 
   return (
-    <div className="flex-1 p-6 overflow-auto" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 p-6 overflow-auto" style={{ backgroundColor: '#0b1326' }}>
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <StatCard label="Entities" value={data.counts.entities} delta={data.counts.deltas.entities_7d} />
@@ -191,13 +191,13 @@ export default function Dashboard() {
       </div>
 
       {/* Knowledge Growth line chart */}
-      <Card className="p-4 mb-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+      <Card className="p-4 mb-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
         <h2 className="text-sm font-semibold text-white mb-3">Knowledge Growth (30 days)</h2>
         <ResponsiveContainer width="100%" height={180}>
           <LineChart data={data.time_series}>
             <XAxis dataKey="day" stroke="#64748b" tick={{ fontSize: 10, fill: '#94a3b8' }} />
             <YAxis stroke="#64748b" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-            <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#e2e8f0' }} />
+            <Tooltip contentStyle={{ backgroundColor: '#222a3d', border: 'none', color: '#e2e8f0' }} />
             <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
             <Line type="monotone" dataKey="entity_count" name="Entities" stroke="#60a5fa" dot={false} strokeWidth={2} />
             <Line type="monotone" dataKey="edge_count" name="Edges" stroke="#a78bfa" dot={false} strokeWidth={2} />
@@ -207,7 +207,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Activity Heatmap */}
-      <Card className="p-4 mb-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+      <Card className="p-4 mb-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
         <h2 className="text-sm font-semibold text-white mb-3">Activity (12 months)</h2>
         <ActivityHeatmap data={heatmapData} />
       </Card>
@@ -215,55 +215,55 @@ export default function Dashboard() {
       {/* Charts row: Episode Sources + Entity Types + Top Entities + Retention */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {/* Episode Sources donut */}
-        <Card className="p-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+        <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
           <h2 className="text-sm font-semibold text-white mb-3">Episode Sources</h2>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={sourcesData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
                 {sourcesData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#e2e8f0' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#222a3d', border: 'none', color: '#e2e8f0' }} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Entity Type Distribution donut */}
-        <Card className="p-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+        <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
           <h2 className="text-sm font-semibold text-white mb-3">Entity Types</h2>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={entityTypeData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
                 {entityTypeData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#e2e8f0' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#222a3d', border: 'none', color: '#e2e8f0' }} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
             </PieChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Top Connected Entities horizontal bar */}
-        <Card className="p-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+        <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
           <h2 className="text-sm font-semibold text-white mb-3">Top Connected Entities</h2>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={data.top_entities} layout="vertical">
               <XAxis type="number" stroke="#64748b" tick={{ fontSize: 10, fill: '#94a3b8' }} />
               <YAxis type="category" dataKey="name" width={80} stroke="#64748b" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#e2e8f0' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#222a3d', border: 'none', color: '#e2e8f0' }} />
               <Bar dataKey="edge_count" name="Edges" fill="#60a5fa" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Retention Status donut */}
-        <Card className="p-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+        <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
           <h2 className="text-sm font-semibold text-white mb-3">Retention Status</h2>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie data={retentionData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="value">
                 {retentionData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', color: '#e2e8f0' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#222a3d', border: 'none', color: '#e2e8f0' }} />
               <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
             </PieChart>
           </ResponsiveContainer>
@@ -271,7 +271,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity Feed */}
-      <Card className="p-4" style={{ backgroundColor: '#1e293b', borderColor: '#334155' }}>
+      <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
         <h2 className="text-sm font-semibold text-white mb-3">Recent Activity</h2>
         {data.recent_episodes.length === 0 ? (
           <p className="text-slate-500 text-sm">No recent episodes.</p>

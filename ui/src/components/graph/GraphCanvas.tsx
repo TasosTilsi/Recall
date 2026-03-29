@@ -157,7 +157,7 @@ export function GraphCanvas({
     return (
       <div
         className="w-full h-full flex items-center justify-center"
-        style={{ backgroundColor: '#0f172a' }}
+        style={{ backgroundColor: '#0b1326' }}
       >
         <div className="text-center">
           <h2 className="text-base font-semibold text-white mb-2">Graph is empty.</h2>
@@ -173,8 +173,8 @@ export function GraphCanvas({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full"
-      style={{ backgroundColor: '#0f172a' }}
+      className="w-full h-full graph-dot-grid"
+      style={{ backgroundColor: '#0b1326' }}
     />
   );
 }

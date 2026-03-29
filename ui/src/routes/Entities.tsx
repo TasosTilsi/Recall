@@ -78,28 +78,28 @@ export default function Entities() {
   };
 
   if (loading) return (
-    <div className="flex-1 p-6" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 p-6" style={{ backgroundColor: '#0b1326' }}>
       {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 rounded bg-slate-800 mb-2" />)}
     </div>
   );
 
   if (error) return (
-    <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0b1326' }}>
       <p className="text-red-400 text-sm">{error}</p>
     </div>
   );
 
   if (nodes.length === 0) return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0b1326' }}>
       <h2 className="text-base font-semibold text-white">No entities found.</h2>
       <p className="text-slate-400 text-sm">No entities match the current scope and filters.</p>
     </div>
   );
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: '#0b1326' }}>
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-6 py-3 border-b flex-shrink-0" style={{ borderColor: '#334155' }}>
+      <div className="flex items-center gap-3 px-6 py-3 flex-shrink-0" style={{ backgroundColor: '#171f33' }}>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="h-7 w-36 text-xs bg-slate-800 border-slate-700 text-slate-200">
             <SelectValue placeholder="Filter by type" />
@@ -143,7 +143,7 @@ export default function Entities() {
       <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader>
-            <TableRow style={{ backgroundColor: '#334155' }}>
+            <TableRow style={{ backgroundColor: '#222a3d' }}>
               <TableHead className="text-xs text-slate-400 cursor-pointer" onClick={() => toggleSort('label')}>
                 <div className="flex items-center gap-1">Name <ArrowUpDown size={10} /></div>
               </TableHead>
@@ -159,7 +159,7 @@ export default function Entities() {
               <TableRow
                 key={node.id}
                 className="cursor-pointer hover:bg-slate-700/50 border-slate-700"
-                style={{ backgroundColor: '#0f172a' }}
+                style={{ backgroundColor: '#0b1326' }}
                 onClick={() => setPanelItem({ itemType: 'entity', itemId: node.id, label: node.label })}
               >
                 <TableCell className="text-sm text-slate-200 font-medium">{node.label}</TableCell>

@@ -22,7 +22,7 @@ function Shell() {
   }, [setLastUpdated]);
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex flex-col h-screen" style={{ backgroundColor: '#0b1326' }}>
       <Header onRefresh={handleRefresh} />
       <div className="flex flex-1 min-h-0">
         <Sidebar />

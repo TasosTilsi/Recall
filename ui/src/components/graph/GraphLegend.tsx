@@ -24,7 +24,7 @@ export function GraphLegend({ colorMode }: GraphLegendProps) {
       {/* Entity type / scope legend */}
       <div
         className="p-3 rounded-lg flex flex-col gap-1.5"
-        style={{ backgroundColor: '#1e293b99', backdropFilter: 'blur(8px)' }}
+        style={{ backgroundColor: 'rgba(34,42,61,0.88)', backdropFilter: 'blur(12px)' }}
       >
         {entries.map(({ name, color }) => (
           <div key={name} className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export function GraphLegend({ colorMode }: GraphLegendProps) {
       {/* Retention ring legend */}
       <div
         className="p-3 rounded-lg flex flex-col gap-1.5"
-        style={{ backgroundColor: '#1e293b99', backdropFilter: 'blur(8px)' }}
+        style={{ backgroundColor: 'rgba(34,42,61,0.88)', backdropFilter: 'blur(12px)' }}
       >
         <span className="text-xs text-slate-400 font-medium mb-0.5">Retention</span>
         {RETENTION_RING_ENTRIES.map(({ name, color }) => (

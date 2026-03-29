@@ -49,7 +49,7 @@ export function Header({ onRefresh }: HeaderProps) {
   return (
     <header
       className="flex items-center px-4 gap-4 flex-shrink-0 z-10"
-      style={{ height: '48px', backgroundColor: '#0f172a', borderBottom: '1px solid #334155' }}
+      style={{ height: '48px', backgroundColor: '#0b1326' }}
     >
       {/* Scope toggle */}
       <ToggleGroup

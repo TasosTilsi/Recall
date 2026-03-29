@@ -56,7 +56,7 @@ export default function GraphView() {
 
   if (loading) {
     return (
-      <div className="flex-1 relative" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 relative" style={{ backgroundColor: '#0b1326' }}>
         <Skeleton className="absolute inset-0 m-4 rounded-lg bg-slate-800" />
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-slate-500 text-sm">Loading graph...</p>
@@ -67,18 +67,18 @@ export default function GraphView() {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 flex items-center justify-center" style={{ backgroundColor: '#0b1326' }}>
         <p className="text-red-400 text-sm">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 flex flex-col min-h-0 relative" style={{ backgroundColor: '#0b1326' }}>
       {/* Graph toolbar */}
       <div
         className="flex items-center gap-3 px-4 py-2 flex-shrink-0 z-10"
-        style={{ backgroundColor: '#334155', borderBottom: '1px solid #475569' }}
+        style={{ backgroundColor: '#171f33' }}
       >
         <Toggle
           pressed={showEpisodes}
@@ -113,7 +113,7 @@ export default function GraphView() {
         <GraphLegend colorMode={colorMode} />
         {/* Zoom controls */}
         <div className="absolute bottom-4 right-4 z-10 flex flex-col rounded-lg overflow-hidden"
-             style={{ backgroundColor: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(12px)' }}>
+             style={{ backgroundColor: 'rgba(34,42,61,0.88)', backdropFilter: 'blur(12px)' }}>
           <button
             onClick={() => rendererRef.current?.getCamera().animatedZoom({ duration: 200 })}
             className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"

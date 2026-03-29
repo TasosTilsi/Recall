@@ -249,8 +249,6 @@ def _is_recall_hook(entry: dict) -> bool:
     return False
 
 
-# Alias for renamed hook detection (post-Phase 16 rename to recall)
-_is_recall_hook = _is_graphiti_hook
 
 
 def install_global_hooks() -> bool:

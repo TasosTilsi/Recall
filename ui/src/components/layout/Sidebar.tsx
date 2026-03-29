@@ -15,10 +15,10 @@ export function Sidebar() {
   return (
     <nav
       className="flex flex-col w-[200px] flex-shrink-0 h-full"
-      style={{ backgroundColor: '#1e293b', borderRight: '1px solid #334155' }}
+      style={{ backgroundColor: '#131b2e' }}
     >
-      <div className="p-4 border-b" style={{ borderColor: '#334155' }}>
-        <span className="text-sm font-semibold text-white tracking-wide">recall</span>
+      <div className="p-4" style={{ paddingBottom: '12px' }}>
+        <span className="text-sm font-semibold tracking-wide" style={{ color: '#7bd0ff' }}>recall</span>
       </div>
       <ul className="flex-1 overflow-y-auto py-2">
         {TABS.map(({ label, path, icon: Icon }) => {
@@ -31,9 +31,9 @@ export function Sidebar() {
                   'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
                   isActive
                     ? 'text-white font-medium border-l-[3px]'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50 border-l-[3px] border-transparent'
+                    : 'text-slate-400 hover:text-slate-200 border-l-[3px] border-transparent transition-colors duration-150'
                 )}
-                style={isActive ? { borderLeftColor: '#3b82f6', backgroundColor: '#334155' } : {}}
+                style={isActive ? { borderLeftColor: '#7bd0ff', backgroundColor: 'rgba(123,208,255,0.08)' } : {}}
               >
                 <Icon size={16} />
                 {label}

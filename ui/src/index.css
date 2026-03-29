@@ -3,6 +3,34 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* ─── Recall Obsidian Design Tokens ─── */
+:root {
+  --ro-base:             #0b1326;
+  --ro-surface-low:      #131b2e;
+  --ro-surface:          #171f33;
+  --ro-surface-high:     #222a3d;
+  --ro-surface-highest:  #2d3449;
+  --ro-cyan:             #7bd0ff;
+  --ro-lime:             #8fdb00;
+  --ro-outline:          rgba(255, 255, 255, 0.08);
+}
+
+/* Graph canvas dot-grid background */
+.graph-dot-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(123, 208, 255, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+/* Node activity pulse (used on graph canvas status indicators) */
+@keyframes recall-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Phase 14: default to dark theme */
