@@ -201,10 +201,11 @@ Key v2.0 architectural decisions from research:
 |---|-------------|------|--------|-----------|
 | 2 | Enhance health command to show available/default models | 2026-03-27 | 3fbd659 | [2-enhance-health-command-to-show-available](./quick/2-enhance-health-command-to-show-available/) |
 | 260328-1x2 | Fix graph UI visual gaps: zoom controls, legend position, node ring thickness | 2026-03-28 | 5fa4f83 | [260328-1x2-fix-graph-ui-visual-gaps-zoom-controls-l](./quick/260328-1x2-fix-graph-ui-visual-gaps-zoom-controls-l/) |
+| 260329 | Fix graph_manager attribute missing in GraphService | 2026-03-30 | 761d2f3 | [260329-fix-graph-manager-attribute-missing-in-g](./quick/260329-fix-graph-manager-attribute-missing-in-g/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-29 - Phase 20 context created: Fast Indexing via claude -p subprocess + batch extraction + FTS-first search
+Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
 Last session: 2026-03-29T00:00:00.000Z
 Stopped at: Phase 20 CONTEXT.md created; PROJECT.md and STATE.md updated
 Resume with: `/gsd:plan-phase 20`
