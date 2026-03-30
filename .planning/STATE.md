@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: verifying
-stopped_at: Completed 19-03-PLAN.md
-last_updated: "2026-03-27T23:03:18.272Z"
-last_activity: 2026-03-27
+status: planning
+stopped_at: Phase 20 context created
+last_updated: "2026-03-29T00:00:00.000Z"
+last_activity: 2026-03-29
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 1
   total_plans: 14
   completed_plans: 24
-  percent: 25
+  percent: 22
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Phase 19 — Wire UI-03 Retention Filter
+**Current focus:** Phase 20 — Fast Indexing via Claude CLI + Batch Extraction + FTS-First Search
 
 ## Current Position
 
-Phase: 19 (Wire UI-03 Retention Filter) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-03-27
+Phase: 20 (Fast Indexing — Claude CLI + Batch Extraction + FTS-First) — CONTEXT READY
+Plan: 0 of TBD
+Status: Context captured — ready for `/gsd:plan-phase 20`
+Last activity: 2026-03-29
 
-Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases complete)
+Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer phases complete; Phase 19 code-complete)
 
 ## v2.0 Phase Summary
 
@@ -40,6 +40,7 @@ Progress: [██░░░░░░░░] 25% (v2.0 milestone — 1/4 phases co
 | 13. Multi-Provider LLM | Switch LLM providers via `llm.toml` `[provider]` section; backward compatible with Ollama | PROV-01, PROV-02, PROV-03, PROV-04 | Not started |
 | 14. Graph UI Redesign | shadcn/ui dual-view table + graph replacing react-force-graph-2d; driver-agnostic reads | UI-01, UI-02, UI-03, UI-04 | Not started |
 | 15. Local Memory System | All 6 Claude Code hooks, Ollama summarization, 3-layer progressive disclosure MCP, SessionStart injection | MEM-01, MEM-02, MEM-03, MEM-04, MEM-05 | Not started |
+| 20. Fast Indexing | `claude -p` batch extraction + async semaphore + FTS-first context injection; indexing under 2 min for 30 commits | PERF-01, PERF-02, PERF-03 | Context ready (2026-03-29) |
 
 ## Performance Metrics
 
@@ -181,6 +182,8 @@ Key v2.0 architectural decisions from research:
 - Phase 13 renumbered: Multi-Provider LLM (was Phase 12 in pre-roadmap STATE.md)
 - Phase 14 renumbered: Graph UI Redesign (was Phase 13 in pre-roadmap STATE.md)
 - Phase 15 renumbered: Local Memory System (was Phase 14 in pre-roadmap STATE.md)
+- Phase 19 added: Wire UI-03 Retention Filter — gap closure for v2.0 audit
+- Phase 20 added: Fast Indexing via `claude -p` subprocess + batch extraction + FTS-first search — context captured 2026-03-29; replaces per-commit Ollama extraction; no ANTHROPIC_API_KEY required (Claude Code subscription auth via subprocess)
 
 ### Pending Todos
 
@@ -201,7 +204,7 @@ Key v2.0 architectural decisions from research:
 
 ## Session Continuity
 
-Last activity: 2026-03-28 - Completed quick task 260328-1x2: Fix graph UI visual gaps: zoom controls, legend position, node ring thickness
-Last session: 2026-03-27T23:03:18.269Z
-Stopped at: Completed 19-03-PLAN.md
-Resume with: `/gsd:plan-phase 13`
+Last activity: 2026-03-29 - Phase 20 context created: Fast Indexing via claude -p subprocess + batch extraction + FTS-first search
+Last session: 2026-03-29T00:00:00.000Z
+Stopped at: Phase 20 CONTEXT.md created; PROJECT.md and STATE.md updated
+Resume with: `/gsd:plan-phase 20`

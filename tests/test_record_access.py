@@ -144,7 +144,7 @@ class TestGetEntityRecordAccess:
         graphiti_mock.driver = driver
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.retention.get_retention_manager", return_value=retention),
         ):
@@ -171,7 +171,7 @@ class TestGetEntityRecordAccess:
         graphiti_mock.driver = driver
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.retention.get_retention_manager", return_value=retention),
         ):
@@ -203,7 +203,7 @@ class TestGetEntityRecordAccess:
         graphiti_mock.driver = driver
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.retention.get_retention_manager", return_value=retention),
         ):

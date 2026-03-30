@@ -65,6 +65,9 @@ A local knowledge graph system with persistent graph storage, defense-in-depth s
 - [ ] **UI-02**: User can toggle between project and global scope in the redesigned UI
 - [ ] **UI-03**: User can filter entities by retention status (pinned/archived/stale) in the redesigned UI
 - [ ] **UI-04**: UI reads entity data via driver-agnostic API (no direct Kuzu reads) — works with any v2.0 backend
+- [ ] **PERF-01**: Git history indexing completes in under 2 minutes for a 30-commit repo — `claude -p` batch extraction replaces per-commit Ollama LLM calls
+- [ ] **PERF-02**: Session summary generation completes in under 10 seconds — `ClaudeCliLLMClient` replaces Ollama for session_stop.py summarizer
+- [ ] **PERF-03**: Context injection on UserPromptSubmit completes in under 0.5 seconds at 1000+ nodes — FTS-first Layer 1 retrieval replaces full vector search for keyword-matching prompts
 
 ### Out of Scope
 
@@ -137,6 +140,9 @@ LLM: Cloud Ollama (chat-only) + local Ollama (gemma2:9b, llama3.2:3b, nomic-embe
 | Hook path: pure Python scripts | Hooks call GraphService directly via Python; no TypeScript layer, no bridge daemon; Python startup ~200ms fits within timeout budgets | ✓ Locked — v2.0 Phase 15 |
 | Git indexing: batch incremental | `graphiti init` full history + `graphiti sync` delta on SessionStart; episodes fed oldest-first; gracefully skips non-git dirs | ✓ Locked — v2.0 Phase 15 |
 | Phase execution order: 12→13→15→14 | Phase 15 (memory) needs Phase 13 LLM abstraction; Phase 14 (UI) independent of memory, can run after | ✓ Locked — v2.0 planning |
+| ClaudeCliLLMClient via `claude -p` subprocess | No `ANTHROPIC_API_KEY` available — `claude -p` uses Claude Code subscription auth; same pattern as claude-mem's `unstable_v2_prompt()`; falls back to Ollama if `claude` not on PATH | ✓ Locked — v2.0 Phase 20 |
+| FTS-first 3-layer progressive disclosure | LadybugDB FTS5 indices already exist; Layer 1 (FTS compact, <50ms) → Layer 2 (chronological, no LLM) → Layer 3 (vector for filtered IDs only); adapted from claude-mem | ✓ Locked — v2.0 Phase 20 |
+| Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
 *Last updated: 2026-03-17 — Phase 15 architecture locked (4 hooks, Option C injection, incremental git); execution order updated to 12→13→15→14*

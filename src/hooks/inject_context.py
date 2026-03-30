@@ -30,6 +30,10 @@ logger = structlog.get_logger()
 TOKEN_BUDGET = 4000
 SEARCH_LIMIT = 20
 
+# Hard timeout for the entire context fetch (seconds).
+# UserPromptSubmit hook must complete before the model call; 5s is generous.
+_CONTEXT_TIMEOUT_SECONDS = 5.0
+
 
 def _approx_tokens(text: str) -> int:
     """Approximate token count. Conservative: 4 chars per token."""
@@ -58,71 +62,58 @@ def _format_created_at(created_at_val) -> str:
         return "unknown date"
 
 
-def _fetch_continuity(service, scope, project_root: Path) -> str:
-    """Fetch the most recent session_summary episode for <continuity> block."""
-    import asyncio
-
-    try:
-        results = asyncio.run(service.search(
-            query="session summary",
-            scope=scope,
-            project_root=project_root,
-            limit=5,
-        ))
-        # Filter to session_summary episodes only
-        summaries = [
-            r for r in results
-            if r.get("source_description") == "session_summary"
-            or r.get("source") == "session_summary"
-        ]
-        if not summaries:
-            # Fall back: take most recent result tagged with session_summary in name
-            summaries = [
-                r for r in results
-                if "session_summary" in r.get("name", "").lower()
-            ]
-        if summaries:
-            # Sort by created_at descending, take most recent
-            summaries.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-            return summaries[0].get("snippet", "")[:500]
-    except Exception as e:
-        logger.debug("continuity_fetch_error", error=str(e))
-    return ""
-
-
-def _fetch_relevant_history(
+async def _fetch_context_async(
     service,
     scope,
     project_root: Path,
     prompt: str,
     session_id: Optional[str],
-) -> list:
-    """3-step progressive retrieval: search -> rank by recency + session boost -> return top-N."""
+) -> tuple[str, list]:
+    """Fetch continuity and history concurrently via asyncio.gather().
+
+    Runs both searches in parallel so total latency ≈ max(t_continuity, t_history)
+    instead of t_continuity + t_history.
+
+    Returns:
+        (continuity_text, history_items)
+    """
     import asyncio
 
-    try:
-        results = asyncio.run(service.search(
-            query=prompt,
-            scope=scope,
-            project_root=project_root,
-            limit=SEARCH_LIMIT,
-        ))
-    except Exception as e:
-        logger.debug("history_search_error", error=str(e))
-        return []
+    continuity_results, history_results = await asyncio.gather(
+        service.search(query="session summary", scope=scope, project_root=project_root, limit=5),
+        service.search(query=prompt, scope=scope, project_root=project_root, limit=SEARCH_LIMIT),
+        return_exceptions=True,
+    )
 
-    if not results:
-        return []
+    # --- process continuity ---
+    continuity = ""
+    if not isinstance(continuity_results, Exception) and continuity_results:
+        summaries = [
+            r for r in continuity_results
+            if r.get("source_description") == "session_summary"
+            or r.get("source") == "session_summary"
+        ]
+        if not summaries:
+            summaries = [
+                r for r in continuity_results
+                if "session_summary" in r.get("name", "").lower()
+            ]
+        if summaries:
+            summaries.sort(key=lambda r: r.get("created_at", ""), reverse=True)
+            continuity = summaries[0].get("snippet", "")[:500]
 
-    # Score: recency (higher created_at = higher score) + session boost
-    def _rank_key(r: dict):
-        created = r.get("created_at", "")
-        recency_score = created if isinstance(created, str) else str(created)
-        session_boost = 1 if (session_id and session_id in str(r.get("tags", []))) else 0
-        return (session_boost, recency_score)
+    # --- process history ---
+    history_items: list = []
+    if not isinstance(history_results, Exception) and history_results:
+        def _rank_key(r: dict):
+            created = r.get("created_at", "")
+            recency_score = created if isinstance(created, str) else str(created)
+            session_boost = 1 if (session_id and session_id in str(r.get("tags", []))) else 0
+            return (session_boost, recency_score)
 
-    results.sort(key=_rank_key, reverse=True)
-    return results
+        history_items = sorted(history_results, key=_rank_key, reverse=True)
+
+    return continuity, history_items
 
 
 def _build_option_c(continuity: str, history_items: list, token_budget: int) -> str:
@@ -166,6 +157,8 @@ def _build_option_c(continuity: str, history_items: list, token_budget: int) -> 
 
 def main() -> None:
     """Main hook logic. Reads from stdin. Writes JSON with 'context' key to stdout."""
+    import asyncio
+
     empty_output = json.dumps({"context": ""})
 
     try:
@@ -189,13 +182,19 @@ def main() -> None:
         service = get_service()
         scope = GraphScope.PROJECT
 
-        # Fetch continuity (most recent session summary)
-        continuity = _fetch_continuity(service, scope, project_root)
-
-        # Fetch relevant history (search -> rank -> top-N)
-        history_items = _fetch_relevant_history(
-            service, scope, project_root, prompt, session_id
-        )
+        # Fetch continuity + history concurrently in a single event loop with a
+        # hard wall-clock timeout.  Fail-open: any timeout or exception → empty context.
+        try:
+            continuity, history_items = asyncio.run(
+                asyncio.wait_for(
+                    _fetch_context_async(service, scope, project_root, prompt, session_id),
+                    timeout=_CONTEXT_TIMEOUT_SECONDS,
+                )
+            )
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.debug("inject_context_fetch_failed", error=str(e))
+            print(empty_output)
+            return
 
         # If neither continuity nor history, output empty
         if not continuity and not history_items:

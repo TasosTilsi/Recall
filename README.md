@@ -198,6 +198,7 @@ pytest tests/test_cli_rename.py  # CLI surface tests
 | `graphiti-core[neo4j]==0.28.1` | Knowledge graph engine |
 | `real-ladybug==0.15.1` | Embedded graph database |
 | `ollama==0.6.1` | Local LLM + embeddings client |
+| `sentence-transformers` | Semantic embeddings |
 | `typer` | CLI framework |
 | `fastapi` + `uvicorn` | UI server |
 | `detect-secrets` | Secret scanning |
@@ -205,7 +206,7 @@ pytest tests/test_cli_rename.py  # CLI surface tests
 | `structlog` | Structured logging |
 | `mcp[cli]` | MCP server protocol |
 
-Optional: `pip install -e ".[reranking]"` for BGE cross-encoder reranking.
+Optional: `pip install -e ".[reranking]"` enables BGE cross-encoder reranking (heavier sentence-transformers usage).
 
 ---
 

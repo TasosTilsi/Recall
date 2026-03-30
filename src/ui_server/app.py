@@ -49,6 +49,10 @@ def create_app(
     app.state.project_root = project_root
     app.state.scope_label = scope_label
 
+    # Create a single read-only GraphService for the lifetime of this server instance.
+    # Routes access it via request.app.state.graph_service — no per-request re-init.
+    app.state.graph_service = GraphService(read_only=True)
+
     # CORS — only for local Vite dev workflow
     if dev_mode:
         app.add_middleware(

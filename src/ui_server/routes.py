@@ -6,6 +6,7 @@ via list_entities_readonly(), list_edges(), get_entity_by_uuid(), list_episodes(
 get_episode_detail(), get_time_series_counts(), get_top_connected_entities(),
 get_retention_summary().
 """
+import asyncio
 import inspect
 import logging
 
@@ -15,12 +16,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_graph_service():
-    """Return GraphService from the app module namespace.
-    Importing via the module ensures unittest.mock.patch takes effect at call time.
+def _get_graph_service(request: Request):
+    """Return the app-level GraphService singleton from request.app.state.
+
+    create_app() stores a single read-only GraphService in app.state.graph_service
+    so routes reuse it across requests instead of re-initialising on every call.
+    Tests set app.state.graph_service to a mock before the first request.
     """
-    import src.ui_server.app as _app_module
-    return _app_module.GraphService(read_only=True)
+    return request.app.state.graph_service
 
 
 async def _await_if_coro(result):
@@ -48,12 +51,12 @@ async def get_graph(request: Request, scope: str = "project"):
     Response shape: {nodes: [{id, label, type, scope}], edges: [{id, source, target, name}]}
     """
     _, graph_scope, proj_root = _resolve_request_scope(request, scope)
-    service = _get_graph_service()
+    service = _get_graph_service(request)
 
-    entities = await _await_if_coro(
-        service.list_entities_readonly(graph_scope, proj_root, limit=None)
+    entities, edges = await asyncio.gather(
+        _await_if_coro(service.list_entities_readonly(graph_scope, proj_root, limit=None)),
+        _await_if_coro(service.list_edges(graph_scope, proj_root)),
     )
-    edges = await _await_if_coro(service.list_edges(graph_scope, proj_root))
     scope_str = "global" if scope == "global" else "project"
 
     nodes = [
@@ -95,14 +98,26 @@ async def get_dashboard(request: Request, scope: str = "project"):
     }
     """
     _, graph_scope, proj_root = _resolve_request_scope(request, scope)
-    service = _get_graph_service()
+    service = _get_graph_service(request)
 
-    entities = await _await_if_coro(service.list_entities_readonly(graph_scope, proj_root))
-    edges = await _await_if_coro(service.list_edges(graph_scope, proj_root))
-    episodes = await _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=15))
-    time_series = await _await_if_coro(service.get_time_series_counts(graph_scope, proj_root, days=30))
-    top_entities = await _await_if_coro(service.get_top_connected_entities(graph_scope, proj_root, limit=10))
-    retention = await _await_if_coro(service.get_retention_summary(graph_scope, proj_root))
+    # Fetch all dashboard data concurrently — parallel I/O instead of serial awaits.
+    (
+        entities,
+        edges,
+        episodes,
+        time_series,
+        top_entities,
+        retention,
+        all_episodes,
+    ) = await asyncio.gather(
+        _await_if_coro(service.list_entities_readonly(graph_scope, proj_root)),
+        _await_if_coro(service.list_edges(graph_scope, proj_root)),
+        _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=15)),
+        _await_if_coro(service.get_time_series_counts(graph_scope, proj_root, days=30)),
+        _await_if_coro(service.get_top_connected_entities(graph_scope, proj_root, limit=10)),
+        _await_if_coro(service.get_retention_summary(graph_scope, proj_root)),
+        _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=200)),
+    )
 
     # 7-day deltas: count items created in last 7 days
     from datetime import datetime, timedelta
@@ -110,8 +125,6 @@ async def get_dashboard(request: Request, scope: str = "project"):
 
     def _count_recent(items, field="created_at"):
         return sum(1 for item in items if str(item.get(field, "") or "") >= cutoff_7d)
-
-    all_episodes = await _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=200))
 
     # Episode source breakdown
     all_sources: dict = {"git-index": 0, "hook-capture": 0, "cli-add": 0}
@@ -158,7 +171,7 @@ async def get_detail(item_type: str, item_id: str, request: Request, scope: str 
     Response shape varies by type. Returns 404 if not found, 400 if item_type invalid.
     """
     _, graph_scope, proj_root = _resolve_request_scope(request, scope)
-    service = _get_graph_service()
+    service = _get_graph_service(request)
 
     if item_type == "entity":
         entity = await _await_if_coro(service.get_entity_by_uuid(item_id, graph_scope, proj_root))
@@ -225,11 +238,16 @@ async def search(q: str = "", request: Request = None, scope: str = "project"):
         return {"entities": [], "relations": [], "episodes": []}
 
     _, graph_scope, proj_root = _resolve_request_scope(request, scope)
-    service = _get_graph_service()
+    service = _get_graph_service(request)
     q_lower = q.lower()
 
-    # Text-filter entities
-    entities = await _await_if_coro(service.list_entities_readonly(graph_scope, proj_root))
+    # Fetch all three collections concurrently.
+    entities, edges, all_episodes = await asyncio.gather(
+        _await_if_coro(service.list_entities_readonly(graph_scope, proj_root)),
+        _await_if_coro(service.list_edges(graph_scope, proj_root)),
+        _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=500)),
+    )
+
     matched_entities = [
         {
             "id": e.get("uuid", ""),
@@ -241,8 +259,6 @@ async def search(q: str = "", request: Request = None, scope: str = "project"):
         if q_lower in (e.get("name") or "").lower() or q_lower in (e.get("summary") or "").lower()
     ]
 
-    # Text-filter edges
-    edges = await _await_if_coro(service.list_edges(graph_scope, proj_root))
     matched_relations = [
         {
             "id": f"{e.get('source','')}-{e.get('target','')}",
@@ -254,9 +270,6 @@ async def search(q: str = "", request: Request = None, scope: str = "project"):
         for e in edges
         if q_lower in (e.get("fact") or "").lower() or q_lower in (e.get("label") or "").lower()
     ]
-
-    # Text-filter episodes
-    all_episodes = await _await_if_coro(service.list_episodes(graph_scope, proj_root, limit=500))
     matched_episodes = [
         ep for ep in all_episodes
         if q_lower in (ep.get("source_description") or "").lower()

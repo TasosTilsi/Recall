@@ -69,7 +69,7 @@ class TestReactivationFastPath:
         graphiti_mock = _make_graphiti_mock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),
@@ -93,7 +93,7 @@ class TestReactivationFastPath:
         graphiti_mock = _make_graphiti_mock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),
@@ -128,7 +128,7 @@ class TestReactivationMatch:
         ]
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),
@@ -162,7 +162,7 @@ class TestReactivationMatch:
         ]
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),
@@ -194,7 +194,7 @@ class TestReactivationExceptionIsolation:
         retention.get_archive_state_uuids.side_effect = Exception("Retention DB failed")
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),

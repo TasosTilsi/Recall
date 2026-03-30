@@ -83,7 +83,7 @@ class TestListStale:
         graphiti_mock._driver = MagicMock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.graph.service.load_config") as mock_cfg,
@@ -110,7 +110,7 @@ class TestListStale:
         graphiti_mock._driver = MagicMock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.graph.service.load_config") as mock_cfg,
@@ -136,7 +136,7 @@ class TestListStale:
         graphiti_mock._driver = MagicMock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.graph.service.load_config") as mock_cfg,
@@ -170,7 +170,7 @@ class TestListStale:
         graphiti_mock._driver = MagicMock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.graph.service.load_config") as mock_cfg,
@@ -193,7 +193,7 @@ class TestListStale:
         graphiti_mock._driver = MagicMock()
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.graph.service.load_config") as mock_cfg,
@@ -292,7 +292,7 @@ class TestListEntitiesArchiveFilter:
         retention = _make_retention_manager(archived={"uuid-archived"})
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", return_value=retention),
@@ -314,7 +314,7 @@ class TestListEntitiesArchiveFilter:
         graphiti_mock.driver.execute_query = AsyncMock(return_value=([{"rel_count": 0}], None, None))
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.graph.service.EntityNode") as MockEntityNode,
             patch("src.retention.get_retention_manager", side_effect=Exception("DB unavailable")),
@@ -354,7 +354,7 @@ class TestSearchArchiveFilter:
         retention = _make_retention_manager(archived={"uuid-archived"})
 
         with (
-            patch.object(service, "_get_graphiti", new_callable=AsyncMock, return_value=graphiti_mock),
+            patch.object(service, "_get_recall_instance", new_callable=AsyncMock, return_value=graphiti_mock),
             patch.object(service, "_get_group_id", return_value="global"),
             patch("src.retention.get_retention_manager", return_value=retention),
         ):

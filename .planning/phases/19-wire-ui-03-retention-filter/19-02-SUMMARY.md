@@ -117,3 +117,15 @@ None - no external service configuration required.
 ---
 *Phase: 19-wire-ui-03-retention-filter*
 *Completed: 2026-03-27*
+
+## Self-Check: PASSED
+
+- FOUND: ui/src/components/ui/popover.tsx
+- FOUND: ui/src/components/ui/command.tsx
+- FOUND: ui/src/lib/colors.ts (with getRetentionBorderColor)
+- FOUND: ui/src/routes/Entities.tsx (retentionFilter state + Combobox)
+- FOUND: .planning/phases/19-wire-ui-03-retention-filter/19-02-SUMMARY.md
+- FOUND: commit b0cb2c4 (task 1)
+- FOUND: commit af8fa49 (task 2)
+- FOUND: commit 93d84e5 (task 3)
+- FOUND: commit cd8346d (metadata)

@@ -15,8 +15,12 @@ import argparse
 import json
 import sys
 import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from pathlib import Path
 from typing import Optional
+
+# Stop/PreCompact hook budget is 30s; leave 5s for graph write after LLM call.
+_LLM_TIMEOUT_SECONDS = 25.0
 
 # Fix sys.path for subprocess spawn
 _HOOK_DIR = Path(__file__).resolve().parent
@@ -133,12 +137,17 @@ def _generate_session_summary(
 
         prompt_text = SESSION_SUMMARY_PROMPT.format(content=sanitized_content[:3000])
 
-        # LLM call for session summary (up to 30s budget — Stop hook).
-        # chat() is synchronous — call directly, NOT via asyncio.run().
-        # Pass as messages list per the chat() signature.
+        # LLM call for session summary — enforce _LLM_TIMEOUT_SECONDS hard ceiling.
+        # chat() is synchronous and has no built-in deadline; run it in a thread
+        # so we can cancel via future.result(timeout=...) without blocking the hook.
         try:
-            response = chat([{"role": "user", "content": prompt_text}])
+            with ThreadPoolExecutor(max_workers=1) as _pool:
+                _fut = _pool.submit(chat, [{"role": "user", "content": prompt_text}])
+                response = _fut.result(timeout=_LLM_TIMEOUT_SECONDS)
             summary_text = response["message"]["content"]
+        except FutureTimeoutError:
+            logger.warning("session_summary_llm_timeout", timeout=_LLM_TIMEOUT_SECONDS)
+            return
         except LLMUnavailableError:
             logger.warning("llm_unavailable_for_session_summary")
             return

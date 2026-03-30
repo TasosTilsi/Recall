@@ -1,17 +1,1 @@
-{
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "INPUT=$(cat); transcript=$(echo \"$INPUT\" | jq -r '.transcript_path'); session=$(echo \"$INPUT\" | jq -r '.session_id'); \"$CLAUDE_PROJECT_DIR\"/.venv/bin/graphiti capture --auto --transcript-path \"$transcript\" --session-id \"$session\"",
-            "async": true,
-            "timeout": 120
-          }
-        ]
-      }
-    ]
-  }
-}
+{}
