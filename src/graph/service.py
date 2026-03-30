@@ -1274,7 +1274,7 @@ class GraphService:
             return None
 
         try:
-            driver = self.graph_manager.get_driver(scope, project_root)
+            driver = self._graph_manager.get_driver(scope, project_root)
 
             query = """
                 MATCH (e:Entity {uuid: $uuid})
