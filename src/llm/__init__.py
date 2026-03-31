@@ -121,6 +121,20 @@ def get_status() -> dict:
     }
 
 
+def make_indexer_llm_client():
+    """Return ClaudeCliLLMClient if claude binary available, else OllamaLLMClient.
+
+    Used by indexer.py and session_stop.py for batch extraction and summarization.
+    Detection runs once per call (shutil.which is fast, no caching needed here).
+    """
+    from src.llm.claude_cli_client import claude_cli_available
+    if claude_cli_available():
+        from src.llm.claude_cli_client import ClaudeCliLLMClient
+        return ClaudeCliLLMClient()
+    from src.graph.adapters import OllamaLLMClient
+    return OllamaLLMClient()
+
+
 __all__ = [
     # Config
     "LLMConfig",
@@ -141,4 +155,6 @@ __all__ = [
     "generate",
     "embed",
     "get_status",
+    # Indexer factory
+    "make_indexer_llm_client",
 ]
