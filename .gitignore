@@ -41,7 +41,13 @@ Thumbs.db
 .recall/
 .planning/
 
-# Next.js frontend (Managed by ui/.gitignore)
+# Frontend (Next.js / Vite)
 ui/node_modules/
 ui/.next/
 ui/out/
+ui/dist/
+ui/build/
+ui/.cache/
+ui/.env*
+ui/coverage/
+ui/.pteste_cache/
