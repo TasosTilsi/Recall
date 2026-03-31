@@ -9,6 +9,13 @@ Empty context: {"context": ""}
 
 Fail-open: any exception or timeout -> outputs {"context": ""} and exits 0.
 Token budget: <=4000 tokens total (approx len(text)//4).
+
+3-layer progressive disclosure:
+  Layer 1: FTS keyword search (<50ms) — entities + episodes matching prompt keywords
+  Layer 2: Recent episodes (chronological, no LLM) — last 20 episodes
+  Layer 3: Full node details for top FTS entity hits only
+
+TOON encoding applied to Layer 2 and Layer 3 arrays with 3+ items for ~40% token savings.
 """
 import json
 import sys
@@ -16,6 +23,10 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# TOON imports for efficient history encoding
+from src.mcp_server.toon_utils import trim_to_token_budget
+from toon import encode
 
 # Fix sys.path for subprocess spawn (CWD undefined when Claude Code calls hooks)
 _HOOK_DIR = Path(__file__).resolve().parent
@@ -28,7 +39,6 @@ import structlog
 logger = structlog.get_logger()
 
 TOKEN_BUDGET = 4000
-SEARCH_LIMIT = 20
 
 # Hard timeout for the entire context fetch (seconds).
 # UserPromptSubmit hook must complete before the model call; 5s is generous.
@@ -62,30 +72,112 @@ def _format_created_at(created_at_val) -> str:
         return "unknown date"
 
 
+def _preprocess_for_toon(text: str) -> str:
+    """Remove commas and newlines that could break TOON parsing."""
+    if not text:
+        return ""
+    # Replace commas and newlines with spaces, then collapse multiple spaces
+    import re
+    text = text.replace(",", " ").replace("\n", " ")
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+async def _fts_entity_search(driver, group_id: str, keywords: str, limit: int = 30) -> list[dict]:
+    """Layer 1: instant FTS keyword match on entity names/summaries (<50ms)."""
+    cypher = """
+    CALL QUERY_FTS_INDEX('Entity', 'node_name_and_summary', $query, TOP := $limit)
+    WITH node AS n, score
+    WHERE n.group_id = $group_id
+    RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary, score
+    ORDER BY score DESC
+    LIMIT $limit
+    """
+    records, _, _ = await driver.execute_query(
+        cypher, query=keywords, group_id=group_id, limit=limit
+    )
+    return records
+
+
+async def _fts_episode_search(driver, group_id: str, keywords: str, limit: int = 20) -> list[dict]:
+    """Layer 1b: instant FTS keyword match on episode content."""
+    cypher = """
+    CALL QUERY_FTS_INDEX('Episodic', 'episode_content', $query, TOP := $limit)
+    WITH node AS e, score
+    WHERE e.group_id = $group_id
+    RETURN e.uuid AS uuid, e.name AS name, e.content AS content, e.created_at AS created_at, score
+    ORDER BY score DESC
+    LIMIT $limit
+    """
+    records, _, _ = await driver.execute_query(
+        cypher, query=keywords, group_id=group_id, limit=limit
+    )
+    return records
+
+
+async def _recent_episodes(driver, group_id: str, limit: int = 20) -> list[dict]:
+    """Layer 2: most recent episodes by created_at, no LLM call needed."""
+    cypher = """
+    MATCH (e:Episodic)
+    WHERE e.group_id = $group_id
+    RETURN e.uuid AS uuid, e.name AS name, e.content AS content, e.created_at AS created_at
+    ORDER BY e.created_at DESC
+    LIMIT $limit
+    """
+    records, _, _ = await driver.execute_query(
+        cypher, group_id=group_id, limit=limit
+    )
+    return records
+
+
+async def _get_nodes_by_uuids(driver, uuids: list[str]) -> list[dict]:
+    """Layer 3: fetch full node details for specific UUIDs."""
+    if not uuids:
+        return []
+    cypher = """
+    MATCH (n:Entity)
+    WHERE n.uuid IN $uuids
+    RETURN n.uuid AS uuid, n.name AS name, n.summary AS summary
+    """
+    records, _, _ = await driver.execute_query(cypher, uuids=uuids)
+    return records
+
+
 async def _fetch_context_async(
     service,
     scope,
     project_root: Path,
     prompt: str,
     session_id: Optional[str],
-) -> tuple[str, list]:
-    """Fetch continuity and history concurrently via asyncio.gather().
+) -> tuple[str, list, list]:
+    """Fetch context using 3-layer progressive disclosure.
 
-    Runs both searches in parallel so total latency ≈ max(t_continuity, t_history)
-    instead of t_continuity + t_history.
+    Layer 1: FTS keyword search (<50ms) -- entities + episodes matching prompt keywords
+    Layer 2: Recent episodes (chronological, no LLM) -- last 20 episodes
+    Layer 3: Full node details for top FTS hits only -- vector search ONLY if needed
 
-    Returns:
-        (continuity_text, history_items)
+    Returns: (continuity_text, layer2_items, layer3_items)
     """
     import asyncio
+    from src.models import GraphScope
 
-    continuity_results, history_results = await asyncio.gather(
-        service.search(query="session summary", scope=scope, project_root=project_root, limit=5),
-        service.search(query=prompt, scope=scope, project_root=project_root, limit=SEARCH_LIMIT),
+    # Get driver directly for FTS queries (bypass service.search which does vector search)
+    driver = service._graph_manager.get_driver(scope, project_root)
+    group_id = service._get_group_id(scope, project_root)
+
+    # Extract keywords from prompt (simple: first 5 non-stop words > 3 chars)
+    words = [w for w in prompt.split() if len(w) > 3][:5]
+    keywords = " ".join(words) if words else prompt[:50]
+
+    # Layer 1 + Layer 2 in parallel (both are fast DB queries)
+    fts_entities, fts_episodes, recent_eps, continuity_results = await asyncio.gather(
+        _fts_entity_search(driver, group_id, keywords, limit=30),
+        _fts_episode_search(driver, group_id, keywords, limit=10),
+        _recent_episodes(driver, group_id, limit=20),
+        service.search(query="session summary", scope=scope, project_root=project_root, limit=3),
         return_exceptions=True,
     )
 
-    # --- process continuity ---
+    # Process continuity (same logic as before)
     continuity = ""
     if not isinstance(continuity_results, Exception) and continuity_results:
         summaries = [
@@ -102,24 +194,37 @@ async def _fetch_context_async(
             summaries.sort(key=lambda r: r.get("created_at", ""), reverse=True)
             continuity = summaries[0].get("snippet", "")[:500]
 
-    # --- process history ---
-    history_items: list = []
-    if not isinstance(history_results, Exception) and history_results:
-        def _rank_key(r: dict):
-            created = r.get("created_at", "")
-            recency_score = created if isinstance(created, str) else str(created)
-            session_boost = 1 if (session_id and session_id in str(r.get("tags", []))) else 0
-            return (session_boost, recency_score)
+    # Build Layer 2 items (recent episodes -- guaranteed fast)
+    layer2_items = []
+    if not isinstance(recent_eps, Exception):
+        layer2_items = recent_eps
 
-        history_items = sorted(history_results, key=_rank_key, reverse=True)
+    # Build Layer 3 items (full details for top FTS entity hits)
+    layer3_items = []
+    if not isinstance(fts_entities, Exception) and fts_entities:
+        top_uuids = [e["uuid"] for e in fts_entities[:5]]
+        try:
+            layer3_items = await _get_nodes_by_uuids(driver, top_uuids)
+        except Exception as e:
+            logger.debug("layer3_fetch_failed", error=str(e))
 
-    return continuity, history_items
+    # Merge FTS episode hits into layer2 (deduplicate by uuid)
+    if not isinstance(fts_episodes, Exception) and fts_episodes:
+        seen_uuids = {ep.get("uuid") for ep in layer2_items}
+        for ep in fts_episodes:
+            if ep.get("uuid") not in seen_uuids:
+                layer2_items.append(ep)
+                seen_uuids.add(ep.get("uuid"))
+
+    return continuity, layer2_items, layer3_items
 
 
-def _build_option_c(continuity: str, history_items: list, token_budget: int) -> str:
-    """Build Option C XML block within token budget.
+def _build_option_c(continuity: str, layer2_items: list, layer3_items: list, token_budget: int) -> str:
+    """Build Option C XML with 3-layer data and TOON encoding for compact history.
 
-    Priority when tight: recent session facts -> recent git facts -> older facts (already sorted).
+    Layer 2 (recent episodes) and Layer 3 (entity details) use TOON encoding
+    when 3+ items for ~40% token reduction. Per user direction, TOON is used
+    for inject_context.py output only (not for batch extraction prompts).
     """
     used_tokens = 0
 
@@ -130,29 +235,55 @@ def _build_option_c(continuity: str, history_items: list, token_budget: int) -> 
         continuity_block = "<continuity></continuity>"
     used_tokens += _approx_tokens(continuity_block)
 
-    # Build relevant_history items within remaining budget
-    history_overhead = _approx_tokens("<relevant_history>\n</relevant_history>")
-    remaining = token_budget - used_tokens - history_overhead
+    # Layer 2: Recent episodes (TOON encoded if 3+ items)
+    layer2_budget = min(1000, (token_budget - used_tokens) // 2)
+    if len(layer2_items) >= 3:
+        toon_data = []
+        for ep in layer2_items:
+            snippet = _preprocess_for_toon(
+                ep.get("content", ep.get("name", ""))[:300]
+            )
+            date_str = _format_created_at(ep.get("created_at", ""))
+            toon_data.append([snippet, date_str])
+        layer2_text = encode(toon_data)
+        layer2_text = trim_to_token_budget(layer2_text, layer2_budget)
+    elif layer2_items:
+        lines = []
+        for ep in layer2_items:
+            snippet = ep.get("content", ep.get("name", ""))[:300]
+            date_str = _format_created_at(ep.get("created_at", ""))
+            lines.append(f"  - {snippet} ({date_str})")
+        layer2_text = "\n".join(lines)
+    else:
+        layer2_text = ""
+    used_tokens += _approx_tokens(layer2_text)
 
-    history_lines = []
-    for item in history_items:
-        snippet = item.get("snippet", item.get("name", ""))[:300]
-        date_str = _format_created_at(item.get("created_at", ""))
-        line = f"  - {snippet} (since {date_str}, current)"
-        line_tokens = _approx_tokens(line)
-        if remaining - line_tokens < 0:
-            break
-        history_lines.append(line)
-        remaining -= line_tokens
+    # Layer 3: Full entity details (TOON encoded if 3+ items)
+    layer3_budget = token_budget - used_tokens - 100  # reserve for XML tags
+    if len(layer3_items) >= 3:
+        toon_data = []
+        for node in layer3_items:
+            name = _preprocess_for_toon(node.get("name", ""))
+            summary = _preprocess_for_toon(node.get("summary", "")[:400])
+            toon_data.append([name, summary])
+        layer3_text = encode(toon_data)
+        layer3_text = trim_to_token_budget(layer3_text, layer3_budget)
+    elif layer3_items:
+        lines = []
+        for node in layer3_items:
+            lines.append(f"  - {node.get('name', '')}: {node.get('summary', '')[:400]}")
+        layer3_text = "\n".join(lines)
+    else:
+        layer3_text = ""
 
-    history_block = "<relevant_history>\n" + "\n".join(history_lines) + "\n</relevant_history>"
-
-    return (
-        "<session_context>\n"
-        + continuity_block + "\n"
-        + history_block + "\n"
-        + "</session_context>"
-    )
+    # Assemble XML
+    parts = ["<session_context>", continuity_block]
+    if layer2_text:
+        parts.append(f"<relevant_history>\n{layer2_text}\n</relevant_history>")
+    if layer3_text:
+        parts.append(f"<entity_details>\n{layer3_text}\n</entity_details>")
+    parts.append("</session_context>")
+    return "\n".join(parts)
 
 
 def main() -> None:
@@ -182,10 +313,10 @@ def main() -> None:
         service = get_service()
         scope = GraphScope.PROJECT
 
-        # Fetch continuity + history concurrently in a single event loop with a
+        # Fetch 3-layer context concurrently in a single event loop with a
         # hard wall-clock timeout.  Fail-open: any timeout or exception → empty context.
         try:
-            continuity, history_items = asyncio.run(
+            continuity, layer2_items, layer3_items = asyncio.run(
                 asyncio.wait_for(
                     _fetch_context_async(service, scope, project_root, prompt, session_id),
                     timeout=_CONTEXT_TIMEOUT_SECONDS,
@@ -196,13 +327,13 @@ def main() -> None:
             print(empty_output)
             return
 
-        # If neither continuity nor history, output empty
-        if not continuity and not history_items:
+        # If neither continuity nor any layer data, output empty
+        if not continuity and not layer2_items and not layer3_items:
             print(empty_output)
             return
 
         # Build Option C XML within 4000 token budget
-        context_xml = _build_option_c(continuity, history_items, TOKEN_BUDGET)
+        context_xml = _build_option_c(continuity, layer2_items, layer3_items, TOKEN_BUDGET)
 
         # Output JSON to stdout -- Claude Code reads this for additionalContext injection
         print(json.dumps({"context": context_xml}))
