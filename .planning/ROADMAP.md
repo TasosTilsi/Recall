@@ -48,6 +48,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 17: Fix Stale Binary References** — `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server; MEM-03 docs corrected; test skip reason fixed [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
+- [ ] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection
 
 ## Phase Details
 
@@ -200,6 +201,29 @@ Plans:
 
 ---
 
+### Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search
+
+**Goal**: Git indexing completes in under 2 minutes for a 30-commit repository (down from ~90 min), by replacing per-commit Ollama extraction with batched `claude -p` subprocess calls, async semaphore parallelism, and FTS-first context injection.
+**Depends on**: Phase 15 (hook scripts), Phase 13 (LLM abstraction)
+**Success Criteria** (what must be TRUE):
+  1. Indexing 30 git commits completes in under 2 minutes (3 batches × 10 commits, 1 wave with `Semaphore(3)`)
+  2. `ClaudeCliLLMClient` in `src/llm/claude_cli_client.py` implements the same abstract interface as `OllamaLLMClient` — auto-detected via `shutil.which("claude")`
+  3. `extract_commits_batch()` in `src/indexer/extraction.py` accepts 10 commits, sends one `claude -p` call, returns structured results
+  4. Session summaries in `session_stop.py` use `ClaudeCliLLMClient` when available (~5s vs ~45s with Ollama)
+  5. `inject_context.py` uses FTS Layer 1 for instant keyword recall (<50ms) before falling back to vector search
+
+**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
+**Plans**: 5 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — ClaudeCliLLMClient + make_indexer_llm_client factory
+- [ ] 20-02-PLAN.md — Event loop refactor + extract_commits_batch() + Semaphore(3)
+- [ ] 20-03-PLAN.md — FTS-first 3-layer inject_context.py + TOON encoding
+- [ ] 20-04-PLAN.md — Wire claude CLI to session_stop.py summaries
+- [ ] 20-05-PLAN.md — Test suite (test_claude_cli_client, test_indexer_batch, test_hooks_phase20)
+
+---
+
 ## v2.0 Strategic Direction (updated 2026-03-19)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
@@ -264,3 +288,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
+| 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | Planned | — | — |
