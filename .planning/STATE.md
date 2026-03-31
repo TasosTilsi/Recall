@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: planning
-stopped_at: Phase 20 context created
-last_updated: "2026-03-29T00:00:00.000Z"
-last_activity: 2026-03-29
+status: executing
+stopped_at: Phase 20 CONTEXT.md created; PROJECT.md and STATE.md updated
+last_updated: "2026-03-31T16:39:32.773Z"
+last_activity: 2026-03-31 -- Phase 20 execution started
 progress:
-  total_phases: 9
-  completed_phases: 1
-  total_plans: 14
-  completed_plans: 24
+  total_phases: 10
+  completed_phases: 8
+  total_plans: 36
+  completed_plans: 31
   percent: 22
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Phase 20 — Fast Indexing via Claude CLI + Batch Extraction + FTS-First Search
+**Current focus:** Phase 20 — fast-indexing-claude-cli-batch-fts
 
 ## Current Position
 
-Phase: 20 (Fast Indexing — Claude CLI + Batch Extraction + FTS-First) — CONTEXT READY
-Plan: 0 of TBD
-Status: Context captured — ready for `/gsd:plan-phase 20`
-Last activity: 2026-03-29
+Phase: 20 (fast-indexing-claude-cli-batch-fts) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 20
+Last activity: 2026-03-31 -- Phase 20 execution started
 
 Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer phases complete; Phase 19 code-complete)
 

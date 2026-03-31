@@ -99,33 +99,33 @@ export default function Entities() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: '#0b1326' }}>
       {/* Toolbar */}
-      <div className="flex items-center gap-3 px-6 py-3 flex-shrink-0" style={{ backgroundColor: '#171f33' }}>
+      <div className="flex items-center gap-3 px-6 py-4 flex-shrink-0 bg-[#0b1326]">
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="h-7 w-36 text-xs bg-slate-800 border-slate-700 text-slate-200">
-            <SelectValue placeholder="Filter by type" />
+          <SelectTrigger className="h-8 w-40 text-xs bg-[#131b2e] border-none text-slate-300 hover:bg-[#171f33] transition-colors">
+            <SelectValue placeholder="Entity Type" />
           </SelectTrigger>
-          <SelectContent className="bg-slate-800 border-slate-700">
+          <SelectContent className="bg-[#131b2e] border-none text-slate-200 shadow-2xl">
             {entityTypes.map(t => (
-              <SelectItem key={t} value={t} className="text-xs text-slate-200">{t === 'all' ? 'All types' : t}</SelectItem>
+              <SelectItem key={t} value={t} className="text-xs hover:bg-[#171f33] focus:bg-[#171f33]">{t === 'all' ? 'All Types' : t}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         <Popover open={retentionOpen} onOpenChange={setRetentionOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" role="combobox" aria-expanded={retentionOpen}
-              className="h-7 w-36 text-xs bg-slate-800 border-slate-700 text-slate-200 justify-between">
-              {retentionFilter.length === 0 ? 'All statuses' : `${retentionFilter.length} selected`}
+            <Button variant="ghost" role="combobox" aria-expanded={retentionOpen}
+              className="h-8 w-40 text-xs bg-[#131b2e] text-slate-300 hover:bg-[#171f33] justify-between px-3">
+              {retentionFilter.length === 0 ? 'All Statuses' : `${retentionFilter.length} Selected`}
               <ChevronsUpDown className="ml-auto h-3 w-3 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-36 p-0 bg-slate-800 border-slate-700">
-            <Command>
+          <PopoverContent className="w-40 p-0 bg-[#131b2e] border-none shadow-2xl">
+            <Command className="bg-transparent">
               <CommandList>
                 <CommandGroup>
                   {STATUSES.map(status => (
                     <CommandItem key={status} onSelect={() => toggleStatus(status)}
-                      className="text-xs text-slate-200 cursor-pointer">
+                      className="text-xs text-slate-200 cursor-pointer hover:bg-[#171f33] focus:bg-[#171f33]">
                       <Check className={`mr-2 h-3 w-3 ${retentionFilter.includes(status) ? 'opacity-100' : 'opacity-0'}`} />
                       {status}
                     </CommandItem>
@@ -158,11 +158,11 @@ export default function Entities() {
             {filtered.map(node => (
               <TableRow
                 key={node.id}
-                className="cursor-pointer hover:bg-slate-700/50 border-slate-700"
+                className="group cursor-pointer hover:bg-[#131b2e] transition-colors border-none"
                 style={{ backgroundColor: '#0b1326' }}
                 onClick={() => setPanelItem({ itemType: 'entity', itemId: node.id, label: node.label })}
               >
-                <TableCell className="text-sm text-slate-200 font-medium">{node.label}</TableCell>
+                <TableCell className="text-sm text-slate-200 font-medium py-4">{node.label}</TableCell>
                 <TableCell>
                   <Badge className="text-xs" style={{
                     backgroundColor: `${ENTITY_TYPE_COLORS[node.type] ?? '#94a3b8'}22`,

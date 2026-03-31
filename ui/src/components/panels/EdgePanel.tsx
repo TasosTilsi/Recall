@@ -1,4 +1,3 @@
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import type { DetailEdge } from '@/types/api';
 import type { PanelItem } from './DetailPanel';
@@ -10,32 +9,30 @@ interface EdgePanelProps {
 
 export function EdgePanel({ edge, onNavigate }: EdgePanelProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Fact — prominent at top */}
       <div>
-        <h2 className="text-base font-semibold text-white leading-relaxed">{edge.fact || 'No fact recorded'}</h2>
-        <Badge className="text-xs mt-2" style={{ backgroundColor: '#1e293b', color: '#94a3b8', border: '1px solid #475569' }}>
+        <h2 className="text-lg font-medium text-white leading-relaxed tracking-tight">{edge.fact || 'No fact recorded'}</h2>
+        <Badge className="text-[10px] h-4 uppercase tracking-widest px-1.5 mt-3" style={{ backgroundColor: '#171f33', color: '#94a3b8', border: 'none' }}>
           {edge.label || 'RELATES_TO'}
         </Badge>
       </div>
 
-      <Separator style={{ backgroundColor: '#334155' }} />
-
       {/* Source → Target */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-400 text-xs w-12">From</span>
+      <div className="space-y-4 bg-[#171f33] p-4 rounded-lg">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Source</span>
           <button
-            className="text-blue-400 hover:text-blue-300 text-sm truncate text-left"
+            className="text-blue-400 hover:text-blue-300 text-sm font-medium text-left truncate"
             onClick={() => onNavigate({ itemType: 'entity', itemId: edge.source, label: edge.source })}
           >
             {edge.source}
           </button>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-400 text-xs w-12">To</span>
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Target</span>
           <button
-            className="text-blue-400 hover:text-blue-300 text-sm truncate text-left"
+            className="text-blue-400 hover:text-blue-300 text-sm font-medium text-left truncate"
             onClick={() => onNavigate({ itemType: 'entity', itemId: edge.target, label: edge.target })}
           >
             {edge.target}

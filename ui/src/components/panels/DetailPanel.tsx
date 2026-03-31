@@ -74,13 +74,12 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
 
   return (
     <div
-      className="fixed right-0 top-0 h-full z-20 flex flex-col"
+      className="fixed right-0 top-0 h-full z-20 flex flex-col transition-all"
       style={{
-        width: '400px',
-        backgroundColor: '#1e293b',
-        borderLeft: '1px solid #334155',
-        boxShadow: '-4px 0 24px rgba(0,0,0,0.4)',
-        animation: 'slideIn 200ms ease-out',
+        width: '420px',
+        backgroundColor: '#131b2e',
+        boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
+        animation: 'slideIn 250ms cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       <style>{`
@@ -88,7 +87,7 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
       `}</style>
 
       {/* Panel header: breadcrumb + close */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b flex-shrink-0" style={{ borderColor: '#334155' }}>
+      <div className="flex items-center gap-2 px-6 py-4 flex-shrink-0">
         <Breadcrumb className="flex-1 min-w-0">
           <BreadcrumbList>
             {breadcrumb.map((crumb, i) => (

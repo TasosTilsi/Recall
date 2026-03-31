@@ -41,6 +41,7 @@ Thumbs.db
 .recall/
 .planning/
 
-# Next.js frontend (ui/out/ is intentionally committed as pre-built static export)
+# Next.js frontend (Managed by ui/.gitignore)
 ui/node_modules/
 ui/.next/
+ui/out/

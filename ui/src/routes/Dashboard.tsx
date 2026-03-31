@@ -12,24 +12,14 @@ import {
 import { ENTITY_TYPE_COLORS, RETENTION_COLORS, SOURCE_COLORS } from '@/lib/colors';
 
 // --- Stat Card component ---
-function StatCard({ label, value, delta }: { label: string; value: number; delta: number }) {
+function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <Card
-      className="p-4 flex flex-col gap-1 cursor-pointer hover:bg-slate-700 transition-colors"
+      className="p-5 flex flex-col gap-1 cursor-pointer hover:bg-[#2d3449] transition-colors"
       style={{ backgroundColor: '#222a3d', border: 'none' }}
     >
-      <span className="text-xs text-slate-400">{label}</span>
-      <span className="text-2xl font-semibold text-white">{value.toLocaleString()}</span>
-      <Badge
-        className="text-xs w-fit"
-        style={{
-          backgroundColor: delta > 0 ? '#166534' : '#1e293b',
-          color: delta > 0 ? '#4ade80' : '#94a3b8',
-          border: 'none',
-        }}
-      >
-        {delta > 0 ? `+${delta}` : delta} this week
-      </Badge>
+      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</span>
+      <span className="text-3xl font-semibold text-white tracking-tight">{value.toLocaleString()}</span>
     </Card>
   );
 }
@@ -185,9 +175,9 @@ export default function Dashboard() {
     <div className="flex-1 p-6 overflow-auto" style={{ backgroundColor: '#0b1326' }}>
       {/* Stat cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <StatCard label="Entities" value={data.counts.entities} delta={data.counts.deltas.entities_7d} />
-        <StatCard label="Edges" value={data.counts.edges} delta={data.counts.deltas.edges_7d} />
-        <StatCard label="Episodes" value={data.counts.episodes} delta={data.counts.deltas.episodes_7d} />
+        <StatCard label="Entities" value={data.counts.entities} />
+        <StatCard label="Edges" value={data.counts.edges} />
+        <StatCard label="Episodes" value={data.counts.episodes} />
       </div>
 
       {/* Knowledge Growth line chart */}
@@ -276,22 +266,19 @@ export default function Dashboard() {
         {data.recent_episodes.length === 0 ? (
           <p className="text-slate-500 text-sm">No recent episodes.</p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {data.recent_episodes.map((ep) => (
-              <li key={ep.uuid} className="flex items-start gap-3 py-2 border-b border-slate-700/50 last:border-0">
-                <Badge
-                  className="text-xs flex-shrink-0 mt-0.5"
-                  style={{
-                    backgroundColor: SOURCE_COLORS[ep.source] ? `${SOURCE_COLORS[ep.source]}22` : '#1e293b',
-                    color: SOURCE_COLORS[ep.source] ?? '#94a3b8',
-                    border: `1px solid ${SOURCE_COLORS[ep.source] ?? '#475569'}`,
-                  }}
-                >
-                  {ep.source || 'cli-add'}
-                </Badge>
+              <li
+                key={ep.uuid}
+                className="flex items-start gap-4 px-3 py-3 rounded-md transition-colors hover:bg-[#171f33]"
+              >
+                <div
+                  className="w-2 h-2 mt-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: SOURCE_COLORS[ep.source] ?? '#94a3b8' }}
+                />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-300 truncate">{ep.source_description || ep.name}</p>
-                  <p className="text-xs text-slate-500">{ep.created_at?.slice(0, 16) ?? ''}</p>
+                  <p className="text-sm font-medium text-slate-200 truncate">{ep.source_description || ep.name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5 uppercase tracking-tighter">{ep.source || 'cli-add'} • {ep.created_at?.slice(0, 10) ?? ''}</p>
                 </div>
               </li>
             ))}

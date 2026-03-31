@@ -56,7 +56,7 @@ export default function Search() {
   );
 
   return (
-    <div className="flex-1 overflow-auto p-6" style={{ backgroundColor: '#0f172a' }}>
+    <div className="flex-1 overflow-auto p-8" style={{ backgroundColor: '#0b1326' }}>
       <div className="max-w-3xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -98,27 +98,24 @@ export default function Search() {
                 <h2 className="text-sm font-semibold text-slate-400 mb-3">
                   Entities ({results.entities.length})
                 </h2>
-                <ul className="space-y-2">
+                <ul className="space-y-1">
                   {results.entities.map(entity => (
                     <li
                       key={entity.id}
-                      className="flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-800 border border-slate-700/50 transition-colors"
+                      className="flex items-start gap-3 px-4 py-3 rounded-md cursor-pointer hover:bg-[#131b2e] transition-colors"
                       onClick={() => setPanelItem({ itemType: 'entity', itemId: entity.id, label: entity.label })}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-white font-medium">{entity.label}</span>
-                          <Badge className="text-xs" style={{
-                            backgroundColor: `${ENTITY_TYPE_COLORS[entity.type] ?? '#94a3b8'}22`,
+                          <span className="text-sm font-medium text-slate-200">{entity.label}</span>
+                          <Badge className="text-[10px] h-4 uppercase tracking-widest px-1.5" style={{
+                            backgroundColor: `${ENTITY_TYPE_COLORS[entity.type] ?? '#94a3b8'}15`,
                             color: ENTITY_TYPE_COLORS[entity.type] ?? '#94a3b8',
                             border: 'none',
                           }}>
                             {entity.type}
                           </Badge>
                         </div>
-                        {entity.summary && (
-                          <p className="text-xs text-slate-400 mt-1 truncate">{entity.summary}</p>
-                        )}
                       </div>
                     </li>
                   ))}
@@ -132,17 +129,14 @@ export default function Search() {
                 <h2 className="text-sm font-semibold text-slate-400 mb-3">
                   Relations ({results.relations.length})
                 </h2>
-                <ul className="space-y-2">
+                <ul className="space-y-1">
                   {results.relations.map(rel => (
                     <li
                       key={rel.id}
-                      className="p-3 rounded-lg cursor-pointer hover:bg-slate-800 border border-slate-700/50 transition-colors"
+                      className="px-4 py-3 rounded-md cursor-pointer hover:bg-[#131b2e] transition-colors"
                       onClick={() => setPanelItem({ itemType: 'edge', itemId: rel.id, label: rel.label || rel.fact?.slice(0, 40) || 'Edge' })}
                     >
-                      <p className="text-sm text-white">{rel.fact || rel.label || 'Relation'}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {rel.source} → {rel.target}
-                      </p>
+                      <p className="text-sm text-slate-200">{rel.fact || rel.label || 'Relation'}</p>
                     </li>
                   ))}
                 </ul>
@@ -155,22 +149,19 @@ export default function Search() {
                 <h2 className="text-sm font-semibold text-slate-400 mb-3">
                   Episodes ({results.episodes.length})
                 </h2>
-                <ul className="space-y-2">
+                <ul className="space-y-1">
                   {results.episodes.map(ep => {
                     const src = ep.source || 'cli-add';
                     const srcColor = SOURCE_COLORS[src] ?? '#94a3b8';
                     return (
                       <li
                         key={ep.uuid}
-                        className="flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-800 border border-slate-700/50 transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-md cursor-pointer hover:bg-[#131b2e] transition-colors"
                         onClick={() => setPanelItem({ itemType: 'episode', itemId: ep.uuid, label: ep.source_description || ep.name })}
                       >
-                        <Badge style={{ backgroundColor: `${srcColor}22`, color: srcColor, border: `1px solid ${srcColor}44`, flexShrink: 0 }}>
-                          {src}
-                        </Badge>
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: srcColor }} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate">{ep.source_description || ep.name}</p>
-                          <p className="text-xs text-slate-500">{ep.created_at?.slice(0, 16) ?? ''}</p>
+                          <p className="text-sm text-slate-200 truncate">{ep.source_description || ep.name}</p>
                         </div>
                       </li>
                     );

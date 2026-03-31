@@ -5,14 +5,14 @@
 
 /* ─── Recall Obsidian Design Tokens ─── */
 :root {
-  --ro-base:             #0b1326;
-  --ro-surface-low:      #131b2e;
-  --ro-surface:          #171f33;
-  --ro-surface-high:     #222a3d;
-  --ro-surface-highest:  #2d3449;
-  --ro-cyan:             #7bd0ff;
-  --ro-lime:             #8fdb00;
-  --ro-outline:          rgba(255, 255, 255, 0.08);
+  --ro-base:             #0b1326; /* surface */
+  --ro-surface-low:      #131b2e; /* surface-container-low */
+  --ro-surface:          #171f33; /* surface-container */
+  --ro-surface-high:     #222a3d; /* surface-container-high */
+  --ro-surface-highest:  #2d3449; /* surface-container-highest */
+  --ro-cyan:             #7bd0ff; /* secondary */
+  --ro-lime:             #8fdb00; /* tertiary */
+  --ro-outline:          rgba(255, 255, 255, 0.08); /* outline_variant @ 15% */
 }
 
 /* Graph canvas dot-grid background */
@@ -59,7 +59,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem; /* md: 0.75rem as per Stitch */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -70,7 +70,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 html, body {
-  background-color: #0f172a;  /* slate-950 */
+  background-color: var(--ro-base);
   margin: 0;
   padding: 0;
   height: 100%;
@@ -123,22 +123,22 @@ html, body {
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.12 0.01 260); /* #0b1326 approximation */
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.25 0.01 260); /* #222a3d / surface-container-high approximation */
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.20 0.01 260); /* #171f33 approximation */
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --secondary: oklch(0.18 0.01 260); /* #131b2e / surface-container-low approximation */
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
+  --border: transparent; /* "No-Line" rule */
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.87 0 0);
