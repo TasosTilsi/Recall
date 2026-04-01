@@ -137,20 +137,31 @@ def _generate_session_summary(
 
         prompt_text = SESSION_SUMMARY_PROMPT.format(content=sanitized_content[:3000])
 
-        # LLM call for session summary — enforce _LLM_TIMEOUT_SECONDS hard ceiling.
-        # chat() is synchronous and has no built-in deadline; run it in a thread
-        # so we can cancel via future.result(timeout=...) without blocking the hook.
+        # Try claude CLI first (fast ~5s), fall back to Ollama (~45s)
+        summary_text = None
         try:
-            with ThreadPoolExecutor(max_workers=1) as _pool:
-                _fut = _pool.submit(chat, [{"role": "user", "content": prompt_text}])
-                response = _fut.result(timeout=_LLM_TIMEOUT_SECONDS)
-            summary_text = response["message"]["content"]
-        except FutureTimeoutError:
-            logger.warning("session_summary_llm_timeout", timeout=_LLM_TIMEOUT_SECONDS)
-            return
-        except LLMUnavailableError:
-            logger.warning("llm_unavailable_for_session_summary")
-            return
+            from src.llm.claude_cli_client import claude_cli_available, _claude_p
+            if claude_cli_available():
+                import asyncio
+                summary_text = asyncio.run(_claude_p(prompt_text))
+                logger.debug("session_summary_via_claude_cli", length=len(summary_text))
+        except Exception as e:
+            logger.debug("claude_cli_summary_failed_falling_back", error=str(e))
+            summary_text = None
+
+        if summary_text is None:
+            # Ollama fallback path (original behavior)
+            try:
+                with ThreadPoolExecutor(max_workers=1) as _pool:
+                    _fut = _pool.submit(chat, [{"role": "user", "content": prompt_text}])
+                    response = _fut.result(timeout=_LLM_TIMEOUT_SECONDS)
+                summary_text = response["message"]["content"]
+            except FutureTimeoutError:
+                logger.warning("session_summary_llm_timeout", timeout=_LLM_TIMEOUT_SECONDS)
+                return
+            except LLMUnavailableError:
+                logger.warning("llm_unavailable_for_session_summary")
+                return
 
         if not summary_text or not summary_text.strip():
             return
