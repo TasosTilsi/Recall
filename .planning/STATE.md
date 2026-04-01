@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: executing
-stopped_at: Completed 20-01-PLAN.md (ClaudeCliLLMClient + make_indexer_llm_client)
-last_updated: "2026-04-01T20:53:50.287Z"
+stopped_at: Completed 20-04-PLAN.md (Wire Claude CLI to session_stop)
+last_updated: "2026-04-01T20:59:10.697Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 36
-  completed_plans: 33
+  completed_plans: 34
   percent: 22
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 ## Current Position
 
 Phase: 20 (fast-indexing-claude-cli-batch-fts) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-04-01
 
@@ -95,6 +95,7 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 19 P03 | 12 | 3 tasks | 3 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P03 | pre-committed | 1 tasks | 1 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P01 | 1 | 2 tasks | 2 files |
+| Phase 20-fast-indexing-claude-cli-batch-fts P04 | 4 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,7 @@ Key v2.0 architectural decisions from research:
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: FTS-first inject_context.py: use driver directly via service._graph_manager.get_driver() for QUERY_FTS_INDEX Cypher, bypassing vector search; TOON encoding at len >= 3 for Layer 2/3 arrays
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: ClaudeCliLLMClient uses asyncio.wait_for wrapping proc.communicate() for subprocess timeout; does not strip graphiti-core JSON schema suffix since Claude handles structured output natively
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: make_indexer_llm_client uses lazy imports to avoid circular import; returns ClaudeCliLLMClient when claude binary on PATH, OllamaLLMClient otherwise
+- [Phase 20-fast-indexing-claude-cli-batch-fts]: Lazy import of claude_cli_client inside _generate_session_summary — avoids import errors on edge cases; asyncio.run(_claude_p) safe in synchronous main() context
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -211,6 +213,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-01T20:53:50.275Z
-Stopped at: Completed 20-01-PLAN.md (ClaudeCliLLMClient + make_indexer_llm_client)
+Last session: 2026-04-01T20:59:06.784Z
+Stopped at: Completed 20-04-PLAN.md (Wire Claude CLI to session_stop)
 Resume with: `/gsd:plan-phase 20`
