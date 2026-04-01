@@ -205,3 +205,115 @@ async def extract_commit_knowledge(
     except Exception as e:
         logger.error("extract_commit_knowledge_failed", sha=sha_short, error=str(e))
         return {"sha": sha_short, "passes": 0, "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Batch extraction via claude -p subprocess
+# ---------------------------------------------------------------------------
+
+BATCH_SIZE = 10
+
+BATCH_EXTRACTION_PROMPT = """\
+Extract entities and relationships from these git commits as a JSON array.
+For each commit return: {{"sha": "abc1234", "entities": ["Entity A", "Entity B"], "relationships": ["A relates to B"], "summary": "2-sentence description"}}
+
+Commits:
+{commits_block}
+
+Return a JSON array with exactly {count} objects (one per commit), in order."""
+
+
+async def extract_commits_batch(
+    batch: list[tuple],  # list of (commit_sha, commit_message, commit_author, diff_content, reference_time)
+    instance: Any,
+    group_id: str,
+    capture_mode: str = "decisions-only",
+) -> list[dict]:
+    """Extract knowledge from a batch of commits using a single `claude -p` call.
+
+    Sends all commits in `batch` to `claude -p` as a single JSON extraction
+    prompt. Parses the returned JSON array (one object per commit), then calls
+    `instance.add_episode()` for each commit result individually.
+
+    Args:
+        batch: List of tuples (commit_sha, commit_message, commit_author,
+               diff_content, reference_time).  Up to BATCH_SIZE entries.
+        instance: Initialized graphiti Recall instance.
+        group_id: Recall group_id for episode tagging.
+        capture_mode: Capture mode string (currently unused in batch path).
+
+    Returns:
+        List of per-commit result dicts, each with keys:
+          - sha: short (7-char) commit SHA
+          - passes: 1 on success, 0 on failure
+          - was_large: False (batch path does not summarize diffs)
+          - error: present only on failure
+    """
+    import json as _json
+    import re as _re
+    from src.llm.claude_cli_client import _claude_p
+
+    # Build the commits_block string
+    lines = []
+    for i, (sha, message, author, diff_content, ref_time) in enumerate(batch):
+        entry = (
+            f"[{i}] sha: {sha[:7]}, author: {author},"
+            f" date: {ref_time.strftime('%Y-%m-%d')}\n"
+            f"    message: {message[:200]}\n"
+            f"    diff: {diff_content[:500]}"
+        )
+        lines.append(entry)
+    commits_block = "\n\n".join(lines)
+
+    # Truncate to stay within claude -p context limits
+    if len(commits_block) > 15000:
+        commits_block = commits_block[:15000]
+
+    prompt = BATCH_EXTRACTION_PROMPT.format(
+        commits_block=commits_block,
+        count=len(batch),
+    )
+
+    # Call claude -p for the full batch
+    try:
+        result_text = await _claude_p(prompt)
+    except Exception as e:
+        logger.warning("batch_claude_p_failed", error=str(e))
+        return [{"sha": sha[:7], "passes": 0, "error": "batch_claude_failed"} for sha, *_ in batch]
+
+    # Strip markdown code fences if present
+    clean = result_text.strip()
+    clean = _re.sub(r'^```(?:json)?\s*\n?', '', clean)
+    clean = _re.sub(r'\n?```\s*$', '', clean)
+
+    try:
+        results = _json.loads(clean)
+    except (_json.JSONDecodeError, ValueError) as e:
+        logger.warning("batch_json_parse_failed", error=str(e), preview=clean[:200])
+        return [{"sha": sha[:7], "passes": 0, "error": "batch_parse_failed"} for sha, *_ in batch]
+
+    # Add episodes individually and build per-commit result list
+    per_commit_results: list[dict] = []
+    for i, (sha, msg, author, diff, ref_time) in enumerate(batch):
+        try:
+            extracted = results[i] if i < len(results) else {}
+            episode_body = (
+                f"Commit {sha[:7]} by {author}: {msg}\n\n"
+                f"Entities: {', '.join(extracted.get('entities', []))}\n"
+                f"Relationships: {', '.join(extracted.get('relationships', []))}\n"
+                f"Summary: {extracted.get('summary', '')}"
+            )
+            await instance.add_episode(
+                name=f"git-commit-batch-{sha[:7]}",
+                episode_body=episode_body,
+                source_description=f"git-history-index:batch:{sha[:7]}",
+                reference_time=ref_time,
+                source=EpisodeType.text,
+                group_id=group_id,
+            )
+            per_commit_results.append({"sha": sha[:7], "passes": 1, "was_large": False})
+        except Exception as e:
+            logger.error("batch_episode_failed", sha=sha[:7], error=str(e))
+            per_commit_results.append({"sha": sha[:7], "passes": 0, "error": str(e)})
+
+    return per_commit_results
