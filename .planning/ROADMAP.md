@@ -48,7 +48,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 17: Fix Stale Binary References** — `_GRAPHITI_CLI` → `_RECALL_CLI` in worker.py + mcp_server; MEM-03 docs corrected; test skip reason fixed [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
-- [ ] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection
+- [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
 
 ## Phase Details
 
@@ -220,7 +220,7 @@ Plans:
 - [x] 20-02-PLAN.md — Event loop refactor + extract_commits_batch() + Semaphore(3)
 - [x] 20-03-PLAN.md — FTS-first 3-layer inject_context.py + TOON encoding
 - [x] 20-04-PLAN.md — Wire claude CLI to session_stop.py summaries
-- [ ] 20-05-PLAN.md — Test suite (test_claude_cli_client, test_indexer_batch, test_hooks_phase20)
+- [x] 20-05-PLAN.md — Test suite (test_claude_cli_client, test_indexer_batch, test_hooks_phase20)
 
 ---
 
@@ -288,4 +288,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
-| 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 4/5 | In Progress|  |
+| 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |

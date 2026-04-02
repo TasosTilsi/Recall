@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: executing
-stopped_at: Completed 20-02-PLAN.md (batch extraction + semaphore parallelism)
-last_updated: "2026-04-01T21:07:47.737Z"
-last_activity: 2026-04-01
+status: verifying
+stopped_at: Completed 20-05-PLAN.md (Phase 20 test suite)
+last_updated: "2026-04-02T20:59:28.611Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 36
-  completed_plans: 35
+  completed_plans: 36
   percent: 22
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 Phase: 20 (fast-indexing-claude-cli-batch-fts) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-04-01
+Status: Phase complete — ready for verification
+Last activity: 2026-04-02
 
 Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer phases complete; Phase 19 code-complete)
 
@@ -97,6 +97,7 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 20-fast-indexing-claude-cli-batch-fts P01 | 1 | 2 tasks | 2 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P04 | 4 | 1 tasks | 1 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P02 | 2 | 2 tasks | 2 files |
+| Phase 20-fast-indexing-claude-cli-batch-fts P05 | 15 | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,9 @@ Key v2.0 architectural decisions from research:
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: make_indexer_llm_client uses lazy imports to avoid circular import; returns ClaudeCliLLMClient when claude binary on PATH, OllamaLLMClient otherwise
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: Lazy import of claude_cli_client inside _generate_session_summary — avoids import errors on edge cases; asyncio.run(_claude_p) safe in synchronous main() context
 - [Phase 20-02]: extract_commits_batch uses lazy _claude_p import inside function body; two-phase run() separates synchronous git iteration from single asyncio.run(_process_all_commits); per-commit state save via zip(qualifying, all_results)
+- [Phase 20-fast-indexing-claude-cli-batch-fts]: asyncio.run() in synchronous test methods (not @pytest.mark.asyncio) follows project convention for asyncio_mode=strict
+- [Phase 20-fast-indexing-claude-cli-batch-fts]: Mock target for _claude_p is src.llm.claude_cli_client._claude_p (lazy import in function body, not module-level in extraction.py)
+- [Phase 20-fast-indexing-claude-cli-batch-fts]: Timing proof: asyncio.Semaphore(3) with 3 parallel 0.1s tasks asserting <0.15s total -- unit proxy for PERF-01 30-commit-in-2min goal
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -215,6 +219,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-01T21:07:47.731Z
-Stopped at: Completed 20-02-PLAN.md (batch extraction + semaphore parallelism)
+Last session: 2026-04-02T20:59:28.608Z
+Stopped at: Completed 20-05-PLAN.md (Phase 20 test suite)
 Resume with: `/gsd:plan-phase 20`
