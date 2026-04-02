@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: executing
-stopped_at: Completed 20-04-PLAN.md (Wire Claude CLI to session_stop)
-last_updated: "2026-04-01T20:59:10.697Z"
+stopped_at: Completed 20-02-PLAN.md (batch extraction + semaphore parallelism)
+last_updated: "2026-04-01T21:07:47.737Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 22
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 ## Current Position
 
 Phase: 20 (fast-indexing-claude-cli-batch-fts) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-01
 
@@ -96,6 +96,7 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 20-fast-indexing-claude-cli-batch-fts P03 | pre-committed | 1 tasks | 1 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P01 | 1 | 2 tasks | 2 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P04 | 4 | 1 tasks | 1 files |
+| Phase 20-fast-indexing-claude-cli-batch-fts P02 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,7 @@ Key v2.0 architectural decisions from research:
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: ClaudeCliLLMClient uses asyncio.wait_for wrapping proc.communicate() for subprocess timeout; does not strip graphiti-core JSON schema suffix since Claude handles structured output natively
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: make_indexer_llm_client uses lazy imports to avoid circular import; returns ClaudeCliLLMClient when claude binary on PATH, OllamaLLMClient otherwise
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: Lazy import of claude_cli_client inside _generate_session_summary — avoids import errors on edge cases; asyncio.run(_claude_p) safe in synchronous main() context
+- [Phase 20-02]: extract_commits_batch uses lazy _claude_p import inside function body; two-phase run() separates synchronous git iteration from single asyncio.run(_process_all_commits); per-commit state save via zip(qualifying, all_results)
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -213,6 +215,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-01T20:59:06.784Z
-Stopped at: Completed 20-04-PLAN.md (Wire Claude CLI to session_stop)
+Last session: 2026-04-01T21:07:47.731Z
+Stopped at: Completed 20-02-PLAN.md (batch extraction + semaphore parallelism)
 Resume with: `/gsd:plan-phase 20`

@@ -217,7 +217,7 @@ Plans:
 
 Plans:
 - [x] 20-01-PLAN.md — ClaudeCliLLMClient + make_indexer_llm_client factory
-- [ ] 20-02-PLAN.md — Event loop refactor + extract_commits_batch() + Semaphore(3)
+- [x] 20-02-PLAN.md — Event loop refactor + extract_commits_batch() + Semaphore(3)
 - [x] 20-03-PLAN.md — FTS-first 3-layer inject_context.py + TOON encoding
 - [x] 20-04-PLAN.md — Wire claude CLI to session_stop.py summaries
 - [ ] 20-05-PLAN.md — Test suite (test_claude_cli_client, test_indexer_batch, test_hooks_phase20)
@@ -288,4 +288,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 17. Fix Stale Binary References | 2/2 | Complete    | 2026-03-21 | — |
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
-| 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 3/5 | In Progress|  |
+| 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 4/5 | In Progress|  |
