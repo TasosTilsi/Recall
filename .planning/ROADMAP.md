@@ -49,6 +49,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
 - [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
+- [ ] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI
 
 ## Phase Details
 
@@ -260,6 +261,25 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 - **Phase 16 fourth** — depends on Phase 15 (hook scripts must exist to be updated); mechanical rename + consolidation; low risk, fast execution.
 - **Phase 14 last** — depends on Phase 12 `service.py` rewrites and Phase 16 rename (UI launches with `recall` entrypoint); independent of memory system otherwise.
 
+### Phase 21: Knowledge Quality Uplift
+
+**Goal**: The knowledge graph captures richer, more understandable data — entities have code-level context, relationships carry meaningful labels, code blocks from git history are indexed, and the UI displays information a developer can immediately act on (not just raw graph nodes).
+**Depends on**: Phase 20
+**Requirements**: SC-1, SC-2, SC-3, SC-4, SC-5
+**Success Criteria** (what must be TRUE):
+  1. Claude-mem entity/relationship model studied — key patterns documented in CONTEXT.md before any implementation
+  2. Git indexer captures code block entities (function/class definitions extracted from diffs) in addition to commit-level episodes
+  3. Entity summaries include code context (file path, language, surrounding function/class name) not just raw text
+  4. Relationship types are semantically labelled (e.g. `MODIFIES`, `INTRODUCES`, `FIXES`, `DEPENDS_ON`) rather than generic graphiti edges
+  5. UI entity cards display enough structured context that a developer can understand what the entity is without reading raw graph JSON
+
+**Plans**: 3 plans
+
+Plans:
+- [ ] 21-01-PLAN.md — Extend BATCH_EXTRACTION_PROMPT with code block extraction + semantic relationship vocabulary
+- [ ] 21-02-PLAN.md — Add structured metadata chip row to EntityPanel + Function/Class colors
+- [ ] 21-03-PLAN.md — Tests for extraction prompt changes and UI parser
+
 ---
 
 ## Progress
@@ -289,3 +309,4 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
+| 21. Knowledge Quality Uplift | 0/3 | Planned | — | — |
