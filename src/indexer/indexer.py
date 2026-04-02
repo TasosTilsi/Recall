@@ -23,8 +23,9 @@ import structlog
 from rich.console import Console
 
 from src.capture.git_capture import fetch_commit_diff
-from src.indexer.extraction import extract_commit_knowledge
+from src.indexer.extraction import extract_commit_knowledge, extract_commits_batch, BATCH_SIZE
 from src.llm.config import load_config
+from src.llm.claude_cli_client import claude_cli_available
 from src.indexer.quality_gate import should_skip_commit
 from src.indexer.state import (
     IndexState,
@@ -189,75 +190,72 @@ class GitIndexer:
         commits_skipped = 0
         entities_created = 0
 
+        # Phase A: Collect qualifying commits (synchronous git iteration)
+        qualifying: list[tuple] = []
         try:
             for commit in repo.iter_commits(**iter_kwargs):
-                # Stop at the cursor SHA (already indexed)
                 if since_sha and commit.hexsha == since_sha:
                     self._logger.debug("reached_cursor_sha", sha=commit.hexsha[:8])
                     break
-
-                # Secondary dedup: skip if already in processed_shas
                 if is_sha_processed(state, commit.hexsha):
                     self._logger.debug("sha_already_processed", sha=commit.hexsha[:8])
                     commits_skipped += 1
                     continue
-
-                # Quality gate
                 skip, reason = should_skip_commit(commit)
                 if skip:
-                    self._logger.debug(
-                        "commit_skipped_quality_gate",
-                        sha=commit.hexsha[:8],
-                        reason=reason,
-                    )
+                    self._logger.debug("commit_skipped_quality_gate", sha=commit.hexsha[:8], reason=reason)
                     commits_skipped += 1
                     continue
-
-                # Fetch diff
                 try:
-                    diff_content = fetch_commit_diff(
-                        commit_sha=commit.hexsha,
-                        repo_path=self.project_root,
-                    )
+                    diff_content = fetch_commit_diff(commit_sha=commit.hexsha, repo_path=self.project_root)
                 except Exception as e:
-                    self._logger.error(
-                        "diff_fetch_failed",
-                        sha=commit.hexsha[:8],
-                        error=str(e),
-                    )
+                    self._logger.error("diff_fetch_failed", sha=commit.hexsha[:8], error=str(e))
                     commits_skipped += 1
                     continue
+                reference_time = datetime.fromtimestamp(commit.committed_date, tz=timezone.utc)
+                qualifying.append((commit, diff_content, reference_time))
+        except Exception as e:
+            self._logger.error("iteration_failed", error=str(e))
 
-                if status_callback:
-                    status_callback(f"Processing commit {commit.hexsha[:8]}: {str(commit.message).splitlines()[0][:60]}")
-
-                # Convert commit timestamp to UTC datetime
-                reference_time = datetime.fromtimestamp(
-                    commit.committed_date, tz=timezone.utc
+        # Phase B: Process all qualifying commits
+        if qualifying:
+            if claude_cli_available():
+                # Batch path: single asyncio.run with Semaphore(3) parallelism
+                self._logger.info(
+                    "using_batch_extraction",
+                    total_commits=len(qualifying),
+                    batch_size=BATCH_SIZE,
                 )
-
-                # Run two-pass LLM extraction (sync wrapper around async)
-                result = {"passes": 0}
-                try:
-                    result = asyncio.run(
-                        extract_commit_knowledge(
-                            commit_sha=commit.hexsha,
-                            commit_message=str(commit.message).strip(),
-                            commit_author=commit.author.name or commit.author.email or "unknown",
-                            diff_content=diff_content,
-                            instance=instance,
-                            group_id=group_id,
-                            reference_time=reference_time,
-                            capture_mode=cfg.capture_mode,
-                        )
-                    )
-                    if result.get("passes", 0) > 0:
+                if status_callback:
+                    status_callback(f"Processing {len(qualifying)} commits in batches of {BATCH_SIZE}...")
+                all_results = asyncio.run(
+                    self._process_all_commits(qualifying, instance, group_id, cfg)
+                )
+                # Update state from per-commit results
+                for (commit, _, _), result in zip(qualifying, all_results):
+                    extraction_ok = result.get("passes", 0) > 0
+                    if extraction_ok:
+                        add_processed_sha(state, commit.hexsha)
+                        state.last_indexed_sha = commit.hexsha
+                        state.indexed_commits_count += 1
                         entities_created += result["passes"]
-                except RuntimeError:
-                    # If we're inside an existing event loop, run differently
+                    commits_processed += 1
+                    self._logger.info(
+                        "commit_indexed",
+                        sha=commit.hexsha[:8],
+                        total=commits_processed,
+                        extraction_ok=extraction_ok,
+                    )
+                save_state(self.project_root, state)
+            else:
+                # Fallback: original per-commit sequential extraction via Ollama
+                self._logger.info("using_sequential_extraction", total_commits=len(qualifying))
+                for commit, diff_content, reference_time in qualifying:
+                    if status_callback:
+                        status_callback(f"Processing commit {commit.hexsha[:8]}: {str(commit.message).splitlines()[0][:60]}")
+                    result = {"passes": 0}
                     try:
-                        loop = asyncio.get_event_loop()
-                        result = loop.run_until_complete(
+                        result = asyncio.run(
                             extract_commit_knowledge(
                                 commit_sha=commit.hexsha,
                                 commit_message=str(commit.message).strip(),
@@ -269,35 +267,22 @@ class GitIndexer:
                                 capture_mode=cfg.capture_mode,
                             )
                         )
-                        if result.get("passes", 0) > 0:
-                            entities_created += result["passes"]
                     except Exception as e:
-                        self._logger.error(
-                            "extraction_failed",
-                            sha=commit.hexsha[:8],
-                            error=str(e),
-                        )
-
-                # Only mark as processed if extraction succeeded.
-                # LLM failures (passes=0) leave the commit unprocessed so
-                # the next `recall index` run retries it when Ollama is available.
-                extraction_ok = result.get("passes", 0) > 0
-                if extraction_ok:
-                    add_processed_sha(state, commit.hexsha)
-                    state.last_indexed_sha = commit.hexsha
-                    state.indexed_commits_count += 1
-                    save_state(self.project_root, state)
-
-                commits_processed += 1
-                self._logger.info(
-                    "commit_indexed",
-                    sha=commit.hexsha[:8],
-                    total=commits_processed,
-                    extraction_ok=extraction_ok,
-                )
-
-        except Exception as e:
-            self._logger.error("iteration_failed", error=str(e))
+                        self._logger.error("extraction_failed", sha=commit.hexsha[:8], error=str(e))
+                    extraction_ok = result.get("passes", 0) > 0
+                    if extraction_ok:
+                        add_processed_sha(state, commit.hexsha)
+                        state.last_indexed_sha = commit.hexsha
+                        state.indexed_commits_count += 1
+                        save_state(self.project_root, state)
+                        entities_created += result["passes"]
+                    commits_processed += 1
+                    self._logger.info(
+                        "commit_indexed",
+                        sha=commit.hexsha[:8],
+                        total=commits_processed,
+                        extraction_ok=extraction_ok,
+                    )
 
         # Update last_run_at timestamp
         state.last_run_at = datetime.now(timezone.utc).isoformat()
@@ -318,6 +303,68 @@ class GitIndexer:
             "entities_created": entities_created,
             "elapsed_seconds": round(elapsed, 2),
         }
+
+    async def _process_all_commits(
+        self,
+        qualifying: list[tuple],  # list of (commit, diff_content, reference_time)
+        instance: Any,
+        group_id: str,
+        cfg: Any,
+    ) -> list[dict]:
+        """Process all qualifying commits using batch extraction with semaphore parallelism.
+
+        Groups commits into batches of BATCH_SIZE (10), processes up to 3 batches
+        concurrently via asyncio.Semaphore(3).
+
+        Args:
+            qualifying: List of (commit, diff_content, reference_time) tuples.
+            instance: Initialized Recall/graphiti instance.
+            group_id: Group ID for episode tagging.
+            cfg: LLMConfig with capture_mode attribute.
+
+        Returns:
+            Flat list of per-commit result dicts (sha, passes, optional error).
+        """
+        sem = asyncio.Semaphore(3)
+
+        # Build batch tuples: (sha, message, author, diff, reference_time)
+        commit_tuples = [
+            (
+                c.hexsha,
+                str(c.message).strip(),
+                c.author.name or c.author.email or "unknown",
+                diff,
+                ref_time,
+            )
+            for c, diff, ref_time in qualifying
+        ]
+        batches = [commit_tuples[i:i + BATCH_SIZE] for i in range(0, len(commit_tuples), BATCH_SIZE)]
+
+        async def process_batch(batch):
+            async with sem:
+                return await extract_commits_batch(
+                    batch=batch,
+                    instance=instance,
+                    group_id=group_id,
+                    capture_mode=cfg.capture_mode,
+                )
+
+        batch_results = await asyncio.gather(
+            *[process_batch(b) for b in batches],
+            return_exceptions=True,
+        )
+
+        # Flatten results, handling exceptions from individual batches
+        all_results: list[dict] = []
+        for i, result in enumerate(batch_results):
+            if isinstance(result, Exception):
+                self._logger.error("batch_failed", batch_index=i, error=str(result))
+                # Mark all commits in the failed batch as failed
+                for sha, *_ in batches[i]:
+                    all_results.append({"sha": sha[:7], "passes": 0, "error": str(result)})
+            else:
+                all_results.extend(result)
+        return all_results
 
     def reset_full(self) -> None:
         """Reset the full index state and remove git-history-index episodes from graph.
