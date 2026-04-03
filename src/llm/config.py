@@ -177,11 +177,11 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
 
     indexer_section = config_data.get("indexer", {})
     indexer_cli = os.getenv("RECALL_INDEXER_CLI", indexer_section.get("cli", "claude"))
-    indexer_model = os.getenv("RECALL_INDEXER_MODEL", indexer_section.get("model", "sonnet"))
+    indexer_model = os.getenv("RECALL_INDEXER_MODEL", indexer_section.get("model", "haiku"))
 
     capture = config_data.get("capture", {})
     VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
-    raw_mode = capture.get("mode", "decisions-only")
+    raw_mode = capture.get("mode", "decisions-and-patterns")
     if raw_mode not in VALID_CAPTURE_MODES:
         import structlog as _structlog
         _structlog.get_logger(__name__).warning(

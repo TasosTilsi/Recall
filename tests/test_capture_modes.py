@@ -50,8 +50,8 @@ class TestCaptureModeConfig:
 
         assert config.capture_mode == "decisions-and-patterns"
 
-    def test_default_is_decisions_only(self, tmp_path):
-        """No [capture] section -> config.capture_mode defaults to 'decisions-only'."""
+    def test_default_is_decisions_and_patterns(self, tmp_path):
+        """No [capture] section -> config.capture_mode defaults to 'decisions-and-patterns'."""
         from src.llm.config import load_config
 
         toml_file = tmp_path / "llm.toml"
@@ -59,7 +59,7 @@ class TestCaptureModeConfig:
 
         config = load_config(config_path=toml_file)
 
-        assert config.capture_mode == "decisions-only"
+        assert config.capture_mode == "decisions-and-patterns"
 
     def test_invalid_mode_falls_back(self, tmp_path):
         """[capture] mode = 'invalid' -> falls back to 'decisions-only'."""
