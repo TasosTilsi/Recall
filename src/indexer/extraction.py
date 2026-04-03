@@ -215,7 +215,13 @@ BATCH_SIZE = 10
 
 BATCH_EXTRACTION_PROMPT = """\
 Extract entities and relationships from these git commits as a JSON array.
-For each commit return: {{"sha": "abc1234", "entities": ["Entity A", "Entity B"], "relationships": ["A relates to B"], "summary": "2-sentence description"}}
+For each commit return: {{"sha": "abc1234", "entities": ["Entity A", "Code Block: process_queue | File: src/queue/worker.py | Language: Python | Type: function"], "relationships": ["Commit abc1234 MODIFIES Entity A"], "summary": "2-sentence description"}}
+
+For each function or class definition that appears as an added (+) line in the diff, add a structured entry to the entities array using this exact pipe-delimited format:
+"Code Block: <name> | File: <filepath> | Language: <lang> | Type: function/class"
+
+Use these preferred relationship verbs when applicable: MODIFIES, INTRODUCES, FIXES, DEPENDS_ON, REMOVES, REFACTORS, TESTS.
+Write relationship strings using these verbs explicitly, e.g. "Commit abc1234 INTRODUCES class BatchWorker" or "Commit abc1234 FIXES race condition bug".
 
 Commits:
 {commits_block}
