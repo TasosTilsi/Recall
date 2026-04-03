@@ -28,24 +28,39 @@ logger = structlog.get_logger(__name__)
 _CLAUDE_AVAILABLE: bool | None = None
 
 
-async def _claude_p(prompt: str) -> str:
-    """Invoke `claude -p <prompt>` as a subprocess and return the result text.
+async def _claude_p(prompt: str, cli: str = "claude", model: str | None = "sonnet") -> str:
+    """Invoke an AI CLI subprocess with a prompt and return the result text.
 
-    Uses `--output-format json` to get structured output. Parses the `result`
-    field from the returned JSON object.
+    For `claude`: uses `--output-format json` for structured output and passes
+    `--model` when specified. Output is parsed from the JSON `result` field.
+
+    For any other CLI binary: invokes `<cli> -p <prompt>` and reads stdout
+    directly as plain text. The binary must accept a prompt via `-p` flag.
 
     Args:
-        prompt: The full prompt string to pass to `claude -p`
+        prompt: The full prompt string to pass to the CLI
+        cli: Binary name (default: "claude"). Override via config [indexer] cli.
+        model: Model name passed as --model to claude (ignored for other CLIs).
+               Defaults to "sonnet" — override via config [indexer] model.
 
     Returns:
-        The result text string from claude's JSON output
+        The result text string
 
     Raises:
         RuntimeError: If the subprocess exits with non-zero return code
         asyncio.TimeoutError: If subprocess does not complete within 120 seconds
     """
+    if cli == "claude":
+        cmd = ["claude", "-p", prompt, "--output-format", "json"]
+        if model:
+            cmd += ["--model", model]
+        parse_json = True
+    else:
+        cmd = [cli, "-p", prompt]
+        parse_json = False
+
     proc = await asyncio.create_subprocess_exec(
-        "claude", "-p", prompt, "--output-format", "json",
+        *cmd,
         stdout=PIPE,
         stderr=PIPE,
     )
@@ -54,24 +69,28 @@ async def _claude_p(prompt: str) -> str:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
     except asyncio.TimeoutError:
         proc.kill()
-        raise asyncio.TimeoutError("claude -p timed out after 120 seconds")
+        raise asyncio.TimeoutError(f"{cli} -p timed out after 120 seconds")
 
     if proc.returncode != 0:
         raise RuntimeError(
-            f"claude -p failed (exit {proc.returncode}): {stderr.decode()}"
+            f"{cli} -p failed (exit {proc.returncode}): {stderr.decode()}"
         )
 
-    result = json.loads(stdout.decode())["result"]
-    logger.debug("claude_p_complete", result_length=len(result))
+    raw = stdout.decode()
+    if parse_json:
+        result = json.loads(raw)["result"]
+    else:
+        result = raw.strip()
+
+    logger.debug("ai_cli_p_complete", cli=cli, result_length=len(result))
     return result
 
 
 def claude_cli_available() -> bool:
     """Return True if the `claude` binary is available on PATH.
 
-    Caches the result in a module-level sentinel to avoid repeated shutil.which
-    calls in tight loops. The cache is process-scoped and never invalidated
-    (binary availability doesn't change during a process lifetime).
+    Caches the result in a module-level sentinel. Use ai_cli_available() to
+    check a configurable binary name.
 
     Returns:
         True if claude is on PATH, False otherwise
@@ -80,6 +99,20 @@ def claude_cli_available() -> bool:
     if _CLAUDE_AVAILABLE is None:
         _CLAUDE_AVAILABLE = shutil.which("claude") is not None
     return _CLAUDE_AVAILABLE
+
+
+def ai_cli_available(cli: str = "claude") -> bool:
+    """Return True if the given AI CLI binary is available on PATH.
+
+    Args:
+        cli: Binary name to check (default: "claude")
+
+    Returns:
+        True if the binary is on PATH, False otherwise
+    """
+    if cli == "claude":
+        return claude_cli_available()
+    return shutil.which(cli) is not None
 
 
 class ClaudeCliLLMClient(LLMClient):
@@ -98,15 +131,19 @@ class ClaudeCliLLMClient(LLMClient):
         schema would remove critical formatting instructions for Claude.
     """
 
-    def __init__(self):
+    def __init__(self, cli: str = "claude", model: str = "sonnet"):
         """Initialize ClaudeCliLLMClient.
 
-        Creates a minimal GraphitiLLMConfig with model=None since we route
-        through the claude CLI binary which manages model selection internally.
+        Args:
+            cli: AI CLI binary to invoke (default: "claude").
+            model: Model name passed as --model to claude (default: "sonnet").
+                   Ignored for non-claude CLIs.
         """
         config = GraphitiLLMConfig(model=None)
         super().__init__(config)
-        logger.debug("ClaudeCliLLMClient initialized")
+        self._cli = cli
+        self._model = model
+        logger.debug("ClaudeCliLLMClient initialized", cli=cli, model=model)
 
     async def _generate_response(
         self,
@@ -146,7 +183,7 @@ class ClaudeCliLLMClient(LLMClient):
             prompt_length=len(prompt),
         )
 
-        result_text = await _claude_p(prompt)
+        result_text = await _claude_p(prompt, cli=self._cli, model=self._model)
 
         if response_model is not None:
             try:

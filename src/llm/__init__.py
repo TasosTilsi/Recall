@@ -122,15 +122,18 @@ def get_status() -> dict:
 
 
 def make_indexer_llm_client():
-    """Return ClaudeCliLLMClient if claude binary available, else OllamaLLMClient.
+    """Return ClaudeCliLLMClient if configured AI CLI is available, else OllamaLLMClient.
 
-    Used by indexer.py and session_stop.py for batch extraction and summarization.
-    Detection runs once per call (shutil.which is fast, no caching needed here).
+    Reads [indexer] cli and model from config. Defaults to claude/sonnet.
+    Falls back to OllamaLLMClient if the configured binary is not on PATH.
     """
-    from src.llm.claude_cli_client import claude_cli_available
-    if claude_cli_available():
-        from src.llm.claude_cli_client import ClaudeCliLLMClient
-        return ClaudeCliLLMClient()
+    from src.llm.config import load_config
+    from src.llm.claude_cli_client import ai_cli_available, ClaudeCliLLMClient
+    cfg = load_config()
+    cli = cfg.indexer_cli
+    model = cfg.indexer_model
+    if ai_cli_available(cli):
+        return ClaudeCliLLMClient(cli=cli, model=model)
     from src.graph.adapters import OllamaLLMClient
     return OllamaLLMClient()
 

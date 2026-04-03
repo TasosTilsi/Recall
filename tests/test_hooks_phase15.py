@@ -257,7 +257,8 @@ def test_inject_context_token_budget():
     ]
     result = _build_option_c(
         continuity="Previous session summary here.",
-        history_items=large_items,
+        layer2_items=large_items,
+        layer3_items=[],
         token_budget=4000,
     )
     actual_tokens = _approx_tokens(result)

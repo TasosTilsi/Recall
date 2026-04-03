@@ -62,7 +62,14 @@ class LLMConfig:
     retention_days: int = 90  # Days before a node is considered stale (min 30)
 
     # Capture mode: "decisions-only" | "decisions-and-patterns"
-    capture_mode: str = "decisions-only"
+    capture_mode: str = "decisions-and-patterns"
+
+    # Indexer AI CLI configuration
+    # cli: binary used for batch extraction. Any binary that accepts `<cli> -p <prompt>`.
+    #      Use "claude" for Claude Code (default), or configure another AI CLI tool.
+    # model: passed as --model to the claude binary. Ignored for non-claude CLIs.
+    indexer_cli: str = "claude"
+    indexer_model: str = "haiku"   # haiku is fast and sufficient for batch extraction
 
     # UI server configuration
     ui_port: int = 8765   # Single FastAPI server port (serves both API and UI)
@@ -168,6 +175,10 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         llm_embed_api_key = None
         llm_embed_models = []
 
+    indexer_section = config_data.get("indexer", {})
+    indexer_cli = os.getenv("RECALL_INDEXER_CLI", indexer_section.get("cli", "claude"))
+    indexer_model = os.getenv("RECALL_INDEXER_MODEL", indexer_section.get("model", "sonnet"))
+
     capture = config_data.get("capture", {})
     VALID_CAPTURE_MODES = {"decisions-only", "decisions-and-patterns"}
     raw_mode = capture.get("mode", "decisions-only")
@@ -218,6 +229,8 @@ def load_config(config_path: Path | None = None) -> LLMConfig:
         llm_embed_url=llm_embed_url,
         llm_embed_api_key=llm_embed_api_key,
         llm_embed_models=llm_embed_models,
+        indexer_cli=indexer_cli,
+        indexer_model=indexer_model,
     )
 
 

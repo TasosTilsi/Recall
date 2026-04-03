@@ -60,6 +60,28 @@ def _get_recall_instance_for_project(project_root: Path) -> tuple[Any, str]:
     return graphiti, group_id
 
 
+def _entity_display_name(entity_str: str) -> str:
+    """Return a short human-readable name from an entity string.
+
+    Handles both plain names ("OllamaClient") and structured code-block
+    format ("Code Block: process_queue | File: src/q.py | Language: Python | Type: function").
+    """
+    if not entity_str:
+        return ""
+    if entity_str.startswith("Code Block:"):
+        # Extract just the function/class name
+        name_part = entity_str.split(" | ")[0].replace("Code Block:", "").strip()
+        # Try to get type for labeling (e.g. "process_queue (fn)")
+        type_part = ""
+        for seg in entity_str.split(" | "):
+            if seg.strip().startswith("Type:"):
+                t = seg.replace("Type:", "").strip()
+                type_part = f" ({t[:2]})" if t else ""
+                break
+        return f"{name_part}{type_part}" if name_part else ""
+    return entity_str.strip()[:60]
+
+
 class GitIndexer:
     """Indexes git commit history into the Recall knowledge graph.
 
@@ -119,6 +141,7 @@ class GitIndexer:
         """
         start_time = time.monotonic()
         cfg = load_config()
+        entity_names_sample: list[str] = []  # up to 20 entity names from this run
 
         # Cooldown check (skip if recently run, unless full re-index requested)
         if not full and is_within_cooldown(self.project_root):
@@ -239,6 +262,13 @@ class GitIndexer:
                         state.last_indexed_sha = commit.hexsha
                         state.indexed_commits_count += 1
                         entities_created += result["passes"]
+                        # Collect entity names for post-run snapshot
+                        for e in result.get("entities", []):
+                            display = _entity_display_name(e)
+                            if display and display not in entity_names_sample:
+                                entity_names_sample.append(display)
+                                if len(entity_names_sample) >= 20:
+                                    break
                     commits_processed += 1
                     self._logger.info(
                         "commit_indexed",
@@ -246,6 +276,11 @@ class GitIndexer:
                         total=commits_processed,
                         extraction_ok=extraction_ok,
                     )
+                    if status_callback and extraction_ok and result.get("entities"):
+                        names = [_entity_display_name(e) for e in result["entities"][:4]]
+                        names = [n for n in names if n]
+                        if names:
+                            status_callback(f"  ↳ {result['sha']}: {', '.join(names)}")
                 save_state(self.project_root, state)
             else:
                 # Fallback: original per-commit sequential extraction via Ollama
@@ -283,6 +318,11 @@ class GitIndexer:
                         total=commits_processed,
                         extraction_ok=extraction_ok,
                     )
+                    if status_callback and extraction_ok and result.get("entities"):
+                        names = [_entity_display_name(e) for e in result["entities"][:4]]
+                        names = [n for n in names if n]
+                        if names:
+                            status_callback(f"  ↳ {result['sha']}: {', '.join(names)}")
 
         # Update last_run_at timestamp
         state.last_run_at = datetime.now(timezone.utc).isoformat()
@@ -302,6 +342,7 @@ class GitIndexer:
             "commits_skipped": commits_skipped,
             "entities_created": entities_created,
             "elapsed_seconds": round(elapsed, 2),
+            "entity_names_sample": entity_names_sample,
         }
 
     async def _process_all_commits(

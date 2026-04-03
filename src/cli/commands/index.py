@@ -102,19 +102,32 @@ def index_command(
         # Success output
         commits_processed = result.get("commits_processed", 0)
         commits_skipped = result.get("commits_skipped", 0)
-        entities_created = result.get("entities_created", 0)
         elapsed_seconds = result.get("elapsed_seconds", 0.0)
+        entity_names = result.get("entity_names_sample", [])
+
+        if commits_processed == 0:
+            console.print("[dim]Nothing new to index — all commits already processed.[/dim]")
+            console.print("[dim]Use --force to re-index everything.[/dim]")
+            raise typer.Exit(EXIT_SUCCESS)
 
         print_success(
-            f"Indexed {commits_processed} commits, skipped {commits_skipped}"
+            f"Indexed {commits_processed} commit{'s' if commits_processed != 1 else ''}"
+            + (f", skipped {commits_skipped}" if commits_skipped else "")
+            + f" in {elapsed_seconds:.1f}s"
         )
 
-        if entities_created > 0:
-            console.print(
-                f"[dim]Extracted knowledge from {commits_processed} commits in {elapsed_seconds:.1f}s[/dim]"
-            )
+        if entity_names:
+            console.print()
+            console.print(f"[dim]Knowledge extracted ({len(entity_names)} entities sampled):[/dim]")
+            for name in entity_names[:12]:
+                console.print(f"  [cyan]·[/cyan] {name}")
+            if len(entity_names) > 12:
+                console.print(f"  [dim]... and {len(entity_names) - 12} more[/dim]")
+        else:
+            console.print("[dim]No new entities extracted from this batch.[/dim]")
 
-        console.print("[dim]Run 'recall search <query>' to explore the indexed knowledge.[/dim]")
+        console.print()
+        console.print("[dim]Run [bold]recall search <query>[/bold] to explore indexed knowledge.[/dim]")
 
     except typer.Exit:
         raise

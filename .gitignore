@@ -51,3 +51,4 @@ ui/.cache/
 ui/.env*
 ui/coverage/
 ui/.pteste_cache/
+ui/package-lock.json

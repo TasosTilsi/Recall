@@ -258,6 +258,9 @@ async def extract_commits_batch(
     import json as _json
     import re as _re
     from src.llm.claude_cli_client import _claude_p
+    from src.llm.config import load_config as _load_cfg
+    _icfg = _load_cfg()
+    _icli, _imodel = _icfg.indexer_cli, _icfg.indexer_model
 
     # Build the commits_block string
     lines = []
@@ -282,7 +285,7 @@ async def extract_commits_batch(
 
     # Call claude -p for the full batch
     try:
-        result_text = await _claude_p(prompt)
+        result_text = await _claude_p(prompt, cli=_icli, model=_imodel)
     except Exception as e:
         logger.warning("batch_claude_p_failed", error=str(e))
         return [{"sha": sha[:7], "passes": 0, "error": "batch_claude_failed"} for sha, *_ in batch]
@@ -317,9 +320,15 @@ async def extract_commits_batch(
                 source=EpisodeType.text,
                 group_id=group_id,
             )
-            per_commit_results.append({"sha": sha[:7], "passes": 1, "was_large": False})
+            per_commit_results.append({
+                "sha": sha[:7],
+                "passes": 1,
+                "was_large": False,
+                "entities": extracted.get("entities", []),
+                "summary": extracted.get("summary", ""),
+            })
         except Exception as e:
             logger.error("batch_episode_failed", sha=sha[:7], error=str(e))
-            per_commit_results.append({"sha": sha[:7], "passes": 0, "error": str(e)})
+            per_commit_results.append({"sha": sha[:7], "passes": 0, "error": str(e), "entities": []})
 
     return per_commit_results

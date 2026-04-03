@@ -4,12 +4,21 @@ This module provides the Typer app instance that all commands register with,
 along with the entry point function for console_scripts.
 """
 import sys
+import logging
+import structlog
 import typer
 from typing import Optional
 from src.cli.output import err_console, print_error
 from src.llm.provider import validate_provider_startup
 from src.llm.config import load_config as _load_config_for_startup
 from src.config.paths import migrate_dot_graphiti_to_recall
+
+# Route all structlog output to stderr so JSON/plain CLI output is never polluted.
+logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
+structlog.configure(
+    wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING),
+    logger_factory=structlog.PrintLoggerFactory(file=sys.stderr),
+)
 
 
 # Create main Typer app
