@@ -311,19 +311,23 @@ class TestDetailEntityRetentionStatus:
         assert data["retention_status"] == "Pinned"
 
     def test_normal_entity_returns_retention_status_normal(self):
+        # Use a recent created_at (within 90-day retention window) to avoid Stale classification
         resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=False, archived=False,
-                              created_at="2026-01-01T00:00:00Z")
+                              created_at="2026-03-15T00:00:00Z")
         assert resp.status_code == 200
         assert resp.json()["retention_status"] == "Normal"
 
     def test_archived_entity_returns_retention_status_archived(self):
-        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=False, archived=True)
+        # Use recent created_at so entity is not stale — Archived should win over Normal
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=False, archived=True,
+                              created_at="2026-03-15T00:00:00Z")
         assert resp.status_code == 200
         assert resp.json()["retention_status"] == "Archived"
 
     def test_pinned_wins_over_archived(self):
-        # Both pinned and archived — Pinned must win
-        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=True, archived=True)
+        # Both pinned and archived — Pinned must win (recent created_at to isolate pinned logic)
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=True, archived=True,
+                              created_at="2026-03-15T00:00:00Z")
         assert resp.status_code == 200
         assert resp.json()["retention_status"] == "Pinned"
 

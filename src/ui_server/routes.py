@@ -180,14 +180,41 @@ async def get_detail(item_type: str, item_id: str, request: Request, scope: str 
         # Enrich with retention metadata
         try:
             from src.retention import get_retention_manager
+            from src.llm.config import load_config
+            from datetime import datetime, timezone as _tz
             retention = get_retention_manager()
             scope_key = service._get_group_id(graph_scope, proj_root)
             access = retention.get_access_record(uuid=item_id, scope=scope_key)
             entity["last_accessed_at"] = str(access.get("last_accessed_at", ""))
             entity["access_count"] = access.get("access_count", 0)
-            entity["pinned"] = retention.is_pinned(uuid=item_id, scope=scope_key)
+            pinned_uuids = retention.get_pin_state_uuids(scope_key)
+            archived_uuids = retention.get_archive_state_uuids(scope_key)
+            entity["pinned"] = item_id in pinned_uuids
+            if item_id in pinned_uuids:
+                entity["retention_status"] = "Pinned"
+            else:
+                _cfg = load_config()
+                _now = datetime.now(_tz.utc)
+                created_str = entity.get("created_at")
+                is_stale = False
+                if created_str:
+                    try:
+                        created_dt = datetime.fromisoformat(str(created_str))
+                        if created_dt.tzinfo is None:
+                            created_dt = created_dt.replace(tzinfo=_tz.utc)
+                        age_days = (_now - created_dt).total_seconds() / 86400.0
+                        if age_days > _cfg.retention_days:
+                            is_stale = True
+                    except (ValueError, TypeError):
+                        pass
+                if is_stale:
+                    entity["retention_status"] = "Stale"
+                elif item_id in archived_uuids:
+                    entity["retention_status"] = "Archived"
+                else:
+                    entity["retention_status"] = "Normal"
         except Exception:
-            pass
+            entity.setdefault("retention_status", "Normal")
         # Fetch relationships
         try:
             all_edges = await _await_if_coro(service.list_edges(graph_scope, proj_root))

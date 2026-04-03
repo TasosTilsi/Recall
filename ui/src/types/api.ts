@@ -90,6 +90,7 @@ export interface DetailEntity {
   last_accessed_at?: string;
   access_count?: number;
   pinned?: boolean;
+  retention_status?: RetentionStatus;
   relationships?: EntityRelationship[];
 }
 
