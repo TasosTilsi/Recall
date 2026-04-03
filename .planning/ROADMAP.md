@@ -309,4 +309,4 @@ Plans:
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
-| 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete   | 2026-04-03 |
+| 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
