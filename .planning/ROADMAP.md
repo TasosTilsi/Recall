@@ -50,7 +50,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
 - [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
 - [x] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI (completed 2026-04-03)
-- [ ] **Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification** — fix EntityPanel detail panel (Stale/Archived statuses always "Normal"); produce Phase 19 VERIFICATION.md [Gap Closure]
+- [x] **Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification** — fix EntityPanel detail panel (Stale/Archived statuses always "Normal"); produce Phase 19 VERIFICATION.md [Gap Closure] (completed 2026-04-03)
 - [ ] **Phase 23: Nyquist Compliance Sweep** — fill/create VALIDATION.md for all 10 v2.0 phases; achieve 10/10 `nyquist_compliant: true` [Gap Closure]
 
 ## Phase Details
@@ -234,8 +234,8 @@ Plans:
 
 Plans:
 - [x] 22-01-PLAN.md — Add `retention_status?: RetentionStatus` to `DetailEntity` type in `types/api.ts`; update `/api/detail` route to compute and return `retention_status`
-- [ ] 22-02-PLAN.md — Update `EntityPanel.retentionStatus()` to read `entity.retention_status` field; add integration test for detail panel status
-- [ ] 22-03-PLAN.md — Produce Phase 19 VERIFICATION.md (smoke test list-view filter ✓ + detail panel ✓); update Phase 19 audit status
+- [x] 22-02-PLAN.md — Update `EntityPanel.retentionStatus()` to read `entity.retention_status` field; add integration test for detail panel status
+- [x] 22-03-PLAN.md — Produce Phase 19 VERIFICATION.md (smoke test list-view filter ✓ + detail panel ✓); update Phase 19 audit status
 
 ---
 
@@ -336,5 +336,5 @@ Plans:
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
-| 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 1/3 | In Progress|  |
+| 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 3/3 | Complete   | 2026-04-03 |
 | 23. Nyquist Compliance Sweep | v2.0 | 0/3 | Pending | — |
