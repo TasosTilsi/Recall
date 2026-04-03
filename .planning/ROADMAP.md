@@ -233,7 +233,7 @@ Plans:
 **Gap Closure:** Closes remaining UI-03 sub-gap (detail panel broken) + produces missing Phase 19 VERIFICATION.md; unblocks `/gsd:complete-milestone`
 
 Plans:
-- [ ] 22-01-PLAN.md — Add `retention_status?: RetentionStatus` to `DetailEntity` type in `types/api.ts`; update `/api/detail` route to compute and return `retention_status`
+- [x] 22-01-PLAN.md — Add `retention_status?: RetentionStatus` to `DetailEntity` type in `types/api.ts`; update `/api/detail` route to compute and return `retention_status`
 - [ ] 22-02-PLAN.md — Update `EntityPanel.retentionStatus()` to read `entity.retention_status` field; add integration test for detail panel status
 - [ ] 22-03-PLAN.md — Produce Phase 19 VERIFICATION.md (smoke test list-view filter ✓ + detail panel ✓); update Phase 19 audit status
 
@@ -336,5 +336,5 @@ Plans:
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
-| 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 0/3 | Pending | — |
+| 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 1/3 | In Progress|  |
 | 23. Nyquist Compliance Sweep | v2.0 | 0/3 | Pending | — |
