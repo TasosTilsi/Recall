@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: executing
-stopped_at: Completed 21-02-PLAN.md (EntityPanel metadata chips)
-last_updated: "2026-04-03T06:44:52.463Z"
+status: verifying
+stopped_at: Completed 21-03-PLAN.md (Phase 21 test suite)
+last_updated: "2026-04-03T06:50:57.494Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 10
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 Phase: 21 (knowledge-quality-uplift) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-03
 
 Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer phases complete; Phase 19 code-complete)
@@ -100,6 +100,7 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 20-fast-indexing-claude-cli-batch-fts P05 | 15 | 3 tasks | 3 files |
 | Phase 21-knowledge-quality-uplift P01 | 1 | 1 tasks | 1 files |
 | Phase 21 P02 | 3 | 2 tasks | 2 files |
+| Phase 21-knowledge-quality-uplift P03 | 198 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 21-01]: 7 semantic relationship verbs steered via prompt language, not post-processing: MODIFIES, INTRODUCES, FIXES, DEPENDS_ON, REMOVES, REFACTORS, TESTS
 - [Phase 21-02]: parseCodeBlockMeta() is format-driven (summary prefix), not entity-type-driven (tags) — per D-09
 - [Phase 21-02]: Chip row inserted inside name/badge div container to visually group with entity header
+- [Phase 21-knowledge-quality-uplift]: npx tsx used as TypeScript test runner (Vitest not installed); throw Error on failure instead of process.exit(1) to avoid TS node type dependency
+- [Phase 21-knowledge-quality-uplift]: parseCodeBlockMeta extracted to standalone ui/src/lib/parseCodeBlockMeta.ts module for independent testability; EntityPanel.tsx imports from new module
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -227,6 +230,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-03T06:44:52.456Z
-Stopped at: Completed 21-02-PLAN.md (EntityPanel metadata chips)
+Last session: 2026-04-03T06:50:57.491Z
+Stopped at: Completed 21-03-PLAN.md (Phase 21 test suite)
 Resume with: `/gsd:plan-phase 20`

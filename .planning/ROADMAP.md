@@ -49,7 +49,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 18: Formal Verification — Phases 14 & 16** — produce VERIFICATION.md for P14 and P16; upgrades 11 partial requirements to satisfied [Gap Closure] (completed 2026-03-21)
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
 - [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
-- [ ] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI
+- [x] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI (completed 2026-04-03)
 
 ## Phase Details
 
@@ -278,7 +278,7 @@ Embedded Python graph DB with full Cypher. graphiti-core #1240 open. FTS/vector 
 Plans:
 - [x] 21-01-PLAN.md — Extend BATCH_EXTRACTION_PROMPT with code block extraction + semantic relationship vocabulary
 - [x] 21-02-PLAN.md — Add structured metadata chip row to EntityPanel + Function/Class colors
-- [ ] 21-03-PLAN.md — Tests for extraction prompt changes and UI parser
+- [x] 21-03-PLAN.md — Tests for extraction prompt changes and UI parser
 
 ---
 
@@ -309,4 +309,4 @@ Plans:
 | 18. Formal Verification — Phases 14 & 16 | 2/2 | Complete    | 2026-03-21 | — |
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
-| 21. Knowledge Quality Uplift | 0/3 | 2/3 | In Progress|  |
+| 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete   | 2026-04-03 |
