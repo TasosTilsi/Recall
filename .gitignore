@@ -52,3 +52,6 @@ ui/.env*
 ui/coverage/
 ui/.pteste_cache/
 ui/package-lock.json
+
+# Claude Code worktrees
+.claude/worktrees/
