@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-04-03T18:24:46.999Z"
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-04-03T18:28:51.547Z"
 last_activity: 2026-04-03
 progress:
-  total_phases: 12
-  completed_phases: 9
-  total_plans: 39
-  completed_plans: 37
+  total_phases: 11
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 4
   percent: 22
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 ## Current Position
 
 Phase: 22 (complete-ui-03-entitypanel-verification) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -102,6 +102,7 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 21 P02 | 3 | 2 tasks | 2 files |
 | Phase 21-knowledge-quality-uplift P03 | 198 | 2 tasks | 4 files |
 | Phase 22-complete-ui-03-entitypanel-verification P01 | 2 | 1 tasks | 3 files |
+| Phase 22-complete-ui-03-entitypanel-verification P22-02 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,7 @@ Key v2.0 architectural decisions from research:
 - [Phase 21-knowledge-quality-uplift]: npx tsx used as TypeScript test runner (Vitest not installed); throw Error on failure instead of process.exit(1) to avoid TS node type dependency
 - [Phase 21-knowledge-quality-uplift]: parseCodeBlockMeta extracted to standalone ui/src/lib/parseCodeBlockMeta.ts module for independent testability; EntityPanel.tsx imports from new module
 - [Phase 22-01]: Priority order Pinned > Stale > Archived > Normal in /api/detail — follows Phase 19 CONTEXT.md, same as /api/graph
+- [Phase 22-02]: Return type changed from string to RetentionStatus for precise RETENTION_COLORS key match
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -232,6 +234,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-03T18:24:46.996Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-04-03T18:28:51.544Z
+Stopped at: Completed 22-02-PLAN.md
 Resume with: `/gsd:plan-phase 20`
