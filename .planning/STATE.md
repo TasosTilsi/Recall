@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
 status: executing
-stopped_at: Completed 21-01-PLAN.md (Phase 21 batch prompt enrichment)
-last_updated: "2026-04-03T06:44:44.599Z"
+stopped_at: Completed 21-02-PLAN.md (EntityPanel metadata chips)
+last_updated: "2026-04-03T06:44:52.463Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 10
@@ -186,6 +186,8 @@ Key v2.0 architectural decisions from research:
 - [Phase 21-01]: Code block entities embedded inside entities array (not separate add_episode calls) -- single graphiti-core pass with no extra LLM overhead
 - [Phase 21-01]: Episode body builder unchanged: join() naturally propagates structured Code Block strings into episode body (D-02)
 - [Phase 21-01]: 7 semantic relationship verbs steered via prompt language, not post-processing: MODIFIES, INTRODUCES, FIXES, DEPENDS_ON, REMOVES, REFACTORS, TESTS
+- [Phase 21-02]: parseCodeBlockMeta() is format-driven (summary prefix), not entity-type-driven (tags) — per D-09
+- [Phase 21-02]: Chip row inserted inside name/badge div container to visually group with entity header
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -225,6 +227,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-03T06:44:29.868Z
-Stopped at: Completed 21-01-PLAN.md (Phase 21 batch prompt enrichment)
+Last session: 2026-04-03T06:44:52.456Z
+Stopped at: Completed 21-02-PLAN.md (EntityPanel metadata chips)
 Resume with: `/gsd:plan-phase 20`
