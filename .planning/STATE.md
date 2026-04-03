@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rebuild
-status: verifying
-stopped_at: Completed 20-05-PLAN.md (Phase 20 test suite)
-last_updated: "2026-04-02T20:59:28.611Z"
-last_activity: 2026-04-02
+status: executing
+stopped_at: Completed 21-01-PLAN.md (Phase 21 batch prompt enrichment)
+last_updated: "2026-04-03T06:44:44.599Z"
+last_activity: 2026-04-03
 progress:
   total_phases: 10
   completed_phases: 9
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09 after v1.1 milestone complete)
 
 **Core value:** Context continuity without repetition — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
-**Current focus:** Phase 20 — fast-indexing-claude-cli-batch-fts
+**Current focus:** Phase 21 — knowledge-quality-uplift
 
 ## Current Position
 
-Phase: 20 (fast-indexing-claude-cli-batch-fts) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-04-02
+Phase: 21 (knowledge-quality-uplift) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute
+Last activity: 2026-04-03
 
 Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer phases complete; Phase 19 code-complete)
 
@@ -98,6 +98,8 @@ Progress: [██░░░░░░░░] 22% (v2.0 milestone — 1/5 integer p
 | Phase 20-fast-indexing-claude-cli-batch-fts P04 | 4 | 1 tasks | 1 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P02 | 2 | 2 tasks | 2 files |
 | Phase 20-fast-indexing-claude-cli-batch-fts P05 | 15 | 3 tasks | 3 files |
+| Phase 21-knowledge-quality-uplift P01 | 1 | 1 tasks | 1 files |
+| Phase 21 P02 | 3 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -181,6 +183,9 @@ Key v2.0 architectural decisions from research:
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: asyncio.run() in synchronous test methods (not @pytest.mark.asyncio) follows project convention for asyncio_mode=strict
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: Mock target for _claude_p is src.llm.claude_cli_client._claude_p (lazy import in function body, not module-level in extraction.py)
 - [Phase 20-fast-indexing-claude-cli-batch-fts]: Timing proof: asyncio.Semaphore(3) with 3 parallel 0.1s tasks asserting <0.15s total -- unit proxy for PERF-01 30-commit-in-2min goal
+- [Phase 21-01]: Code block entities embedded inside entities array (not separate add_episode calls) -- single graphiti-core pass with no extra LLM overhead
+- [Phase 21-01]: Episode body builder unchanged: join() naturally propagates structured Code Block strings into episode body (D-02)
+- [Phase 21-01]: 7 semantic relationship verbs steered via prompt language, not post-processing: MODIFIES, INTRODUCES, FIXES, DEPENDS_ON, REMOVES, REFACTORS, TESTS
 
 ### Phase 12 Pre-checks Required at Plan Start
 
@@ -197,6 +202,7 @@ Key v2.0 architectural decisions from research:
 - Phase 15 renumbered: Local Memory System (was Phase 14 in pre-roadmap STATE.md)
 - Phase 19 added: Wire UI-03 Retention Filter — gap closure for v2.0 audit
 - Phase 20 added: Fast Indexing via `claude -p` subprocess + batch extraction + FTS-first search — context captured 2026-03-29; replaces per-commit Ollama extraction; no ANTHROPIC_API_KEY required (Claude Code subscription auth via subprocess)
+- Phase 21 added: Knowledge Quality Uplift — study claude-mem entity/relationship model, add code block indexing, enrich entity schema so graph data is more insightful and understandable in the UI
 
 ### Pending Todos
 
@@ -219,6 +225,6 @@ Key v2.0 architectural decisions from research:
 ## Session Continuity
 
 Last activity: 2026-03-30 - Completed quick task 260329: Fix graph_manager attribute missing in GraphService
-Last session: 2026-04-02T20:59:28.608Z
-Stopped at: Completed 20-05-PLAN.md (Phase 20 test suite)
+Last session: 2026-04-03T06:44:29.868Z
+Stopped at: Completed 21-01-PLAN.md (Phase 21 batch prompt enrichment)
 Resume with: `/gsd:plan-phase 20`
