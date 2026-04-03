@@ -3,6 +3,40 @@ import type { DetailEntity } from '@/types/api';
 import type { PanelItem } from './DetailPanel';
 import { ENTITY_TYPE_COLORS, RETENTION_COLORS } from '@/lib/colors';
 
+interface CodeBlockMeta {
+  name: string;
+  file: string;
+  language: string;
+  type: string;
+  remainder: string;  // summary text after the structured prefix
+}
+
+/**
+ * Parse pipe-delimited code block metadata from entity summary.
+ * Format: "Code Block: <name> | File: <path> | Language: <lang> | Type: <type>"
+ * Per D-09: format-driven, not entity-type-driven.
+ */
+function parseCodeBlockMeta(summary: string): CodeBlockMeta | null {
+  if (!summary.startsWith('Code Block:')) return null;
+
+  // Split only the first line (structured prefix may be followed by narrative)
+  const firstLine = summary.split('\n')[0];
+  const parts = firstLine.split(' | ');
+  if (parts.length < 4) return null;
+
+  const name = parts[0].replace('Code Block:', '').trim();
+  const file = parts.find(p => p.startsWith('File:'))?.replace('File:', '').trim() ?? '';
+  const language = parts.find(p => p.startsWith('Language:'))?.replace('Language:', '').trim() ?? '';
+  const type = parts.find(p => p.startsWith('Type:'))?.replace('Type:', '').trim() ?? '';
+
+  if (!name || !file) return null;
+
+  // Everything after the first line is the narrative remainder
+  const remainder = summary.slice(firstLine.length).trim();
+
+  return { name, file, language, type, remainder };
+}
+
 interface EntityPanelProps {
   entity: DetailEntity;
   onNavigate: (item: PanelItem) => void;
@@ -38,13 +72,40 @@ export function EntityPanel({ entity, onNavigate }: EntityPanelProps) {
             {status}
           </Badge>
         </div>
+
+        {/* Code block metadata chips — per D-08, D-10 */}
+        {(() => {
+          const meta = entity.summary ? parseCodeBlockMeta(entity.summary) : null;
+          if (!meta) return null;
+          return (
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              <span className="text-xs text-slate-400 font-mono">
+                {'\u{1F4C4}'} {meta.file}
+              </span>
+              {meta.language && (
+                <Badge className="text-[10px] h-4 px-1.5" style={{
+                  backgroundColor: '#22d3ee22',
+                  color: '#22d3ee',
+                  border: 'none',
+                }}>
+                  {meta.language}
+                </Badge>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Summary */}
       {entity.summary && (
         <div className="bg-[#171f33] p-4 rounded-lg">
           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Summary</h3>
-          <p className="text-sm text-slate-300 leading-relaxed">{entity.summary}</p>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            {(() => {
+              const meta = entity.summary ? parseCodeBlockMeta(entity.summary) : null;
+              return meta?.remainder || entity.summary;
+            })()}
+          </p>
         </div>
       )}
 
