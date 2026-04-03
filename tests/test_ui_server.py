@@ -269,6 +269,65 @@ class TestAppFactory:
         assert "/" in mount_paths
 
 
+class TestDetailEntityRetentionStatus:
+    """Phase 22 — retention_status field on /api/detail entity response."""
+
+    def _make_app(self, entity_data, pinned=False, archived=False, created_at="2026-01-01T00:00:00Z"):
+        from fastapi.testclient import TestClient
+        from src.ui_server.app import create_app
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        with patch("src.retention.get_retention_manager") as mock_rm_fn:
+            rm = MagicMock()
+            rm.get_access_record.return_value = {}
+            rm.is_pinned.return_value = pinned
+            rm.get_pin_state_uuids.return_value = {entity_data["uuid"]} if pinned else set()
+            rm.get_archive_state_uuids.return_value = {entity_data["uuid"]} if archived else set()
+            mock_rm_fn.return_value = rm
+
+            with patch("src.ui_server.app.GraphService") as mock_cls:
+                mock_svc = MagicMock()
+                mock_svc.get_entity_by_uuid = AsyncMock(return_value={
+                    "uuid": entity_data["uuid"],
+                    "name": entity_data["name"],
+                    "tags": ["Entity"],
+                    "summary": "",
+                    "created_at": created_at,
+                })
+                mock_svc.list_edges = AsyncMock(return_value=[])
+                mock_svc._get_group_id = MagicMock(return_value="project:/tmp/proj")
+                mock_cls.return_value = mock_svc
+
+                app = create_app(scope_label="project", static_dir=None)
+                client = TestClient(app)
+                resp = client.get(f"/api/detail/entity/{entity_data['uuid']}")
+                return resp
+
+    def test_pinned_entity_returns_retention_status_pinned(self):
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=True)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "retention_status" in data
+        assert data["retention_status"] == "Pinned"
+
+    def test_normal_entity_returns_retention_status_normal(self):
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=False, archived=False,
+                              created_at="2026-01-01T00:00:00Z")
+        assert resp.status_code == 200
+        assert resp.json()["retention_status"] == "Normal"
+
+    def test_archived_entity_returns_retention_status_archived(self):
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=False, archived=True)
+        assert resp.status_code == 200
+        assert resp.json()["retention_status"] == "Archived"
+
+    def test_pinned_wins_over_archived(self):
+        # Both pinned and archived — Pinned must win
+        resp = self._make_app({"uuid": "u1", "name": "E1"}, pinned=True, archived=True)
+        assert resp.status_code == 200
+        assert resp.json()["retention_status"] == "Pinned"
+
+
 class TestLLMConfigUI:
     """Tests for the [ui] section in LLMConfig / load_config()."""
 
