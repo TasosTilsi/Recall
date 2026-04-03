@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge';
-import type { DetailEntity } from '@/types/api';
+import type { DetailEntity, RetentionStatus } from '@/types/api';
 import type { PanelItem } from './DetailPanel';
 import { ENTITY_TYPE_COLORS, RETENTION_COLORS } from '@/lib/colors';
 import { parseCodeBlockMeta } from '@/lib/parseCodeBlockMeta';
@@ -9,9 +9,8 @@ interface EntityPanelProps {
   onNavigate: (item: PanelItem) => void;
 }
 
-function retentionStatus(entity: DetailEntity): string {
-  if (entity.pinned) return 'Pinned';
-  return 'Normal';
+function retentionStatus(entity: DetailEntity): RetentionStatus {
+  return entity.retention_status ?? 'Normal';
 }
 
 export function EntityPanel({ entity, onNavigate }: EntityPanelProps) {
