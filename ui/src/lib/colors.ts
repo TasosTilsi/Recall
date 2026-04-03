@@ -5,6 +5,8 @@ export const ENTITY_TYPE_COLORS: Record<string, string> = {
   Dependency: '#34d399',     // emerald-400
   Pattern: '#fbbf24',        // amber-400
   Preference: '#f472b6',     // pink-400
+  Function: '#22d3ee',       // cyan-400
+  Class: '#c084fc',          // purple-400
   Entity: '#94a3b8',         // slate-400 (default)
 };
 
