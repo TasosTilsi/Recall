@@ -4,7 +4,7 @@
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- [ ] **v2.0 Rebuild** — Phases 12–16 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Execution order: 12 → 13 → 15 → 16 → 14
+- [ ] **v2.0 Rebuild** — Phases 12–23 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Gap closure: Phases 22–23.
 
 ## Phases
 
@@ -50,6 +50,8 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 19: Wire UI-03 Retention Filter** — add retention_status to API + Entities.tsx filter dropdown [Gap Closure] (completed 2026-03-28)
 - [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
 - [x] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI (completed 2026-04-03)
+- [ ] **Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification** — fix EntityPanel detail panel (Stale/Archived statuses always "Normal"); produce Phase 19 VERIFICATION.md [Gap Closure]
+- [ ] **Phase 23: Nyquist Compliance Sweep** — fill/create VALIDATION.md for all 10 v2.0 phases; achieve 10/10 `nyquist_compliant: true` [Gap Closure]
 
 ## Phase Details
 
@@ -225,6 +227,30 @@ Plans:
 
 ---
 
+### Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification
+**Goal:** The entity detail panel correctly displays Stale and Archived retention statuses (not always "Normal"/"Pinned"); Phase 19 VERIFICATION.md produced to formally close UI-03.
+**Requirements:** UI-03
+**Gap Closure:** Closes remaining UI-03 sub-gap (detail panel broken) + produces missing Phase 19 VERIFICATION.md; unblocks `/gsd:complete-milestone`
+
+Plans:
+- [ ] 22-01-PLAN.md — Add `retention_status?: RetentionStatus` to `DetailEntity` type in `types/api.ts`; update `/api/detail` route to compute and return `retention_status`
+- [ ] 22-02-PLAN.md — Update `EntityPanel.retentionStatus()` to read `entity.retention_status` field; add integration test for detail panel status
+- [ ] 22-03-PLAN.md — Produce Phase 19 VERIFICATION.md (smoke test list-view filter ✓ + detail panel ✓); update Phase 19 audit status
+
+---
+
+### Phase 23: Nyquist Compliance Sweep
+**Goal:** All 10 v2.0 phases have a complete, non-draft VALIDATION.md with `nyquist_compliant: true` — systemic validation gap closed before milestone archive.
+**Requirements:** (none — validation quality, not feature requirements)
+**Gap Closure:** Closes systemic Nyquist gap (0/10 → 10/10 compliant); required before `/gsd:complete-milestone`
+
+Plans:
+- [ ] 23-01-PLAN.md — Fill VALIDATION.md for phases 12–15, 19 (draft stubs exist; set `nyquist_compliant: true` after coverage check)
+- [ ] 23-02-PLAN.md — Create VALIDATION.md for phases 16–18 (missing entirely)
+- [ ] 23-03-PLAN.md — Create VALIDATION.md for phases 20–21 (missing entirely); final sweep confirming 10/10 compliant
+
+---
+
 ## v2.0 Strategic Direction (updated 2026-03-19)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
@@ -310,3 +336,5 @@ Plans:
 | 19. Wire UI-03 Retention Filter | 0/3 | 2/3 | In Progress|  |
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
+| 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 0/3 | Pending | — |
+| 23. Nyquist Compliance Sweep | v2.0 | 0/3 | Pending | — |
