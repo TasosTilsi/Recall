@@ -145,4 +145,4 @@ LLM: Cloud Ollama (chat-only) + local Ollama (gemma2:9b, llama3.2:3b, nomic-embe
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-03 — Phase 21 complete (Knowledge Quality Uplift): enriched BATCH_EXTRACTION_PROMPT with code block entity extraction + 7 semantic relationship verbs; EntityPanel renders structured metadata chips; parseCodeBlockMeta extracted as standalone module with full test coverage*
+*Last updated: 2026-04-04 — Phase 22 complete (Complete UI-03 EntityPanel Verification): retention_status field added to /api/detail entity response with Pinned > Stale > Archived > Normal priority logic; EntityPanel.retentionStatus() wired to read entity.retention_status directly; formal 19-VERIFICATION.md produced closing UI-03 end-to-end*
