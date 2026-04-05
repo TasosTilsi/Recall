@@ -243,11 +243,11 @@ Plans:
 **Goal:** All 10 v2.0 phases have a complete, non-draft VALIDATION.md with `nyquist_compliant: true` — systemic validation gap closed before milestone archive.
 **Requirements:** (none — validation quality, not feature requirements)
 **Gap Closure:** Closes systemic Nyquist gap (0/10 → 10/10 compliant); required before `/gsd:complete-milestone`
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 23-01-PLAN.md — Fill VALIDATION.md for phases 12–15, 19 (draft stubs exist; set `nyquist_compliant: true` after coverage check)
-- [ ] 23-02-PLAN.md — Create VALIDATION.md for phases 16–18 (missing entirely)
+- [x] 23-02-PLAN.md — Create VALIDATION.md for phases 16–18 (missing entirely)
 - [ ] 23-03-PLAN.md — Create VALIDATION.md for phases 20–21 (missing entirely); final sweep confirming 10/10 compliant
 
 ---
@@ -338,4 +338,4 @@ Plans:
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
 | 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 3/3 | Complete    | 2026-04-03 |
-| 23. Nyquist Compliance Sweep | v2.0 | 0/3 | Pending | — |
+| 23. Nyquist Compliance Sweep | v2.0 | 1/3 | In Progress|  |
