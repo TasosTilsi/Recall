@@ -4,7 +4,7 @@
 
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
-- [ ] **v2.0 Rebuild** — Phases 12–23 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Gap closure: Phases 22–23.
+- [ ] **v2.0 Rebuild** — Phases 12–24 (in progress): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Gap closure: Phases 22–24.
 
 ## Phases
 
@@ -52,6 +52,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI (completed 2026-04-03)
 - [x] **Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification** — fix EntityPanel detail panel (Stale/Archived statuses always "Normal"); produce Phase 19 VERIFICATION.md [Gap Closure] (completed 2026-04-03)
 - [x] **Phase 23: Nyquist Compliance Sweep** — fill/create VALIDATION.md for all 10 v2.0 phases; achieve 10/10 `nyquist_compliant: true` [Gap Closure] (completed 2026-04-05)
+- [ ] **Phase 24: v2.0 Audit Gap Closure** — fix stale `graphiti` binary refs in verify scripts (10–13); fix install.py + manager.py stale product-name strings; wire Graph.tsx node-click → DetailPanel; close UI-03 verification statuses [Gap Closure]
 
 ## Phase Details
 
@@ -252,6 +253,19 @@ Plans:
 
 ---
 
+### Phase 24: v2.0 Audit Gap Closure
+**Goal:** All remaining tech debt items from the v2.0 milestone audit are resolved — verify scripts pass, stale product-name strings removed, Graph.tsx detail panel wired, UI-03 verification statuses updated to passed.
+**Requirements:** UI-03 (close verification gap)
+**Gap Closure:** Addresses 5 tech debt items from v2.0-MILESTONE-AUDIT.md; required before `/gsd:complete-milestone`
+**Plans:** 0/2 plans complete
+**Depends on**: Phase 23 (Nyquist compliance complete)
+
+Plans:
+- [ ] 24-01-PLAN.md — Fix stale `graphiti` binary refs in verify_phase_10.py, 11.py, 12.py, 13.py; fix install.py SKILL.md path comment; fix manager.py stale docstrings
+- [ ] 24-02-PLAN.md — Wire Graph.tsx node-click → DetailPanel; update 19/22-VERIFICATION.md to `passed`; update v2.0-MILESTONE-AUDIT.md to `passed`
+
+---
+
 ## v2.0 Strategic Direction (updated 2026-03-19)
 
 - **graphiti-core stays.** Entity resolution across time, typed relationship edges (A *caused* B, X *depends on* Y), bi-temporal model, multi-hop graph traversal — these are what make the system genuinely valuable for developers working on long-lived projects.
@@ -338,4 +352,5 @@ Plans:
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
 | 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 3/3 | Complete    | 2026-04-03 |
-| 23. Nyquist Compliance Sweep | v2.0 | 3/3 | Complete   | 2026-04-05 |
+| 23. Nyquist Compliance Sweep | v2.0 | 3/3 | Complete    | 2026-04-05 |
+| 24. v2.0 Audit Gap Closure | v2.0 | 0/2 | Planned | — |
