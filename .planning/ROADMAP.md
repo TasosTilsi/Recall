@@ -51,7 +51,7 @@ See [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md) for full phase deta
 - [x] **Phase 20: Fast Indexing via Claude CLI Subprocess + Batch Extraction + FTS-First Search** — reduce git indexing from ~90 min to under 2 minutes via `ClaudeCliLLMClient` (`claude -p` subprocess), 10-commit batch extraction, `asyncio.Semaphore(3)` parallelism, and FTS-first progressive disclosure in context injection (completed 2026-04-02)
 - [x] **Phase 21: Knowledge Quality Uplift** — study claude-mem entity/relationship model, add code block indexing, enrich entity/relationship schema so graph data is more insightful and understandable in the UI (completed 2026-04-03)
 - [x] **Phase 22: Complete UI-03 — EntityPanel Retention Status + Phase 19 Verification** — fix EntityPanel detail panel (Stale/Archived statuses always "Normal"); produce Phase 19 VERIFICATION.md [Gap Closure] (completed 2026-04-03)
-- [ ] **Phase 23: Nyquist Compliance Sweep** — fill/create VALIDATION.md for all 10 v2.0 phases; achieve 10/10 `nyquist_compliant: true` [Gap Closure]
+- [x] **Phase 23: Nyquist Compliance Sweep** — fill/create VALIDATION.md for all 10 v2.0 phases; achieve 10/10 `nyquist_compliant: true` [Gap Closure] (completed 2026-04-05)
 
 ## Phase Details
 
@@ -243,12 +243,12 @@ Plans:
 **Goal:** All 10 v2.0 phases have a complete, non-draft VALIDATION.md with `nyquist_compliant: true` — systemic validation gap closed before milestone archive.
 **Requirements:** (none — validation quality, not feature requirements)
 **Gap Closure:** Closes systemic Nyquist gap (0/10 → 10/10 compliant); required before `/gsd:complete-milestone`
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 23-01-PLAN.md — Fill VALIDATION.md for phases 12–15, 19 (draft stubs exist; set `nyquist_compliant: true` after coverage check)
 - [x] 23-02-PLAN.md — Create VALIDATION.md for phases 16–18 (missing entirely)
-- [ ] 23-03-PLAN.md — Create VALIDATION.md for phases 20–21 (missing entirely); final sweep confirming 10/10 compliant
+- [x] 23-03-PLAN.md — Create VALIDATION.md for phases 20–21 (missing entirely); final sweep confirming 10/10 compliant
 
 ---
 
@@ -338,4 +338,4 @@ Plans:
 | 20. Fast Indexing via Claude CLI + Batch + FTS | 0/0 | 5/5 | Complete   | 2026-04-02 |
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
 | 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 3/3 | Complete    | 2026-04-03 |
-| 23. Nyquist Compliance Sweep | v2.0 | 2/3 | In Progress|  |
+| 23. Nyquist Compliance Sweep | v2.0 | 3/3 | Complete   | 2026-04-05 |
