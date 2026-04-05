@@ -243,6 +243,7 @@ Plans:
 **Goal:** All 10 v2.0 phases have a complete, non-draft VALIDATION.md with `nyquist_compliant: true` — systemic validation gap closed before milestone archive.
 **Requirements:** (none — validation quality, not feature requirements)
 **Gap Closure:** Closes systemic Nyquist gap (0/10 → 10/10 compliant); required before `/gsd:complete-milestone`
+**Plans:** 3 plans
 
 Plans:
 - [ ] 23-01-PLAN.md — Fill VALIDATION.md for phases 12–15, 19 (draft stubs exist; set `nyquist_compliant: true` after coverage check)
