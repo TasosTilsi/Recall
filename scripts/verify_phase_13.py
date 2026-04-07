@@ -27,10 +27,10 @@ Tests:
  16. PROV-03: make_embedder() returns OpenAIEmbedder in provider mode
  17. PROV-03: GraphService.__init__() uses make_llm_client() / make_embedder() factories
  18. PROV-04: startup hook in __init__.py skips validation for "health" and "config" subcommands
- 19. PROV-04: graphiti health --format json reflects Provider/Embed rows in provider mode
+ 19. PROV-04: recall health --format json reflects Provider/Embed rows in provider mode
 
   Live-provider (skipped with --skip-live):
- 20. PROV-04: graphiti health exits 0 in legacy mode (Ollama not required — checks structure only)
+ 20. PROV-04: recall health exits 0 in legacy mode (Ollama not required — checks structure only)
 """
 
 import asyncio
@@ -52,7 +52,7 @@ CYAN   = "\033[0;36m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
+RECALL = str(ROOT / ".venv" / "bin" / "recall")
 
 # Minimal [llm] TOML for testing
 PROVIDER_TOML = """
@@ -144,13 +144,13 @@ class Runner:
         return self.failed == 0
 
 
-def run_graphiti(*args, timeout: int = 60, env: dict | None = None) -> subprocess.CompletedProcess:
+def run_recall(*args, timeout: int = 60, env: dict | None = None) -> subprocess.CompletedProcess:
     import os
     proc_env = os.environ.copy()
     if env:
         proc_env.update(env)
     return subprocess.run(
-        [GRAPHITI, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout, env=proc_env
+        [RECALL, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout, env=proc_env
     )
 
 
@@ -483,31 +483,31 @@ def test_startup_hook_and_health(r: Runner) -> None:
         r.fail(f"_check_provider() non-empty in legacy mode: {rows_legacy}")
 
 
-# ── Test 20 (PROV-04): graphiti health exits 0 in legacy mode ─────────────────
+# ── Test 20 (PROV-04): recall health exits 0 in legacy mode ─────────────────
 
 def test_health_command_legacy(r: Runner, skip_live: bool) -> None:
-    r.banner("Test 20 (PROV-04): graphiti health exits 0 in legacy mode")
+    r.banner("Test 20 (PROV-04): recall health exits 0 in legacy mode")
 
     if skip_live:
-        r.skip("graphiti health legacy-mode exit code", reason="--skip-live flag set")
+        r.skip("recall health legacy-mode exit code", reason="--skip-live flag set")
         return
 
     # Force legacy mode by using a temp config with no [llm] section
     # The health command checks Ollama which may not be running; we just verify
     # it doesn't exit(1) due to a provider validation crash
-    res = run_graphiti("health", "--format", "json", timeout=30)
+    res = run_recall("health", "--format", "json", timeout=30)
     output = res.stdout + res.stderr
 
     # As long as it's not a Python traceback crash (returncode 2 = typer bad args, 0/1 = health result)
     if res.returncode in (0, 1):
-        r.ok(f"graphiti health exits with code {res.returncode} (no crash)")
+        r.ok(f"recall health exits with code {res.returncode} (no crash)")
         if "overall" in output:
-            r.ok("graphiti health --format json produces structured JSON output")
+            r.ok("recall health --format json produces structured JSON output")
         else:
-            r.fail("graphiti health --format json: no 'overall' key in output", detail=output[:300])
+            r.fail("recall health --format json: no 'overall' key in output", detail=output[:300])
     else:
         r.fail(
-            f"graphiti health exited with unexpected code {res.returncode}",
+            f"recall health exited with unexpected code {res.returncode}",
             detail=output[:300],
         )
 
@@ -515,10 +515,10 @@ def test_health_command_legacy(r: Runner, skip_live: bool) -> None:
 # ── Prerequisites ──────────────────────────────────────────────────────────────
 
 def check_prerequisites() -> None:
-    if not Path(GRAPHITI).exists():
-        print(f"{RED}ERROR: graphiti CLI not found at {GRAPHITI} — run: pip install -e .{RESET}")
+    if not Path(RECALL).exists():
+        print(f"{RED}ERROR: recall CLI not found at {RECALL} — run: pip install -e .{RESET}")
         sys.exit(1)
-    print(f"  {GREEN}OK{RESET} graphiti CLI available")
+    print(f"  {GREEN}OK{RESET} recall CLI available")
 
     try:
         from src.llm.config import LLMConfig  # noqa: F401
@@ -553,7 +553,7 @@ def main() -> None:
     if skip_live:
         print(f"{YELLOW}Note: --skip-live set — test 20 will be skipped.{RESET}")
     else:
-        print(f"{YELLOW}Note: Test 20 runs graphiti health live. Use --skip-live to skip.{RESET}")
+        print(f"{YELLOW}Note: Test 20 runs recall health live. Use --skip-live to skip.{RESET}")
 
     r = Runner(fail_fast=fail_fast)
 

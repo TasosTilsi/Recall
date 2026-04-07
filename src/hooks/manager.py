@@ -25,11 +25,11 @@ logger = structlog.get_logger(__name__)
 
 
 def get_hooks_enabled() -> bool:
-    """Read hooks.enabled from graphiti config.
+    """Read hooks.enabled from recall config.
 
     Returns:
         True if hooks are enabled, False otherwise.
-        Defaults to True if config key is missing or graphiti not available
+        Defaults to True if config key is missing or recall not available
         (hooks are installed intentionally, so enabled by default).
     """
     try:
@@ -48,19 +48,19 @@ def get_hooks_enabled() -> bool:
             # "true", "1", "yes", or any non-false output = enabled
             return True
         else:
-            # Config key doesn't exist or graphiti unavailable — default to enabled
+            # Config key doesn't exist or recall unavailable — default to enabled
             # (hooks are installed intentionally, so enabled by default)
             return True
 
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
-        # graphiti not in PATH or config error - default to enabled
+        # recall not in PATH or config error - default to enabled
         logger.debug("Failed to read hooks.enabled config, defaulting to True",
                     error=str(e))
         return True
 
 
 def set_hooks_enabled(enabled: bool) -> None:
-    """Set hooks.enabled in graphiti config.
+    """Set hooks.enabled in recall config.
 
     Args:
         enabled: True to enable hooks, False to disable
@@ -81,12 +81,12 @@ def set_hooks_enabled(enabled: bool) -> None:
                         error=result.stderr)
 
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
-        logger.error("Failed to execute graphiti config command",
+        logger.error("Failed to execute recall config command",
                     enabled=enabled, error=str(e))
 
 
 def _is_claude_hook_installed(project_path: Path) -> bool:
-    """Check if graphiti Claude Code hook is installed.
+    """Check if recall Claude Code hook is installed.
 
     Delegates to installer.is_claude_hook_installed — single source of truth.
 
@@ -94,7 +94,7 @@ def _is_claude_hook_installed(project_path: Path) -> bool:
         project_path: Path to project root
 
     Returns:
-        True if .claude/settings.json has graphiti Stop hook
+        True if .claude/settings.json has recall Stop hook
     """
     return is_claude_hook_installed(project_path)
 

@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 # SKILL.md content — embedded here so it can be installed without external files.
-# Written to ~/.claude/skills/graphiti/SKILL.md (user-scope: all projects).
+# Written to ~/.claude/skills/recall/SKILL.md (user-scope: all projects).
 SKILL_MD_CONTENT = """\
 ---
 name: recall

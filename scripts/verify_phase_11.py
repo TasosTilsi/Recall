@@ -9,12 +9,12 @@ Usage:
 
 Tests (no Ollama required — uses source inspection, FastAPI TestClient, direct DB writes):
 
-  1. UI-01: graphiti ui --help exits 0 and shows --global flag
+  1. UI-01: recall ui --help exits 0 and shows --global flag
   2. UI-01: Port conflict pre-flight exits non-zero with "already in use" message
   3. UI-01: Missing static dir exits non-zero with message about static files
   4. UI-02: GET /api/graph returns {nodes: [...], links: [...]} shape
   5. UI-02: GraphService read-only methods use kuzu.Database(read_only=True)
-  6. UI-03: graphiti ui --global flag accepted without parse error
+  6. UI-03: recall ui --global flag accepted without parse error
 
   Integration gap checks (detected by audit INT-01–INT-04):
   7. INT-01: GET /api/nodes/{uuid} returns real retention values (pinned, accessCount)
@@ -23,7 +23,7 @@ Tests (no Ollama required — uses source inspection, FastAPI TestClient, direct
             — catches list_entities_readonly() missing archive post-filter
   9. INT-03: Pinned nodes have pinned:true in GET /api/graph response
             — catches list_entities_readonly() hardcoded pinned:False
- 10. INT-04: graphiti config --format json exposes ui.port and ui.api_port keys
+ 10. INT-04: recall config --format json exposes ui.port and ui.api_port keys
 
 All tests use FastAPI TestClient with real RetentionManager + Kuzu (no mocks for
 retention or DB paths). Test entities are written directly to Kuzu and cleaned up
@@ -49,9 +49,9 @@ CYAN = "\033[0;36m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
 
-GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
+RECALL = str(ROOT / ".venv" / "bin" / "recall")
 LBDB_PATH = Path.home() / ".recall" / "global" / "recall.lbdb"
-RETENTION_DB = Path.home() / ".graphiti" / "retention.db"
+RETENTION_DB = Path.home() / ".recall" / "retention.db"
 GROUP_ID = ROOT.name  # "graphiti-knowledge-graph"
 
 MARKER_UUID = "verify-phase11-test-uuid-0001"
@@ -110,9 +110,9 @@ class Runner:
         return self.failed == 0
 
 
-def run_graphiti(*args, timeout: int = 30) -> subprocess.CompletedProcess:
+def run_recall(*args, timeout: int = 30) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [GRAPHITI, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout
+        [RECALL, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout
     )
 
 
@@ -190,11 +190,11 @@ def test_cli_help_and_flag(r: Runner) -> None:
     r.banner("Tests 1–3 (UI-01): CLI behaviour")
 
     # Test 1: --help
-    res = run_graphiti("ui", "--help")
+    res = run_recall("ui", "--help")
     if res.returncode == 0:
-        r.ok("graphiti ui --help exits 0")
+        r.ok("recall ui --help exits 0")
     else:
-        r.fail("graphiti ui --help exited non-zero", detail=res.stderr[:200])
+        r.fail("recall ui --help exited non-zero", detail=res.stderr[:200])
 
     if "--global" in res.stdout:
         r.ok("--global flag present in help output")
@@ -236,7 +236,7 @@ def test_api_shape_and_readonly(r: Runner) -> None:
 
     # Test 4: /api/graph shape
     if not _db_exists():
-        r.skip("GET /api/graph shape", reason="Kuzu DB not found — run graphiti add at least once")
+        r.skip("GET /api/graph shape", reason="Kuzu DB not found — run recall add at least once")
     else:
         try:
             client = _make_test_client()
@@ -435,17 +435,17 @@ def test_pinned_nodes_flagged_in_graph(r: Runner) -> None:
 # ── Test 10 (INT-04): config show/set exposes ui.port ─────────────────────────
 
 def test_config_exposes_ui_port(r: Runner) -> None:
-    r.banner("Test 10 (INT-04): graphiti config --format json exposes ui.port and ui.api_port")
+    r.banner("Test 10 (INT-04): recall config --format json exposes ui.port and ui.api_port")
 
-    res = run_graphiti("config", "--format", "json")
+    res = run_recall("config", "--format", "json")
     if res.returncode != 0:
-        r.fail("graphiti config --format json exited non-zero", detail=res.stderr[:200])
+        r.fail("recall config --format json exited non-zero", detail=res.stderr[:200])
         return
 
     try:
         data = json.loads(res.stdout)
     except json.JSONDecodeError:
-        r.fail("graphiti config --format json output is not valid JSON", detail=res.stdout[:200])
+        r.fail("recall config --format json output is not valid JSON", detail=res.stdout[:200])
         return
 
     if "ui" in data and "port" in data["ui"]:
@@ -468,10 +468,10 @@ def test_config_exposes_ui_port(r: Runner) -> None:
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 
 def check_prerequisites() -> None:
-    if not Path(GRAPHITI).exists():
-        print(f"{RED}ERROR: graphiti CLI not found at {GRAPHITI} — run: pip install -e .{RESET}")
+    if not Path(RECALL).exists():
+        print(f"{RED}ERROR: recall CLI not found at {RECALL} — run: pip install -e .{RESET}")
         sys.exit(1)
-    print(f"  {GREEN}OK{RESET} graphiti CLI available")
+    print(f"  {GREEN}OK{RESET} recall CLI available")
 
     try:
         import real_ladybug  # noqa: F401

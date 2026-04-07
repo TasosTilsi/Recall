@@ -12,10 +12,10 @@ Tests:
     3. CAPT-02: Dual prompts in summarizer (NARROW / BROAD) + capture_mode param
     4. CAPT-02: Dual prompts in indexer extraction (NARROW / BROAD) + capture_mode param
     5. CAPT-02: call-site wiring — git_worker, conversation, indexer pass capture_mode
-    6. CAPT-03: graphiti config --format json exposes capture.mode and retention.retention_days
-    7. CAPT-03: graphiti config --set capture.mode=decisions-and-patterns persists to toml
-    8. CAPT-03: graphiti config --get capture.mode returns current value (not blank)
-    9. CAPT-03: graphiti config --set capture.mode=invalid exits non-zero with "Valid values"
+    6. CAPT-03: recall config --format json exposes capture.mode and retention.retention_days
+    7. CAPT-03: recall config --set capture.mode=decisions-and-patterns persists to toml
+    8. CAPT-03: recall config --get capture.mode returns current value (not blank)
+    9. CAPT-03: recall config --set capture.mode=invalid exits non-zero with "Valid values"
 
 No Ollama required — all tests run against CLI subprocess or source code inspection.
 """
@@ -37,7 +37,7 @@ CYAN   = "\033[0;36m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
+RECALL = str(ROOT / ".venv" / "bin" / "recall")
 
 
 class Runner:
@@ -87,9 +87,9 @@ class Runner:
         return self.failed == 0
 
 
-def run_graphiti(*args, timeout: int = 30) -> subprocess.CompletedProcess:
+def run_recall(*args, timeout: int = 30) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [GRAPHITI, *args],
+        [RECALL, *args],
         capture_output=True, text=True, cwd=ROOT, timeout=timeout,
     )
 
@@ -97,10 +97,10 @@ def run_graphiti(*args, timeout: int = 30) -> subprocess.CompletedProcess:
 # ── Prerequisites ──────────────────────────────────────────────────────────────
 
 def check_prerequisites() -> None:
-    if not Path(GRAPHITI).exists():
-        print(f"{RED}ERROR: graphiti CLI not found at {GRAPHITI} — run: pip install -e .{RESET}")
+    if not Path(RECALL).exists():
+        print(f"{RED}ERROR: recall CLI not found at {RECALL} — run: pip install -e .{RESET}")
         sys.exit(1)
-    print(f"  {GREEN}OK{RESET} graphiti CLI available")
+    print(f"  {GREEN}OK{RESET} recall CLI available")
 
 
 # ── Test 1 (CAPT-01): LLMConfig.capture_mode field ───────────────────────────
@@ -263,19 +263,19 @@ def test_callsite_wiring(r: Runner) -> None:
 # ── Test 6 (CAPT-03): config display ─────────────────────────────────────────
 
 def test_config_display(r: Runner) -> None:
-    r.banner("Test 6 (CAPT-03): graphiti config --format json shows capture + retention")
+    r.banner("Test 6 (CAPT-03): recall config --format json shows capture + retention")
 
-    res = run_graphiti("config", "--format", "json")
+    res = run_recall("config", "--format", "json")
     output = res.stdout + res.stderr
 
     if res.returncode != 0:
-        r.fail("graphiti config --format json exited non-zero", detail=output[:300])
+        r.fail("recall config --format json exited non-zero", detail=output[:300])
         return
 
     try:
         data = json.loads(res.stdout)
     except json.JSONDecodeError:
-        r.fail("graphiti config --format json output is not valid JSON", detail=res.stdout[:200])
+        r.fail("recall config --format json output is not valid JSON", detail=res.stdout[:200])
         return
 
     if "capture" in data and "mode" in data["capture"]:
@@ -292,9 +292,9 @@ def test_config_display(r: Runner) -> None:
 # ── Test 7 (CAPT-03): config set persists ────────────────────────────────────
 
 def test_config_set(r: Runner, original_mode: str) -> None:
-    r.banner("Test 7 (CAPT-03): graphiti config --set capture.mode persists to toml")
+    r.banner("Test 7 (CAPT-03): recall config --set capture.mode persists to toml")
 
-    res = run_graphiti("config", "--set", "capture.mode=decisions-and-patterns")
+    res = run_recall("config", "--set", "capture.mode=decisions-and-patterns")
     output = res.stdout + res.stderr
 
     if res.returncode != 0:
@@ -308,7 +308,7 @@ def test_config_set(r: Runner, original_mode: str) -> None:
         r.fail("Success message missing 'decisions-and-patterns'", detail=output[:200])
 
     # Verify persistence via JSON
-    res2 = run_graphiti("config", "--format", "json")
+    res2 = run_recall("config", "--format", "json")
     try:
         data = json.loads(res2.stdout)
         actual = data.get("capture", {}).get("mode")
@@ -320,16 +320,16 @@ def test_config_set(r: Runner, original_mode: str) -> None:
         r.fail("Could not parse config JSON to verify persistence")
 
     # Always restore
-    run_graphiti("config", "--set", f"capture.mode={original_mode}")
+    run_recall("config", "--set", f"capture.mode={original_mode}")
     r.info(f"Restored capture.mode to '{original_mode}'")
 
 
 # ── Test 8 (CAPT-03): config get ─────────────────────────────────────────────
 
 def test_config_get(r: Runner) -> None:
-    r.banner("Test 8 (CAPT-03): graphiti config --get capture.mode returns value")
+    r.banner("Test 8 (CAPT-03): recall config --get capture.mode returns value")
 
-    res = run_graphiti("config", "--get", "capture.mode")
+    res = run_recall("config", "--get", "capture.mode")
     output = (res.stdout + res.stderr).strip()
 
     if res.returncode != 0:
@@ -345,9 +345,9 @@ def test_config_get(r: Runner) -> None:
 # ── Test 9 (CAPT-03): config set validation ───────────────────────────────────
 
 def test_config_set_validation(r: Runner) -> None:
-    r.banner("Test 9 (CAPT-03): graphiti config --set capture.mode=invalid rejected")
+    r.banner("Test 9 (CAPT-03): recall config --set capture.mode=invalid rejected")
 
-    res = run_graphiti("config", "--set", "capture.mode=invalid")
+    res = run_recall("config", "--set", "capture.mode=invalid")
     output = res.stdout + res.stderr
 
     if res.returncode != 0:
@@ -381,7 +381,7 @@ def main() -> None:
     check_prerequisites()
 
     # Read original capture mode so we can restore after test 7
-    res = run_graphiti("config", "--get", "capture.mode")
+    res = run_recall("config", "--get", "capture.mode")
     original_mode = (res.stdout + res.stderr).strip() or "decisions-only"
     r.info(f"Current capture.mode = '{original_mode}' (will be restored after test 7)")
 

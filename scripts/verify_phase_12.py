@@ -15,13 +15,13 @@ Tests:
   4. DB-01: LadybugDriver loads and connects to :memory: without error
   5. DB-01: LadybugDriver executes a Cypher write+read round-trip
   6. DB-01: GraphManager._make_driver() defaults to LadybugDriver (source inspection)
-  7. DB-01: graphiti health output contains Backend row with "ladybug (embedded)"
+  7. DB-01: recall health output contains Backend row with "ladybug (embedded)"
   8. DB-02: LLMConfig has backend_type and backend_uri fields
   9. DB-02: docker-compose.neo4j.yml exists in project root
  10. DB-02: GraphManager._make_driver() routes to Neo4jDriver when backend_type="neo4j" (source)
 
   Ollama-required (skipped with --skip-ollama):
- 11. DB-01: graphiti add + graphiti search work end-to-end with LadybugDB
+ 11. DB-01: recall add + recall search work end-to-end with LadybugDB
  12. DB-01: FTS deduplication — add same entity twice, confirm 1 node not 2
 """
 
@@ -41,7 +41,7 @@ CYAN   = "\033[0;36m"
 BOLD   = "\033[1m"
 RESET  = "\033[0m"
 
-GRAPHITI = str(ROOT / ".venv" / "bin" / "graphiti")
+RECALL = str(ROOT / ".venv" / "bin" / "recall")
 LBDB_PATH = Path.home() / ".recall" / "global" / "recall.lbdb"
 
 
@@ -91,9 +91,9 @@ class Runner:
         return self.failed == 0
 
 
-def run_graphiti(*args, timeout: int = 60) -> subprocess.CompletedProcess:
+def run_recall(*args, timeout: int = 60) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [GRAPHITI, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout
+        [RECALL, *args], capture_output=True, text=True, cwd=ROOT, timeout=timeout
     )
 
 
@@ -228,26 +228,26 @@ def test_graph_manager_default_driver(r: Runner) -> None:
         r.fail("_make_driver() default return is not LadybugDriver")
 
 
-# ── Test 7 (DB-01): graphiti health shows Backend row ─────────────────────────
+# ── Test 7 (DB-01): recall health shows Backend row ─────────────────────────
 
 def test_health_backend_row(r: Runner) -> None:
-    r.banner("Test 7 (DB-01): graphiti health contains Backend row")
+    r.banner("Test 7 (DB-01): recall health contains Backend row")
 
-    res = run_graphiti("health")
+    res = run_recall("health")
     if res.returncode != 0:
-        r.fail("graphiti health exited non-zero", detail=res.stderr[:300])
+        r.fail("recall health exited non-zero", detail=res.stderr[:300])
         return
 
     output = res.stdout + res.stderr
     if "Backend" in output:
-        r.ok("'Backend' row present in graphiti health output")
+        r.ok("'Backend' row present in recall health output")
     else:
-        r.fail("'Backend' row missing from graphiti health output")
+        r.fail("'Backend' row missing from recall health output")
 
     if "ladybug" in output.lower():
         r.ok("'ladybug' mentioned in Backend row")
     else:
-        r.fail("'ladybug' not found in graphiti health output")
+        r.fail("'ladybug' not found in recall health output")
 
 
 # ── Tests 8–10 (DB-02): BackendConfig and Neo4j opt-in ───────────────────────
@@ -303,7 +303,7 @@ def test_e2e_add_search(r: Runner, skip_ollama: bool) -> None:
     r.banner("Tests 11–12 (DB-01): End-to-end add+search + FTS dedup (Ollama required)")
 
     if skip_ollama:
-        r.skip("graphiti add + search (end-to-end)", reason="--skip-ollama flag set")
+        r.skip("recall add + search (end-to-end)", reason="--skip-ollama flag set")
         r.skip("FTS deduplication", reason="--skip-ollama flag set")
         return
 
@@ -312,7 +312,7 @@ def test_e2e_add_search(r: Runner, skip_ollama: bool) -> None:
     try:
         urllib.request.urlopen("http://localhost:11434/api/tags", timeout=3)
     except (urllib.error.URLError, OSError):
-        r.skip("graphiti add + search (end-to-end)", reason="Ollama not reachable at localhost:11434")
+        r.skip("recall add + search (end-to-end)", reason="Ollama not reachable at localhost:11434")
         r.skip("FTS deduplication", reason="Ollama not reachable at localhost:11434")
         return
 
@@ -320,37 +320,37 @@ def test_e2e_add_search(r: Runner, skip_ollama: bool) -> None:
     TEST_CONTENT = "LadybugDB is a community fork of KuzuDB used as the Phase 12 graph backend."
     TEST_QUERY = "LadybugDB"
 
-    add_res = run_graphiti("add", TEST_CONTENT, timeout=120)
+    add_res = run_recall("add", TEST_CONTENT, timeout=120)
     if add_res.returncode == 0:
-        r.ok("graphiti add succeeded with LadybugDB backend")
+        r.ok("recall add succeeded with LadybugDB backend")
     else:
-        r.fail("graphiti add failed", detail=(add_res.stderr or add_res.stdout)[:300])
-        r.skip("FTS deduplication", reason="graphiti add failed — cannot test dedup")
+        r.fail("recall add failed", detail=(add_res.stderr or add_res.stdout)[:300])
+        r.skip("FTS deduplication", reason="recall add failed — cannot test dedup")
         return
 
-    search_res = run_graphiti("search", TEST_QUERY, timeout=60)
+    search_res = run_recall("search", TEST_QUERY, timeout=60)
     if search_res.returncode == 0:
-        r.ok("graphiti search succeeded with LadybugDB backend")
+        r.ok("recall search succeeded with LadybugDB backend")
         if "LadybugDB" in search_res.stdout or "ladybug" in search_res.stdout.lower():
             r.ok("Search results reference the added content")
         else:
             r.skip("Search results don't mention LadybugDB (may be ranked below threshold)")
     else:
-        r.fail("graphiti search failed", detail=(search_res.stderr or search_res.stdout)[:300])
+        r.fail("recall search failed", detail=(search_res.stderr or search_res.stdout)[:300])
 
     # Test 12: FTS deduplication — add same fact twice, expect no duplicate entity
     DEDUP_CONTENT = "Claude Code is an AI coding tool made by Anthropic for software development."
-    run_graphiti("add", DEDUP_CONTENT, timeout=120)
-    add2_res = run_graphiti("add", DEDUP_CONTENT, timeout=120)
+    run_recall("add", DEDUP_CONTENT, timeout=120)
+    add2_res = run_recall("add", DEDUP_CONTENT, timeout=120)
 
     if add2_res.returncode != 0:
-        r.fail("Second graphiti add (dedup test) failed", detail=(add2_res.stderr or add2_res.stdout)[:200])
+        r.fail("Second recall add (dedup test) failed", detail=(add2_res.stderr or add2_res.stdout)[:200])
         return
 
     # Count Entity nodes via list command
-    list_res = run_graphiti("list", "entities", timeout=30)
+    list_res = run_recall("list", "entities", timeout=30)
     if list_res.returncode != 0:
-        r.skip("FTS dedup entity count", reason="graphiti list entities failed")
+        r.skip("FTS dedup entity count", reason="recall list entities failed")
         return
 
     # Count occurrences of "Claude Code" in output — should appear once, not twice
@@ -369,10 +369,10 @@ def test_e2e_add_search(r: Runner, skip_ollama: bool) -> None:
 # ── Prerequisites ──────────────────────────────────────────────────────────────
 
 def check_prerequisites() -> None:
-    if not Path(GRAPHITI).exists():
-        print(f"{RED}ERROR: graphiti CLI not found at {GRAPHITI} — run: pip install -e .{RESET}")
+    if not Path(RECALL).exists():
+        print(f"{RED}ERROR: recall CLI not found at {RECALL} — run: pip install -e .{RESET}")
         sys.exit(1)
-    print(f"  {GREEN}OK{RESET} graphiti CLI available")
+    print(f"  {GREEN}OK{RESET} recall CLI available")
 
     try:
         import real_ladybug  # noqa: F401
