@@ -257,11 +257,11 @@ Plans:
 **Goal:** All remaining tech debt items from the v2.0 milestone audit are resolved — verify scripts pass, stale product-name strings removed, Graph.tsx detail panel wired, UI-03 verification statuses updated to passed.
 **Requirements:** UI-03 (close verification gap)
 **Gap Closure:** Addresses 5 tech debt items from v2.0-MILESTONE-AUDIT.md; required before `/gsd:complete-milestone`
-**Plans:** 0/2 plans complete
+**Plans:** 1/2 plans complete
 **Depends on**: Phase 23 (Nyquist compliance complete)
 
 Plans:
-- [ ] 24-01-PLAN.md — Fix stale `graphiti` binary refs in verify_phase_10.py, 11.py, 12.py, 13.py; fix install.py SKILL.md path comment; fix manager.py stale docstrings
+- [x] 24-01-PLAN.md — Fix stale `graphiti` binary refs in verify_phase_10.py, 11.py, 12.py, 13.py; fix install.py SKILL.md path comment; fix manager.py stale docstrings
 - [ ] 24-02-PLAN.md — Wire Graph.tsx node-click → DetailPanel; update 19/22-VERIFICATION.md to `passed`; update v2.0-MILESTONE-AUDIT.md to `passed`
 
 ---
@@ -353,4 +353,4 @@ Plans:
 | 21. Knowledge Quality Uplift | 0/3 | 3/3 | Complete    | 2026-04-03 |
 | 22. Complete UI-03 — EntityPanel Retention + P19 Verification | v2.0 | 3/3 | Complete    | 2026-04-03 |
 | 23. Nyquist Compliance Sweep | v2.0 | 3/3 | Complete    | 2026-04-05 |
-| 24. v2.0 Audit Gap Closure | v2.0 | 0/2 | Planned | — |
+| 24. v2.0 Audit Gap Closure | v2.0 | 1/2 | In Progress | — |
