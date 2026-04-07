@@ -4,6 +4,7 @@ import { fetchGraph } from '@/api/client';
 import type { GraphData } from '@/types/api';
 import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { GraphLegend } from '@/components/graph/GraphLegend';
+import { DetailPanel, type PanelItem } from '@/components/panels/DetailPanel';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +18,7 @@ export default function GraphView() {
   const [error, setError] = useState<string | null>(null);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [colorMode, setColorMode] = useState<'type' | 'scope'>('type');
-  const [selectedNode, setSelectedNode] = useState<{ id: string; label: string; type: string } | null>(null);
+  const [selectedNode, setSelectedNode] = useState<PanelItem | null>(null);
   const rendererRef = useRef<Sigma | null>(null);
 
   useEffect(() => {
@@ -44,15 +45,12 @@ export default function GraphView() {
   }, [scope, setLastUpdated]);
 
   const handleNodeClick = useCallback((nodeData: { id: string; label: string; type: string }) => {
-    setSelectedNode(nodeData);
+    setSelectedNode({ itemType: 'entity', itemId: nodeData.id, label: nodeData.label });
   }, []);
 
   const handleRendererReady = useCallback((r: Sigma) => {
     rendererRef.current = r;
   }, []);
-
-  // Suppress unused variable warning — selectedNode is stored for future detail panel use
-  void selectedNode;
 
   if (loading) {
     return (
@@ -99,6 +97,9 @@ export default function GraphView() {
           {data?.nodes.length ?? 0} nodes · {data?.edges.length ?? 0} edges
         </span>
       </div>
+
+      {/* Detail panel — slides in from right when a node is clicked */}
+      <DetailPanel item={selectedNode} onClose={() => setSelectedNode(null)} />
 
       {/* Graph canvas — fills remaining height */}
       <div className="flex-1 min-h-0 relative">
