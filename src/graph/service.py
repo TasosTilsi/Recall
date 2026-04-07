@@ -11,6 +11,7 @@ It handles:
 
 import asyncio
 import json
+import re
 import structlog
 import os
 from collections import defaultdict
@@ -222,7 +223,8 @@ class GraphService:
         if scope == GraphScope.GLOBAL:
             return "global"
         else:
-            return project_root.name if project_root else "unknown_project"
+            name = project_root.name if project_root else "unknown_project"
+            return re.sub(r"[^a-zA-Z0-9_-]", "_", name)
 
     def _resolve_db_path(self, scope: GraphScope, project_root: Optional[Path]) -> Optional[Path]:
         """Resolve the LadybugDB database path for a given scope without calling _get_recall_instance().

@@ -44,7 +44,10 @@ logger = structlog.get_logger()
 def _get_recall_instance_for_project(project_root: Path) -> tuple[Any, str]:
     """Get a Recall instance and group_id for project scope.
 
-    Follows the same pattern as Phase 6 code (GraphService._get_recall_instance).
+    When the configured AI CLI (default: claude) is available, creates a
+    dedicated Graphiti instance using ClaudeCliLLMClient so that all
+    add_episode() calls route through claude -p instead of Ollama.
+    Falls back to the shared GraphService instance (Ollama) otherwise.
 
     Args:
         project_root: Root directory of the project
@@ -53,10 +56,31 @@ def _get_recall_instance_for_project(project_root: Path) -> tuple[Any, str]:
         Tuple of (instance, group_id)
     """
     from src.graph.service import get_service
+    from src.llm import make_indexer_llm_client
+    from src.llm.claude_cli_client import ai_cli_available
+    from src.llm.config import load_config as _load_config
+    from src.graph.adapters import make_embedder, NoOpCrossEncoder
+    from src.storage import GraphManager
+    from graphiti_core import Graphiti
 
     service = get_service()
-    graphiti = asyncio.run(service._get_recall_instance(GraphScope.PROJECT, project_root))
     group_id = service._get_group_id(GraphScope.PROJECT, project_root)
+
+    cfg = _load_config()
+    if ai_cli_available(cfg.indexer_cli):
+        driver = GraphManager().get_driver(GraphScope.PROJECT, project_root)
+        llm_client = make_indexer_llm_client()
+        embedder = make_embedder(cfg)
+        graphiti = Graphiti(
+            graph_driver=driver,
+            llm_client=llm_client,
+            embedder=embedder,
+            cross_encoder=NoOpCrossEncoder(),
+        )
+        asyncio.run(graphiti.build_indices_and_constraints())
+    else:
+        graphiti = asyncio.run(service._get_recall_instance(GraphScope.PROJECT, project_root))
+
     return graphiti, group_id
 
 

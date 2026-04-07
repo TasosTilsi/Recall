@@ -77,7 +77,7 @@ Diff:
 
 
 async def _summarize_diff(diff_content: str, instance: Any) -> str:
-    """Summarize a large diff using the project LLM client.
+    """Summarize a large diff using claude -p if available, else Ollama.
 
     Falls back to simple truncation if the LLM call fails.
 
@@ -88,18 +88,21 @@ async def _summarize_diff(diff_content: str, instance: Any) -> str:
     Returns:
         Summarized diff string (≤ DIFF_CONTENT_CHAR_LIMIT chars on failure)
     """
+    prompt = DIFF_SUMMARIZATION_PROMPT.format(diff_content=diff_content[:8000])
     try:
-        from src.llm import chat as ollama_chat
-
-        prompt = DIFF_SUMMARIZATION_PROMPT.format(
-            diff_content=diff_content[:8000]
-        )
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: ollama_chat(messages=[{"role": "user", "content": prompt}])
-        )
-        summary = response["message"]["content"]
+        from src.llm.claude_cli_client import ai_cli_available, _claude_p
+        from src.llm.config import load_config as _load_cfg
+        cfg = _load_cfg()
+        if ai_cli_available(cfg.indexer_cli):
+            summary = await _claude_p(prompt, cli=cfg.indexer_cli, model=cfg.indexer_model)
+        else:
+            from src.llm import chat as ollama_chat
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: ollama_chat(messages=[{"role": "user", "content": prompt}])
+            )
+            summary = response["message"]["content"]
         logger.debug("diff_summarized", original_lines=diff_content.count('\n'))
         return summary
     except Exception as e:
