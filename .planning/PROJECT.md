@@ -8,7 +8,23 @@ A local developer memory system running as `recall` (alias `rc`) — knowledge g
 
 **Context continuity without repetition** — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
 
-## Current State
+## Current Milestone: v3.0 Engineering Knowledge Graph
+
+**Goal:** Rebuild recall as a pure git history knowledge graph — strip session-capture complexity (hooks, queue, retention), replace graphiti-core + LadybugDB with clean SQLite + backlinks, single LLM provider (no fallbacks), two install paths (CLI + Claude plugin), two Claude skills.
+
+**Target features:**
+- SQLite knowledge graph: commits, entities, backlinks, FTS5 — owns its own schema, zero opaque deps
+- Deep git extraction: decisions + rationale, bug fixes + root cause, patterns, file co-change, "why this burden exists" context
+- Bidirectional backlinks: file↔commit, decision↔commit, bug↔commit — traversable graph
+- Single LLM provider config: claude | ollama | openai — no fallback chains
+- Incremental indexing by default (`recall sync`); full rebuild on demand (`recall init`)
+- CLI install: `pipx install recall-kg`
+- Claude plugin install: registers skills + MCP server in Claude settings
+- Two skills: `/recall-setup` (configure + first init) and `/recall-index` (trigger sync/init)
+- Read-only MCP server: search, get_entity, get_backlinks, decisions, bugs, patterns
+- Graph UI adapted to new SQLite schema (shadcn/Sigma.js stays)
+
+## Previous State
 
 **v2.0 Shipped 2026-04-07** — 13 phases, 48 plans. All 18 requirements delivered.
 
@@ -46,9 +62,37 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 
 ### Active
 
-<!-- Next milestone targets — defined during /gsd:new-milestone -->
+<!-- v3.0 targets — defined 2026-04-14 -->
 
-(none yet — run `/gsd:new-milestone` to define v3.0 targets)
+- ARCH-01: Remove hooks, queue, retention, global graph, graphiti-core, LadybugDB entirely
+- ARCH-02: Restructure codebase to new layout (db/, extractor/, indexer/, cli/, mcp_server/, ui_server/, config.py)
+- KG-01: SQLite schema — commits, entities, backlinks, fts_index tables
+- KG-02: Entity types: decision, bug_fix, pattern, file, concept, tech_debt
+- KG-03: Bidirectional backlinks with relationship label + context
+- KG-04: FTS5 virtual table for fast keyword search
+- KG-05: Optional embeddings (sqlite-vec) for semantic search
+- IDX-01: `recall init` — full index, wipes and rebuilds from entire git history
+- IDX-02: `recall sync` — incremental, processes commits since last_indexed_sha; auto-inits if no DB
+- IDX-03: Batch extraction: N commits per LLM call (default 10)
+- IDX-04: Extract per commit: decisions, bug fixes, patterns, file changes, tech debt/"why this burden"
+- IDX-05: Cross-commit entity resolution via name normalization
+- LLM-01: Single provider — claude | ollama | openai — no fallbacks
+- LLM-02: `[llm]` section in config.toml: provider, model, base_url, api_key
+- LLM-03: Optional `[embeddings]` section for semantic search
+- LLM-04: `recall health` verifies provider reachability
+- CLI-01: 6-command surface: init, sync, search, health, config, ui
+- CLI-02: `recall search` supports keyword (FTS) + optional --semantic flag
+- CLI-03: Search output shows entity type, context, related entities via backlinks
+- MCP-01: Read-only MCP tools: search_knowledge, get_entity, get_backlinks, get_decisions, get_bugs, get_patterns
+- MCP-02: `recall mcp serve` stdio transport (stdout-clean)
+- UI-01: Adapt shadcn/Sigma.js UI to SQLite schema
+- UI-02: Graph view: entities as nodes, backlinks as edges
+- UI-03: Filter by entity type
+- UI-04: Entity detail panel with backlinks + commit context
+- INST-01: `pipx install recall-kg` installs `recall` CLI
+- INST-02: Claude plugin install: registers skills + MCP server in ~/.claude/settings.json
+- SKILL-01: `/recall-setup` skill — guides config, first init
+- SKILL-02: `/recall-index` skill — triggers sync (or init if no DB)
 
 ### Out of Scope
 
@@ -120,4 +164,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-07 after v2.0 milestone — 13 phases (12–24), 48 plans. KuzuDB → LadybugDB, multi-provider LLM, `recall` CLI, 4-hook memory system, shadcn/ui graph UI, fast indexing via `claude -p`. All 18 requirements delivered.*
+*Last updated: 2026-04-14 — v3.0 milestone started. Major pivot: strip session-capture (hooks/queue/retention), replace graphiti-core + LadybugDB with SQLite + backlinks, single LLM provider, two install paths (CLI + Claude plugin), two skills.*

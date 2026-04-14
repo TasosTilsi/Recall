@@ -1,47 +1,67 @@
 # recall
 
-> **Never repeat context again.** A local developer memory system that automatically captures tool call context and injects relevant knowledge before every Claude Code prompt — entirely local, never blocking your workflow.
+> **Your project's engineering knowledge graph.** Index your entire git history into a searchable, interconnected knowledge graph — every decision, bug fix, pattern, and architectural change, linked by backlinks and queryable in seconds.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![LadybugDB](https://img.shields.io/badge/Database-LadybugDB-green.svg)](https://github.com/bwJoint/ladybugdb)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-blue.svg)](https://sqlite.org/)
 
 ---
 
-## The Problem
+## What It Does
 
-You're working in Claude Code. You explain your tech stack, coding style, and project architecture. Next session? You explain it again. And again. Context is lost between sessions.
+recall indexes your git history and builds a knowledge graph you can query:
 
-**recall solves this:**
-- Automatically captures decisions and architecture from every session
-- Injects relevant past knowledge before every prompt via Claude Code hooks
-- Keeps sensitive data (secrets, PII) completely out of the graph
-- Project knowledge stays in your git repo — shareable with your team
-- Runs locally, never blocks your workflow
+- **"What decisions were made about the auth module?"**
+- **"Show me all bug fixes related to the queue worker."**
+- **"What patterns were introduced in Q1?"**
+- **"Which files always change together?"**
+
+Every commit is analyzed by an LLM and broken into typed entities (decisions, bug fixes, patterns, files, tech debt) with bidirectional backlinks connecting them across time.
+
+---
+
+## Install
+
+### As a CLI tool
+
+```bash
+pipx install recall-kg
+```
+
+### As a Claude plugin
+
+```bash
+claude plugin install https://github.com/TasosTilsi/recall-kg
+```
+
+The plugin registers two slash commands and a read-only MCP server into your Claude settings automatically.
 
 ---
 
 ## Quick Start
 
-### Installation
-
 ```bash
-git clone git@github.com:TasosTilsi/Graphiti-Knowledge-Graph.git
-cd Graphiti-Knowledge-Graph
+# Configure your LLM provider
+recall config init
 
-python3.12 -m venv .venv
-source .venv/bin/activate
+# Index your repo (full, first time)
+recall init
 
-pip install -e ".[dev]"
+# Search the knowledge graph
+recall search "why was the auth middleware changed"
+recall search "database migration decisions"
+
+# Open the visual graph explorer
+recall ui
 ```
 
-### One-command setup
+Or from inside Claude, after installing the plugin:
 
-```bash
-recall init          # installs hooks, creates config, indexes git history
 ```
-
-This installs 5 Claude Code hooks into `~/.claude/settings.json` and sets up your local knowledge graph at `~/.recall/global/` and `.recall/` in your project.
+/recall-setup    → guided config + first index
+/recall-index    → sync new commits into the graph
+```
 
 ---
 
@@ -49,107 +69,99 @@ This installs 5 Claude Code hooks into `~/.claude/settings.json` and sets up you
 
 | Command | Description |
 |---------|-------------|
-| `recall init` | One-command setup: install hooks, create config, index git history |
-| `recall search <query>` | Natural language search (auto-syncs git before results) |
-| `recall list` | List stored knowledge (`--stale`, `--compact`, `--queue` flags) |
-| `recall delete <id>` | Remove an entry from the graph |
-| `recall pin <id>` | Pin an entry (exempt from retention cleanup) |
-| `recall unpin <id>` | Unpin an entry |
-| `recall health` | System health check: backend, LLM provider, hooks status |
-| `recall config` | View and edit configuration |
-| `recall ui` | Open the graph browser UI at localhost:8765 |
-| `recall note <text>` | Manually add a memory entry |
+| `recall init` | Full index — wipes and rebuilds the graph from entire git history |
+| `recall sync` | Incremental — indexes only new commits since last sync (auto-inits if no DB) |
+| `recall search <query>` | Keyword search (FTS); add `--semantic` for vector similarity |
+| `recall health` | Verify LLM provider + database status |
+| `recall config` | View and edit `~/.recall/config.toml` |
+| `recall ui` | Open graph explorer at `http://localhost:8765` |
 
 Short alias: `rc` works everywhere `recall` does.
 
 ---
 
-## How It Works
+## Knowledge Graph
 
-Four Claude Code hook scripts run automatically during your sessions:
+Each commit is extracted into typed entities connected by backlinks:
 
-| Hook | Trigger | Action |
-|------|---------|--------|
-| `session_start.py` | `SessionStart` | Writes session UUID, runs incremental git index |
-| `inject_context.py` | `UserPromptSubmit` | Searches graph, injects `<session_context>` block (≤4000 tokens) |
-| `capture_entry.py` | `PostToolUse` | Appends tool call data to queue (fire-and-forget, <1s) |
-| `session_stop.py` | `Stop` / `PreCompact` | Drains queue, generates session summary episode |
+| Entity Type | What it captures |
+|-------------|-----------------|
+| `decision` | Architectural choices, "why we chose X over Y", trade-offs |
+| `bug_fix` | What broke, root cause, how it was fixed, symptom |
+| `pattern` | Conventions introduced or changed ("all hooks use structlog") |
+| `file` | File-level change history and co-change relationships |
+| `concept` | Domain concepts, abstractions, named components |
+| `tech_debt` | Known burdens, deferred work, "why this exists" context |
 
-No manual steps. Just work — `recall` remembers.
+**Backlinks** connect everything bidirectionally — a decision links to every commit that implemented it; a file links to every bug fix that touched it.
+
+---
+
+## Configuration
+
+Config lives at `~/.recall/config.toml`:
+
+```toml
+# Use Claude (via claude-code subscription — no API key needed)
+[llm]
+provider = "claude"
+model = "claude-sonnet-4-6"
+
+# Or Ollama (local)
+# [llm]
+# provider = "ollama"
+# base_url = "http://localhost:11434"
+# model = "gemma2:9b"
+
+# Or OpenAI / OpenRouter / any compatible endpoint
+# [llm]
+# provider = "openai"
+# base_url = "https://openrouter.ai/api/v1"
+# api_key = "sk-..."
+# model = "anthropic/claude-3.5-sonnet"
+
+# Optional: enable semantic (vector) search
+# [embeddings]
+# provider = "ollama"
+# base_url = "http://localhost:11434"
+# model = "nomic-embed-text"
+
+[indexer]
+batch_size = 10        # commits per LLM extraction call
+```
+
+One provider. No fallbacks. Clear failure when misconfigured.
 
 ---
 
 ## Architecture
 
 ```
-~/.recall/global/          # Global preferences (cross-project)
-.recall/                   # Project knowledge (git-safe)
-~/.recall/llm.toml         # LLM provider config
-
 src/
-├── cli/                   # Typer CLI (recall/rc entrypoints)
-│   └── commands/          # init, search, list, delete, pin, unpin,
-│                          # health, config, ui, note
-├── hooks/                 # Claude Code hook scripts
-│   ├── session_start.py   # SessionStart: UUID + git sync
-│   ├── inject_context.py  # UserPromptSubmit: context injection
-│   ├── capture_entry.py   # PostToolUse: queue append
-│   └── session_stop.py    # Stop/PreCompact: drain + summarize
-├── graph/
-│   ├── service.py         # GraphService — all graph operations
-│   └── adapters.py        # LLM client + embedder factories
-├── storage/
-│   ├── graph_manager.py   # Backend routing (LadybugDB / Neo4j)
-│   └── ladybug_driver.py  # LadybugDB driver
-├── llm/
-│   ├── config.py          # LLMConfig dataclass, load_config()
-│   └── provider.py        # OpenAI-compatible provider client
-├── queue/
-│   └── worker.py          # BackgroundWorker for async capture
-└── ui_server/             # FastAPI server + Vite frontend
+├── db/
+│   ├── schema.py       # SQLite table definitions (commits, entities, backlinks, fts_index)
+│   ├── queries.py      # Named SQL queries
+│   └── backlinks.py    # Bidirectional traversal helpers
+├── extractor/
+│   ├── git.py          # GitPython: walk commits, extract diffs
+│   ├── llm.py          # Single provider client (claude / ollama / openai)
+│   └── parser.py       # LLM output → structured entities + backlinks
+├── indexer/
+│   └── indexer.py      # init (full rebuild) + sync (incremental)
+├── cli/
+│   └── commands/       # init, sync, search, health, config, ui
+├── mcp_server/         # Read-only MCP tools (stdio, stderr-only logging)
+├── ui_server/          # FastAPI + pre-built React frontend
+└── config.py           # load_config() from ~/.recall/config.toml
 
-ui/                        # Vite + React + Sigma.js + shadcn/ui
-└── out/                   # Pre-built frontend (committed)
+ui/                     # Vite + React + Sigma.js + shadcn/ui
+└── out/                # Pre-built static bundle (committed)
+
+.claude/
+└── skills/
+    ├── recall-setup/   # /recall-setup Claude skill
+    └── recall-index/   # /recall-index Claude skill
 ```
-
----
-
-## Configuration
-
-Config lives at `~/.recall/llm.toml`:
-
-```toml
-# Local Ollama (default)
-[local]
-models = ["gemma2:9b"]
-
-[embeddings]
-models = ["nomic-embed-text"]
-
-# Optional: switch to any OpenAI-compatible provider
-# [llm]
-# primary_url = "https://api.openai.com/v1"
-# primary_api_key = "sk-..."
-# primary_models = ["gpt-4o-mini"]
-# embed_url = "http://localhost:11434"
-# embed_models = ["nomic-embed-text"]
-
-# Optional: Neo4j backend (default is embedded LadybugDB)
-# [backend]
-# type = "neo4j"
-# uri = "bolt://localhost:7687"
-```
-
----
-
-## Storage Backends
-
-| Backend | Default | Use case |
-|---------|---------|----------|
-| **LadybugDB** | Yes | Embedded, no Docker, zero config |
-| **Neo4j** | No (opt-in) | Teams, power users, Docker Compose |
-
-For Neo4j: `docker compose -f docker-compose.neo4j.yml up -d`
 
 ---
 
@@ -159,65 +171,43 @@ For Neo4j: `docker compose -f docker-compose.neo4j.yml up -d`
 recall ui
 ```
 
-Opens at `http://localhost:8765`. Features:
-- **Dashboard** — entity stats, activity heatmap, retention breakdown
-- **Graph** — interactive Sigma.js WebGL view with FA2 physics
-- **Entities / Relations / Episodes** — sortable tables with detail panel
-- **Search** — full-text search across all graph data
-- Scope toggle (project / global), retention filters (pinned / stale / archived)
+Opens at `http://localhost:8765`:
+
+- **Graph** — Sigma.js WebGL view; nodes = entities, edges = backlinks; colored by type
+- **Search** — full-text search with type filter
+- **Detail panel** — click any node to see content, source commit, and all backlinks
+- **Filter** — narrow to decisions / bug_fixes / patterns / files / tech_debt
 
 ---
 
-## Security
+## MCP Server
 
-All content is sanitized before storage:
-- Pattern detection for API keys, tokens, credentials
-- Entropy analysis for high-entropy strings
-- `detect-secrets` integration for industry-standard scanning
+When installed as a Claude plugin, the read-only MCP server is registered automatically. Tools available to Claude:
 
-What gets captured: decisions, architecture patterns, technology choices, coding conventions.
-
-What gets filtered: API keys, database passwords, private keys, `.env` contents, PII.
-
----
-
-## Testing
-
-```bash
-pytest tests/                    # full suite
-pytest tests/ -m "not integration"  # skip Ollama-dependent tests
-pytest tests/test_cli_rename.py  # CLI surface tests
-```
-
----
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `graphiti-core[neo4j]==0.28.1` | Knowledge graph engine |
-| `real-ladybug==0.15.1` | Embedded graph database |
-| `ollama==0.6.1` | Local LLM + embeddings client |
-| `sentence-transformers` | Semantic embeddings |
-| `typer` | CLI framework |
-| `fastapi` + `uvicorn` | UI server |
-| `detect-secrets` | Secret scanning |
-| `persist-queue` | Async capture queue |
-| `structlog` | Structured logging |
-| `mcp[cli]` | MCP server protocol |
-
-Optional: `pip install -e ".[reranking]"` enables BGE cross-encoder reranking (heavier sentence-transformers usage).
+| Tool | Description |
+|------|-------------|
+| `search_knowledge` | FTS search across all entities |
+| `get_entity` | Get entity by id or name |
+| `get_backlinks` | Traverse backlinks from an entity |
+| `get_decisions` | List all decision entities |
+| `get_bugs` | List all bug_fix entities |
+| `get_patterns` | List all pattern entities |
 
 ---
 
 ## Development
 
 ```bash
+git clone https://github.com/TasosTilsi/recall-kg
+cd recall-kg
+
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
 
-recall health               # verify everything is wired
-recall search "test query"  # end-to-end smoke test
-pytest tests/ -x -q         # run test suite
+recall health          # verify provider + DB
+recall search "test"   # smoke test
+pytest tests/ -x -q    # run test suite
 ```
 
 ---
@@ -230,7 +220,7 @@ MIT License — see LICENSE file for details.
 
 ## Resources
 
-- **graphiti-core**: [github.com/getzep/graphiti](https://github.com/getzep/graphiti)
-- **LadybugDB**: embedded graph backend
+- **SQLite FTS5**: [sqlite.org/fts5](https://sqlite.org/fts5.html)
+- **sqlite-vec**: [github.com/asg017/sqlite-vec](https://github.com/asg017/sqlite-vec)
 - **Ollama**: [ollama.ai](https://ollama.ai/)
 - **Claude Code**: [claude.com/claude-code](https://claude.com/claude-code)
