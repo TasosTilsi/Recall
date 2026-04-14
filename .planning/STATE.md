@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Engineering Knowledge Graph
-status: defining_requirements
-stopped_at: v3.0 milestone started 2026-04-14
+status: roadmap_defined
+stopped_at: Phase 25 (not started) — roadmap defined 2026-04-14
 last_updated: "2026-04-14T00:00:00.000Z"
 last_activity: 2026-04-14
 progress:
-  total_phases: 0
+  total_phases: 9
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 ## Current Position
 
-Phase: Not started (roadmap being created)
+Phase: 25 (not started)
 Plan: —
-Status: Defining roadmap
-Last activity: 2026-04-14 — Milestone v3.0 started
+Status: Roadmap defined
+Last activity: 2026-04-14 — Roadmap created (Phases 25–33)
 
 Progress: [__________] 0% (v3.0 not yet started)
 

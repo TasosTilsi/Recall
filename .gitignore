@@ -37,6 +37,7 @@ Thumbs.db
 *.sqlite
 
 # Project-local knowledge graphs and GSD planning
+graphify-out/
 .graphiti/
 .recall/
 .planning/
