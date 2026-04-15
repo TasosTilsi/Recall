@@ -102,7 +102,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 
 ### Phase 27: LLM Provider
 **Goal**: The LLM client reads a single provider from config, sends requests, and reports health — no fallback logic exists anywhere in the codebase
-**Depends on**: Phase 26
+**Depends on**: Phase 25
 **Requirements**: LLM-01, LLM-02, LLM-03, LLM-04
 **Success Criteria** (what must be TRUE):
   1. Setting `provider = "claude"`, `"ollama"`, or `"openai"` in `~/.recall/config.toml` routes all LLM calls through that provider only; switching provider requires only a config edit
@@ -151,7 +151,9 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   2. Nodes in the graph view are colored by entity type; all six types appear in the legend with distinct colors
   3. Selecting one or more types in the entity type filter hides all nodes of unselected types from the graph view
   4. Clicking any node opens a detail panel showing: name, type, tags, source commit sha, content, and all backlinks with relationship label and context snippet
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 31-01-PLAN.md — Rewrite FastAPI backend routes for v3.0 SQLite API
+- [ ] 31-02-PLAN.md — Update frontend types, colors, graph filter, and detail panel
 **UI hint**: yes
 
 ### Phase 32: Claude Plugin + Skills
