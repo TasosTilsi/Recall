@@ -86,7 +86,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   2. `pyproject.toml` has no `graphiti-core` or `real-ladybug` entries; `pip install -e .` succeeds cleanly
   3. Directory tree shows exactly: `src/db/`, `src/extractor/`, `src/indexer/`, `src/cli/`, `src/mcp_server/`, `src/ui_server/`, `src/config.py` — no other legacy top-level modules
   4. `recall --help` loads without errors (even if subcommands are stubs)
-**Plans**: TBD
+**Plans**: 2 (01: delete legacy + skeletons [DONE], 02: gut CLI + MCP server stubs)
 
 ### Phase 26: DB Schema
 **Goal**: The SQLite database schema is fully defined and tested — all tables, indexes, constraints, and the optional embeddings table are in place and accept real data
@@ -190,7 +190,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 25. Teardown | 0/? | Not started | - |
+| 25. Teardown | 1/2 | In progress | Plan 01 complete: legacy modules deleted, skeletons created |
 | 26. DB Schema | 0/? | Not started | - |
 | 27. LLM Provider | 0/? | Not started | - |
 | 28. Git Extractor + Indexer | 0/? | Not started | - |
