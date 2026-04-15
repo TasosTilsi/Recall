@@ -36,8 +36,21 @@ async def _await_if_coro(result):
 
 
 def _resolve_request_scope(request: Request, scope_param: str):
-    """Resolve scope from app state + query param. Returns (use_global, graph_scope, proj_root)."""
-    from src.cli.utils import resolve_scope
+    """Resolve scope from app state + query param. Returns (use_global, graph_scope, proj_root).
+
+    src.cli.utils will be rewired in Phase 30. Until then, falls back to a safe default scope.
+    """
+    import importlib
+
+    def _default_resolve_scope(global_flag=False, project_flag=True):
+        return ("default", None)
+
+    try:
+        _cli_utils = importlib.import_module("src.cli.utils")
+        resolve_scope = _cli_utils.resolve_scope
+    except (ImportError, AttributeError):
+        resolve_scope = _default_resolve_scope
+
     app_scope = getattr(request.app.state, "scope", scope_param)
     use_global = (app_scope == "global") or (scope_param == "global")
     graph_scope, proj_root = resolve_scope(global_flag=use_global, project_flag=not use_global)
@@ -178,9 +191,13 @@ async def get_detail(item_type: str, item_id: str, request: Request, scope: str 
         if entity is None:
             raise HTTPException(status_code=404, detail=f"Entity {item_id} not found")
         # Enrich with retention metadata
+        # NOTE: src.retention and src.llm removed in Phase 25 — loaded dynamically with fallback
         try:
-            from src.retention import get_retention_manager
-            from src.llm.config import load_config
+            import importlib as _imp
+            _retention_mod = _imp.import_module("src.retention")
+            get_retention_manager = _retention_mod.get_retention_manager
+            _llm_cfg_mod = _imp.import_module("src.llm.config")
+            load_config = _llm_cfg_mod.load_config
             from datetime import datetime, timezone as _tz
             retention = get_retention_manager()
             scope_key = service._get_group_id(graph_scope, proj_root)
