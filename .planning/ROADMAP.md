@@ -64,7 +64,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 <summary>v3.0 Engineering Knowledge Graph (Phases 25–33) — IN PROGRESS</summary>
 
 - [ ] **Phase 25: Teardown** - Remove all legacy components and restructure to the new module layout
-- [ ] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table
+- [x] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table (1/1 plans complete)
 - [ ] **Phase 27: LLM Provider** - Single-provider LLM client with claude/ollama/openai support and health reporting
 - [ ] **Phase 28: Git Extractor + Indexer** - Batch LLM extraction from git history with init and sync modes
 - [ ] **Phase 29: CLI Commands** - Six-command CLI surface wired to the new stack
@@ -98,7 +98,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   3. Inserting backlink `A → B` automatically creates the inverse `B → A` row with an inverse label; querying backlinks of `B` returns the inserted relationship
   4. `SELECT * FROM entities_fts WHERE entities_fts MATCH 'authentication'` returns ranked rows matching text in `name` or `content`
   5. When `[embeddings]` is present in config the `embeddings` table exists after DB init; when absent the table is not created
-**Plans**: TBD
+**Plans**: 1 (01: Config loader + schema DDL + DatabaseManager [DONE 2026-04-18])
 
 ### Phase 27: LLM Provider
 **Goal**: The LLM client reads a single provider from config, sends requests, and reports health — no fallback logic exists anywhere in the codebase

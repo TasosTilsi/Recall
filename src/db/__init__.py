@@ -1,4 +1,3 @@
-"""Database layer — SQLite + FTS5 + backlinks.
+from .manager import DatabaseManager
 
-Implemented in Phase 26.
-"""
+__all__ = ["DatabaseManager"]
