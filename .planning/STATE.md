@@ -1,11 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Engineering Knowledge Graph
-status: roadmap_defined
-stopped_at: Phase 25 (not started) — roadmap defined 2026-04-14
-last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14
+milestone: v1.0
+milestone_name: milestone
+status: Roadmap defined
+last_updated: "2026-04-18T22:48:32.613Z"
+last_activity: 2026-04-14 — Roadmap created (Phases 25–33)
 progress:
   total_phases: 9
   completed_phases: 0
@@ -35,6 +34,7 @@ Progress: [__________] 0% (v3.0 not yet started)
 ## v3.0 Summary
 
 Major architectural pivot:
+
 - **Remove**: hooks, queue, retention, graphiti-core, LadybugDB, global graph
 - **Replace**: SQLite + backlinks + FTS5 as knowledge graph backbone
 - **Simplify**: single LLM provider (no fallbacks), 6-command CLI, clean module layout
