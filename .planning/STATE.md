@@ -1,16 +1,22 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Engineering Knowledge Graph
+milestone: v1.0
+milestone_name: milestone
 status: executing
+<<<<<<< Updated upstream
 last_updated: "2026-04-19T22:51:00.000Z"
 last_activity: 2026-04-19 — Phase 26 Plan 01 complete
+=======
+stopped_at: Completed 26-db-schema-01-PLAN.md
+last_updated: "2026-04-18T22:47:48Z"
+last_activity: 2026-04-18 -- Phase 26 Plan 01 complete (SQLite schema + Config loader)
+>>>>>>> Stashed changes
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 20
-  completed_plans: 1
-  percent: 5
+  completed_plans: 3
+  percent: 15
 ---
 
 # Project State
@@ -20,16 +26,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 25 — teardown
+**Current focus:** Phase 26 — db-schema
 
 ## Current Position
 
-Phase: 25 (teardown) — EXECUTING
-Plan: 2 of 2
-Status: Executing Phase 25 (Plan 01 complete, Plan 02 pending)
-Last activity: 2026-04-15 -- Phase 25 Plan 01 complete
+Phase: 26 (db-schema) — COMPLETE
+Plan: 1 of 1 (COMPLETE)
+Status: Phase 26 complete; ready for Phase 27 (extractor)
+Last activity: 2026-04-18 -- Phase 26 Plan 01 complete
 
-Progress: [_________] 5% (1/20 plans complete)
+Progress: [__________] 15% (3/20 plans complete)
 
 ## v3.0 Summary
 
@@ -53,6 +59,9 @@ Major architectural pivot:
 - [v3.0 planning]: Plugin installs skills + MCP server — not CLI (user manages Python env separately); Claude plugin = skill wiring + MCP registration in ~/.claude/settings.json
 - [v3.0 planning]: `recall sync` auto-inits silently if no DB — zero friction first-use; no prompt required
 - [v3.0 planning]: Dual install paths — `pipx install recall-kg` for CLI users; `claude plugin install <repo>` for Claude users
+- [26-01]: Legacy src/config/ package removed — Python cannot have both src/config.py and src/config/ directory; old package was v2.0 only; new src/config.py is v3.0 canonical config loader
+- [26-01]: DatabaseManager is synchronous (sqlite3) — no async at DB layer; CLI and indexer drive the event loop above this layer
+- [26-01]: embeddings table conditionally created based on config.embeddings presence — zero overhead when semantic search not configured
 
 ### Pending Todos
 
@@ -65,6 +74,6 @@ Major architectural pivot:
 
 ## Session Continuity
 
-Last activity: 2026-04-15 — Phase 25 Plan 01 complete (teardown: legacy modules deleted, skeletons created)
-Stopped at: Completed 25-teardown-01-PLAN.md
-Resume with: `/gsd:execute-phase 25` for Plan 02 (CLI + MCP server gutting)
+Last activity: 2026-04-18 — Phase 26 Plan 01 complete (SQLite schema + Config loader created)
+Stopped at: Completed 26-db-schema-01-PLAN.md
+Resume with: `/gsd:execute-phase 27` for Phase 27 (extractor)
