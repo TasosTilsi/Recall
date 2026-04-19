@@ -72,11 +72,11 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - KG-03: Bidirectional backlinks with relationship label + context
 - KG-04: FTS5 virtual table for fast keyword search
 - KG-05: Optional embeddings (sqlite-vec) for semantic search
-- IDX-01: `recall init` — full index, wipes and rebuilds from entire git history
-- IDX-02: `recall sync` — incremental, processes commits since last_indexed_sha; auto-inits if no DB
-- IDX-03: Batch extraction: N commits per LLM call (default 10)
-- IDX-04: Extract per commit: decisions, bug fixes, patterns, file changes, tech debt/"why this burden"
-- IDX-05: Cross-commit entity resolution via name normalization
+- IDX-01: `recall init` — full index, wipes and rebuilds from entire git history ✓ Validated in Phase 28
+- IDX-02: `recall sync` — incremental, processes commits since last_indexed_sha; auto-inits if no DB ✓ Validated in Phase 28
+- IDX-03: Batch extraction: N commits per LLM call (default 10) ✓ Validated in Phase 28
+- IDX-04: Extract per commit: decisions, bug fixes, patterns, file changes, tech debt/"why this burden" ✓ Validated in Phase 28
+- IDX-05: Cross-commit entity resolution via name normalization ✓ Validated in Phase 28
 - CLI-01: 6-command surface: init, sync, search, health, config, ui
 - CLI-02: `recall search` supports keyword (FTS) + optional --semantic flag
 - CLI-03: Search output shows entity type, context, related entities via backlinks
@@ -161,4 +161,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-19 — Phase 27 complete: LLM-01–04 validated (Config module, LLMClient, health check).*
+*Last updated: 2026-04-19 — Phase 28 complete: IDX-01–05 validated (git walker, extraction engine, incremental indexer run_init/run_sync).*
