@@ -7,9 +7,6 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
-from src.graph.service import GraphService
-
-
 class _RootMount(Mount):
     """Starlette normalises '/' → '' in Mount.path; this subclass preserves the original path.
 
@@ -49,9 +46,8 @@ def create_app(
     app.state.project_root = project_root
     app.state.scope_label = scope_label
 
-    # Create a single read-only GraphService for the lifetime of this server instance.
-    # Routes access it via request.app.state.graph_service — no per-request re-init.
-    app.state.graph_service = GraphService(read_only=True)
+    # TODO: Phase 31 — reconnect to new SQLite-backed service (DatabaseManager)
+    app.state.graph_service = None
 
     # CORS — only for local Vite dev workflow
     if dev_mode:

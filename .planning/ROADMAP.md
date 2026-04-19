@@ -64,7 +64,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 <summary>v3.0 Engineering Knowledge Graph (Phases 25–33) — IN PROGRESS</summary>
 
 - [ ] **Phase 25: Teardown** - Remove all legacy components and restructure to the new module layout
-- [ ] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table
+- [x] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table (1/1 plans complete)
 - [ ] **Phase 27: LLM Provider** - Single-provider LLM client with claude/ollama/openai support and health reporting
 - [ ] **Phase 28: Git Extractor + Indexer** - Batch LLM extraction from git history with init and sync modes
 - [ ] **Phase 29: CLI Commands** - Six-command CLI surface wired to the new stack
@@ -86,7 +86,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   2. `pyproject.toml` has no `graphiti-core` or `real-ladybug` entries; `pip install -e .` succeeds cleanly
   3. Directory tree shows exactly: `src/db/`, `src/extractor/`, `src/indexer/`, `src/cli/`, `src/mcp_server/`, `src/ui_server/`, `src/config.py` — no other legacy top-level modules
   4. `recall --help` loads without errors (even if subcommands are stubs)
-**Plans**: TBD
+**Plans**: 2 (01: delete legacy + skeletons [DONE], 02: gut CLI + MCP server stubs)
 
 ### Phase 26: DB Schema
 **Goal**: The SQLite database schema is fully defined and tested — all tables, indexes, constraints, and the optional embeddings table are in place and accept real data
@@ -98,11 +98,11 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   3. Inserting backlink `A → B` automatically creates the inverse `B → A` row with an inverse label; querying backlinks of `B` returns the inserted relationship
   4. `SELECT * FROM entities_fts WHERE entities_fts MATCH 'authentication'` returns ranked rows matching text in `name` or `content`
   5. When `[embeddings]` is present in config the `embeddings` table exists after DB init; when absent the table is not created
-**Plans**: TBD
+**Plans**: 1 (01: Config loader + schema DDL + DatabaseManager [DONE 2026-04-18])
 
 ### Phase 27: LLM Provider
 **Goal**: The LLM client reads a single provider from config, sends requests, and reports health — no fallback logic exists anywhere in the codebase
-**Depends on**: Phase 26
+**Depends on**: Phase 25
 **Requirements**: LLM-01, LLM-02, LLM-03, LLM-04
 **Success Criteria** (what must be TRUE):
   1. Setting `provider = "claude"`, `"ollama"`, or `"openai"` in `~/.recall/config.toml` routes all LLM calls through that provider only; switching provider requires only a config edit
@@ -151,7 +151,9 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   2. Nodes in the graph view are colored by entity type; all six types appear in the legend with distinct colors
   3. Selecting one or more types in the entity type filter hides all nodes of unselected types from the graph view
   4. Clicking any node opens a detail panel showing: name, type, tags, source commit sha, content, and all backlinks with relationship label and context snippet
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 31-01-PLAN.md — Rewrite FastAPI backend routes for v3.0 SQLite API
+- [ ] 31-02-PLAN.md — Update frontend types, colors, graph filter, and detail panel
 **UI hint**: yes
 
 ### Phase 32: Claude Plugin + Skills
@@ -188,10 +190,10 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 25. Teardown | 0/? | Not started | - |
-| 26. DB Schema | 0/? | Not started | - |
-| 27. LLM Provider | 0/? | Not started | - |
-| 28. Git Extractor + Indexer | 0/? | Not started | - |
+| 25. Teardown | 1/2 | In progress | Plan 01 complete: legacy modules deleted, skeletons created |
+| 26. DB Schema | 0/? | Complete    | 2026-04-18 |
+| 27. LLM Provider | 0/? | Complete    | 2026-04-19 |
+| 28. Git Extractor + Indexer | 2/3 | In Progress| Plans 01-02 complete: git_walker, prompt builder, extract_batch engine |
 | 29. CLI Commands | 0/? | Not started | - |
 | 30. MCP Server | 0/? | Not started | - |
 | 31. UI Adaptation | 0/? | Not started | - |

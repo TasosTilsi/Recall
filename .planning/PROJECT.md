@@ -59,6 +59,7 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - ✓ **CLI-01/02/03**: Tool invocable as `recall`/`rc`; 9-command surface; `recall search` auto-syncs git — v2.0
 - ✓ **UI-01–04**: shadcn/ui dual-view (table + Sigma.js WebGL graph); scope toggle; retention filter; driver-agnostic API — v2.0
 - ✓ **PERF-01–03**: `claude -p` batch extraction (<2 min for 30 commits); session summaries <10s; FTS-first context injection <50ms Layer 1 — v2.0
+- ✓ **LLM-01–04**: Single-provider LLM client (claude/ollama/openai), frozen Config dataclasses, optional embeddings, check_health() with HealthResult — Phase 27
 
 ### Active
 
@@ -76,10 +77,6 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - IDX-03: Batch extraction: N commits per LLM call (default 10)
 - IDX-04: Extract per commit: decisions, bug fixes, patterns, file changes, tech debt/"why this burden"
 - IDX-05: Cross-commit entity resolution via name normalization
-- LLM-01: Single provider — claude | ollama | openai — no fallbacks
-- LLM-02: `[llm]` section in config.toml: provider, model, base_url, api_key
-- LLM-03: Optional `[embeddings]` section for semantic search
-- LLM-04: `recall health` verifies provider reachability
 - CLI-01: 6-command surface: init, sync, search, health, config, ui
 - CLI-02: `recall search` supports keyword (FTS) + optional --semantic flag
 - CLI-03: Search output shows entity type, context, related entities via backlinks
@@ -164,4 +161,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-14 — v3.0 milestone started. Major pivot: strip session-capture (hooks/queue/retention), replace graphiti-core + LadybugDB with SQLite + backlinks, single LLM provider, two install paths (CLI + Claude plugin), two skills.*
+*Last updated: 2026-04-19 — Phase 27 complete: LLM-01–04 validated (Config module, LLMClient, health check).*

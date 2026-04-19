@@ -1,35 +1,17 @@
 [project]
-name = "graphiti-knowledge-graph"
+name = "recall-kg"
 version = "0.1.0"
-description = "Dual-scope knowledge graph system with global preferences and project-specific memory"
+description = "Engineering knowledge graph — extracts decisions, patterns, and bugs from git history"
 requires-python = ">=3.12"
 dependencies = [
-    "aiofiles>=23.0.0",
-    "detect-secrets>=1.5.0",
     "fastapi>=0.135.0",
     "GitPython>=3.1.0",
-    "graphiti-core[neo4j]==0.28.1",
     "httpx>=0.28.0",
     "mcp[cli]>=1.26.0,<2.0.0",
-    "ollama==0.6.1",
-    "persist-queue==1.1.0",
-    "python-toon>=0.1.3",
-    "real-ladybug==0.15.1",
     "structlog>=25.5.0",
-    "tenacity==9.1.4",
     "starlette>=0.37.0",
-    "sentence-transformers>=2.0.0",
     "typer>=0.15.0",
     "uvicorn>=0.30.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-]
-reranking = [
-    "sentence-transformers>=2.0.0",
 ]
 
 [project.scripts]
@@ -39,16 +21,6 @@ rc = "src.cli:cli_entry"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
-
-# TODO: Phase 12 — add MANIFEST.in or data_files for ui/out/ in wheel builds
-# ui/out/ ships via git (pre-built artifact committed); static_dir in ui.py resolves
-# Path(_REPO_ROOT) / "ui/out" which works correctly for both editable and source installs.
-
-[tool.pytest.ini_options]
-asyncio_mode = "strict"
-markers = [
-    "integration: mark test as requiring external services (e.g. Ollama, Docker)",
-]
 
 [build-system]
 requires = ["setuptools>=61.0"]
