@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 28-git-extractor-indexer-01-PLAN.md
-last_updated: "2026-04-19T09:23:25.459Z"
+stopped_at: Completed 28-git-extractor-indexer-02-PLAN.md
+last_updated: "2026-04-19T09:39:00.000Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 20
-  completed_plans: 7
-  percent: 15
+  completed_plans: 8
+  percent: 20
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 ## Current Position
 
 Phase: 28 (git-extractor-indexer) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-19
 
-Progress: [__________] 15% (3/20 plans complete)
+Progress: [__________] 20% (8/20 plans complete)
 
 ## v3.0 Summary
 
@@ -59,6 +59,9 @@ Major architectural pivot:
 - [26-01]: embeddings table conditionally created based on config.embeddings presence — zero overhead when semantic search not configured
 - [Phase 28-git-extractor-indexer]: CommitRecord.diff populated eagerly at walk time — simplifies downstream code
 - [Phase 28-git-extractor-indexer]: Per-commit diff truncated to 800 chars in prompt, global diff to 4000 chars in fetch_diff
+- [28-02]: commit_sha set to batch[0].sha for all entities — batch-level attribution deterministic for DB upserts
+- [28-02]: Subprocess errors (CalledProcessError, TimeoutExpired) return [] — caller handles retry/skip logic
+- [28-02]: Missing 'entities' key in valid JSON returns [] — defensive against unexpected LLM output shapes
 
 ### Pending Todos
 
@@ -71,6 +74,6 @@ Major architectural pivot:
 
 ## Session Continuity
 
-Last activity: 2026-04-18 — Phase 26 Plan 01 complete (SQLite schema + Config loader created)
-Stopped at: Completed 28-git-extractor-indexer-01-PLAN.md
-Resume with: `/gsd:execute-phase 27` for Phase 27 (extractor)
+Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
+Stopped at: Completed 28-git-extractor-indexer-02-PLAN.md
+Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)
