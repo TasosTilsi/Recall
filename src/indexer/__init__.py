@@ -1,10 +1,8 @@
-"""Git history indexer for bootstrapping LadybugDB knowledge from past commits.
+"""Incremental git history indexer for recall v3.0.
 
-Provides GitIndexer for on-demand git history traversal and knowledge extraction.
-Phase 6 post-commit hook handles ongoing real-time capture; this module
-handles historical bootstrap (brownfield) and stale re-indexing.
+Provides run_init and run_sync as the public entry points for full and
+incremental indexing of git history into the SQLite knowledge graph.
 """
-from src.indexer.indexer import GitIndexer
-from src.indexer.state import IndexState
+from src.indexer.indexer import run_init, run_sync
 
-__all__ = ["GitIndexer", "IndexState"]
+__all__ = ["run_init", "run_sync"]
