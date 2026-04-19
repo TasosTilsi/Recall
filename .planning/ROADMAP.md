@@ -192,7 +192,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 |-------|----------------|--------|-----------|
 | 25. Teardown | 1/2 | In progress | Plan 01 complete: legacy modules deleted, skeletons created |
 | 26. DB Schema | 0/? | Complete    | 2026-04-18 |
-| 27. LLM Provider | 0/? | Not started | - |
+| 27. LLM Provider | 0/? | Complete    | 2026-04-19 |
 | 28. Git Extractor + Indexer | 0/? | Not started | - |
 | 29. CLI Commands | 0/? | Not started | - |
 | 30. MCP Server | 0/? | Not started | - |
