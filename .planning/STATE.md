@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 26-db-schema-01-PLAN.md
-last_updated: "2026-04-19T08:30:12.711Z"
+stopped_at: Completed 28-git-extractor-indexer-01-PLAN.md
+last_updated: "2026-04-19T09:23:25.459Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 20
-  completed_plans: 6
+  completed_plans: 7
   percent: 15
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 27 — llm-provider
+**Current focus:** Phase 28 — git-extractor-indexer
 
 ## Current Position
 
-Phase: 28
-Plan: Not started
-Status: Executing Phase 27
+Phase: 28 (git-extractor-indexer) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-19
 
 Progress: [__________] 15% (3/20 plans complete)
@@ -57,6 +57,8 @@ Major architectural pivot:
 - [26-01]: Legacy src/config/ package removed — Python cannot have both src/config.py and src/config/ directory; old package was v2.0 only; new src/config.py is v3.0 canonical config loader
 - [26-01]: DatabaseManager is synchronous (sqlite3) — no async at DB layer; CLI and indexer drive the event loop above this layer
 - [26-01]: embeddings table conditionally created based on config.embeddings presence — zero overhead when semantic search not configured
+- [Phase 28-git-extractor-indexer]: CommitRecord.diff populated eagerly at walk time — simplifies downstream code
+- [Phase 28-git-extractor-indexer]: Per-commit diff truncated to 800 chars in prompt, global diff to 4000 chars in fetch_diff
 
 ### Pending Todos
 
@@ -70,5 +72,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-18 — Phase 26 Plan 01 complete (SQLite schema + Config loader created)
-Stopped at: Completed 26-db-schema-01-PLAN.md
+Stopped at: Completed 28-git-extractor-indexer-01-PLAN.md
 Resume with: `/gsd:execute-phase 27` for Phase 27 (extractor)
