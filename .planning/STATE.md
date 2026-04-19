@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 28-git-extractor-indexer-02-PLAN.md
-last_updated: "2026-04-19T09:39:00.000Z"
+status: verifying
+stopped_at: Completed 28-git-extractor-indexer-03-PLAN.md
+last_updated: "2026-04-19T16:14:42.695Z"
 last_activity: 2026-04-19
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 1
   total_plans: 20
-  completed_plans: 8
+  completed_plans: 6
   percent: 20
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 Phase: 28 (git-extractor-indexer) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-19
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -62,6 +62,8 @@ Major architectural pivot:
 - [28-02]: commit_sha set to batch[0].sha for all entities — batch-level attribution deterministic for DB upserts
 - [28-02]: Subprocess errors (CalledProcessError, TimeoutExpired) return [] — caller handles retry/skip logic
 - [28-02]: Missing 'entities' key in valid JSON returns [] — defensive against unexpected LLM output shapes
+- [Phase 28]: FK constraint on entities.commit_sha requires stub commits row before inserting entities — _insert_entities does INSERT OR IGNORE on commits first
+- [Phase 28]: _commits_after_sha returns all commits when sha not found — structlog warning rather than raising, safe fallback for missing history
 
 ### Pending Todos
 
@@ -75,5 +77,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 28-git-extractor-indexer-02-PLAN.md
+Stopped at: Completed 28-git-extractor-indexer-03-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)

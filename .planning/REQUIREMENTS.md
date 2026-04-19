@@ -25,7 +25,7 @@
 ### IDX — Indexer
 
 - [x] **IDX-01**: `recall init` rebuilds the knowledge graph from scratch — deletes and recreates the SQLite database, then walks entire git history oldest-first
-- [ ] **IDX-02**: `recall sync` processes only commits since `last_indexed_sha` stored in the `metadata` table; if no database exists, `recall sync` runs a full init automatically and silently
+- [x] **IDX-02**: `recall sync` processes only commits since `last_indexed_sha` stored in the `metadata` table; if no database exists, `recall sync` runs a full init automatically and silently
 - [x] **IDX-03**: Commits are processed in configurable batches (default 10 per LLM call); the batch size is set via `[indexer] batch_size` in config
 - [ ] **IDX-04**: Each LLM extraction call receives a batch of commit messages + diffs and returns structured JSON with: decisions + rationale, bug fixes + root cause + symptom, patterns + conventions, files changed + co-change pairs, tech debt items with "why this burden exists" context
 - [ ] **IDX-05**: Entity names are normalized before insertion (lowercase, stripped) to collapse duplicates across commits — same file path or concept name maps to the same entity row via upsert
@@ -107,7 +107,7 @@
 | KG-04 | Phase 26 | Pending |
 | KG-05 | Phase 26 | Pending |
 | IDX-01 | Phase 28 | Complete |
-| IDX-02 | Phase 28 | Pending |
+| IDX-02 | Phase 28 | Complete |
 | IDX-03 | Phase 28 | Complete |
 | IDX-04 | Phase 28 | Pending |
 | IDX-05 | Phase 28 | Pending |
