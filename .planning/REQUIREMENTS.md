@@ -40,8 +40,8 @@
 ### CLI — Commands
 
 - [x] **CLI-01**: `recall` exposes exactly six public commands: `init`, `sync`, `search`, `health`, `config`, `ui`; `recall mcp serve` is a hidden sub-command
-- [ ] **CLI-02**: `recall search <query>` performs FTS keyword search by default; `--semantic` flag enables vector similarity search (requires `[embeddings]` config); results show entity type, name, content snippet, commit sha, and date
-- [ ] **CLI-03**: `recall search` output optionally includes related entities via backlink traversal when `--related` flag is passed, showing one hop of backlinks with relationship labels
+- [x] **CLI-02**: `recall search <query>` performs FTS keyword search by default; `--semantic` flag enables vector similarity search (requires `[embeddings]` config); results show entity type, name, content snippet, commit sha, and date
+- [x] **CLI-03**: `recall search` output optionally includes related entities via backlink traversal when `--related` flag is passed, showing one hop of backlinks with relationship labels
 
 ### MCP — Read-Only Server
 
@@ -116,8 +116,8 @@
 | LLM-03 | Phase 27 | Pending |
 | LLM-04 | Phase 27 | Pending |
 | CLI-01 | Phase 29 | Complete |
-| CLI-02 | Phase 29 | Pending |
-| CLI-03 | Phase 29 | Pending |
+| CLI-02 | Phase 29 | Complete |
+| CLI-03 | Phase 29 | Complete |
 | MCP-01 | Phase 30 | Pending |
 | MCP-02 | Phase 30 | Pending |
 | UI-01 | Phase 31 | Pending |

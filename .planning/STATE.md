@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 29-cli-commands-01-PLAN.md
-last_updated: "2026-04-20T05:41:29.970Z"
+status: verifying
+stopped_at: Completed 29-cli-commands-02-PLAN.md
+last_updated: "2026-04-20T17:17:15.178Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 10
+  completed_plans: 11
   percent: 20
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 Phase: 29 (cli-commands) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-20
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -67,6 +67,9 @@ Major architectural pivot:
 - [Phase 29-cli-commands]: Indexer exports run_init/run_sync functions (not GitIndexer class) — init_cmd and sync_cmd call these directly
 - [Phase 29-cli-commands]: check_health takes Config argument — health_command loads config first, passes to check_health, reads HealthResult dataclass
 - [Phase 29-cli-commands]: _find_git_root() helper duplicated in init_cmd/sync_cmd — walks cwd parents for .git directory
+- [Phase 29-cli-commands]: search_cmd implements FTS5/semantic/backlinks directly against SQLite — GraphService not present in v3.0 layout
+- [Phase 29-cli-commands]: context_settings allow_interspersed_args=True required on search Typer sub-app for natural arg+option ordering
+- [Phase 29-cli-commands]: tomllib (stdlib) for TOML read + tomli-w for write — toml library not installed; added tomli-w to pyproject.toml
 
 ### Pending Todos
 
@@ -80,5 +83,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 29-cli-commands-01-PLAN.md
+Stopped at: Completed 29-cli-commands-02-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)

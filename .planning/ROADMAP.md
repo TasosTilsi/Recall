@@ -194,7 +194,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 | 26. DB Schema | 0/? | Complete    | 2026-04-18 |
 | 27. LLM Provider | 0/? | Complete    | 2026-04-19 |
 | 28. Git Extractor + Indexer | 2/3 | Complete    | 2026-04-19 |
-| 29. CLI Commands | 1/2 | In Progress|  |
+| 29. CLI Commands | 2/2 | Complete   | 2026-04-20 |
 | 30. MCP Server | 0/? | Not started | - |
 | 31. UI Adaptation | 0/? | Not started | - |
 | 32. Claude Plugin + Skills | 0/? | Not started | - |
