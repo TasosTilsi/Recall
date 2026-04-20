@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 28-git-extractor-indexer-03-PLAN.md
-last_updated: "2026-04-19T16:24:52.035Z"
-last_activity: 2026-04-19
+status: executing
+stopped_at: Completed 29-cli-commands-01-PLAN.md
+last_updated: "2026-04-20T05:41:29.970Z"
+last_activity: 2026-04-20
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 20
-  completed_plans: 9
+  completed_plans: 10
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 28 — git-extractor-indexer
+**Current focus:** Phase 29 — cli-commands
 
 ## Current Position
 
-Phase: 29
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-19
+Phase: 29 (cli-commands) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-20
 
 Progress: [__________] 20% (8/20 plans complete)
 
@@ -64,6 +64,9 @@ Major architectural pivot:
 - [28-02]: Missing 'entities' key in valid JSON returns [] — defensive against unexpected LLM output shapes
 - [Phase 28]: FK constraint on entities.commit_sha requires stub commits row before inserting entities — _insert_entities does INSERT OR IGNORE on commits first
 - [Phase 28]: _commits_after_sha returns all commits when sha not found — structlog warning rather than raising, safe fallback for missing history
+- [Phase 29-cli-commands]: Indexer exports run_init/run_sync functions (not GitIndexer class) — init_cmd and sync_cmd call these directly
+- [Phase 29-cli-commands]: check_health takes Config argument — health_command loads config first, passes to check_health, reads HealthResult dataclass
+- [Phase 29-cli-commands]: _find_git_root() helper duplicated in init_cmd/sync_cmd — walks cwd parents for .git directory
 
 ### Pending Todos
 
@@ -77,5 +80,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 28-git-extractor-indexer-03-PLAN.md
+Stopped at: Completed 29-cli-commands-01-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)
