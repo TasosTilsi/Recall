@@ -77,9 +77,9 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - IDX-03: Batch extraction: N commits per LLM call (default 10) ✓ Validated in Phase 28
 - IDX-04: Extract per commit: decisions, bug fixes, patterns, file changes, tech debt/"why this burden" ✓ Validated in Phase 28
 - IDX-05: Cross-commit entity resolution via name normalization ✓ Validated in Phase 28
-- CLI-01: 6-command surface: init, sync, search, health, config, ui
-- CLI-02: `recall search` supports keyword (FTS) + optional --semantic flag
-- CLI-03: Search output shows entity type, context, related entities via backlinks
+- CLI-01: 6-command surface: init, sync, search, health, config, ui ✓ Validated in Phase 29
+- CLI-02: `recall search` supports keyword (FTS) + optional --semantic flag ✓ Validated in Phase 29
+- CLI-03: Search output shows entity type, context, related entities via backlinks ✓ Validated in Phase 29
 - MCP-01: Read-only MCP tools: search_knowledge, get_entity, get_backlinks, get_decisions, get_bugs, get_patterns
 - MCP-02: `recall mcp serve` stdio transport (stdout-clean)
 - UI-01: Adapt shadcn/Sigma.js UI to SQLite schema
@@ -161,4 +161,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-19 — Phase 28 complete: IDX-01–05 validated (git walker, extraction engine, incremental indexer run_init/run_sync).*
+*Last updated: 2026-04-21 — Phase 29 complete: CLI-01–03 validated (6-command surface: init/sync/search/config/ui/health wired to v3.0 stack).*
