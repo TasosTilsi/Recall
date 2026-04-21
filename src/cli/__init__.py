@@ -27,6 +27,7 @@ from src.cli.commands.search_cmd import app as search_app  # noqa: E402
 from src.cli.commands.health import health_command  # noqa: E402
 from src.cli.commands.config_cmd import app as config_app  # noqa: E402
 from src.cli.commands.ui import ui_command  # noqa: E402
+from src.cli.commands import mcp as mcp_commands  # noqa: E402
 
 # --- Register commands in canonical order ---
 app.command(name="init", help="Index git history from scratch (full reindex)")(init_command)
@@ -35,6 +36,7 @@ app.add_typer(search_app, name="search", help="Search the knowledge graph")
 app.command(name="health", help="Check LLM provider and database status")(health_command)
 app.add_typer(config_app, name="config", help="View and modify configuration")
 app.command(name="ui", help="Launch the graph explorer UI")(ui_command)
+app.add_typer(mcp_commands.app, name="mcp")
 
 
 @app.callback()
