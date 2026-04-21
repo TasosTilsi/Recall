@@ -1,4 +1,4 @@
-"""FastAPI application factory for the Recall UI server."""
+"""FastAPI application factory for the Recall UI server — v3.0 SQLite backend."""
 import logging
 from pathlib import Path
 
@@ -6,6 +6,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
+
+from src.db.manager import DatabaseManager
+from src.config import load_config
+
 
 class _RootMount(Mount):
     """Starlette normalises '/' → '' in Mount.path; this subclass preserves the original path.
@@ -18,36 +22,28 @@ class _RootMount(Mount):
         super().__init__(path, *args, **kwargs)
         self.path = path  # re-apply original value after normalisation
 
+
 logger = logging.getLogger(__name__)
-# NOTE: Use standard logging (not structlog) — this module may run inside uvicorn
+# NOTE: Use standard logging (not structlog) — this module runs inside uvicorn
 # where structlog's processor chain is not configured. Routes use logging too.
 
 
 def create_app(
-    scope_label: str,
-    scope: str = "project",
-    project_root: "Path | None" = None,
-    static_dir: "Path | None" = None,
     dev_mode: bool = False,
+    static_dir: "Path | None" = None,
 ) -> FastAPI:
-    """Create the FastAPI application.
+    """Create the FastAPI application wired to the v3.0 SQLite DatabaseManager.
 
     Args:
-        scope_label: Human-readable scope label for display ("project (myrepo)" or "global")
-        scope: "project" or "global" — passed to routes for LadybugDB path resolution
-        project_root: Project root path when scope="project"
-        static_dir: Override for Vite out/ directory (defaults to ui/out/ at repo root)
         dev_mode: If True, adds CORS headers for Vite dev at localhost:5173
+        static_dir: Override for ui/out/ directory (defaults to ui/out/ at repo root)
     """
     app = FastAPI(title="Recall UI API", docs_url=None, redoc_url=None)
 
-    # Store scope context as app state for routes to access
-    app.state.scope = scope
-    app.state.project_root = project_root
-    app.state.scope_label = scope_label
-
-    # TODO: Phase 31 — reconnect to new SQLite-backed service (DatabaseManager)
-    app.state.graph_service = None
+    # Wire v3.0 DatabaseManager — read-only server; do NOT call db.init_db() here
+    config = load_config()
+    db = DatabaseManager(config)
+    app.state.db = db
 
     # CORS — only for local Vite dev workflow
     if dev_mode:
