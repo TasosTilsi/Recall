@@ -82,10 +82,10 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - CLI-03: Search output shows entity type, context, related entities via backlinks ✓ Validated in Phase 29
 - MCP-01: Read-only MCP tools: search_knowledge, get_entity, get_backlinks, get_decisions, get_bugs, get_patterns ✓ Validated in Phase 30
 - MCP-02: `recall mcp serve` stdio transport (stdout-clean) ✓ Validated in Phase 30
-- UI-01: Adapt shadcn/Sigma.js UI to SQLite schema
-- UI-02: Graph view: entities as nodes, backlinks as edges
-- UI-03: Filter by entity type
-- UI-04: Entity detail panel with backlinks + commit context
+- UI-01: Adapt shadcn/Sigma.js UI to SQLite schema ✓ Validated in Phase 31
+- UI-02: Graph view: entities as nodes, backlinks as edges ✓ Validated in Phase 31
+- UI-03: Filter by entity type ✓ Validated in Phase 31
+- UI-04: Entity detail panel with backlinks + commit context ✓ Validated in Phase 31
 - INST-01: `pipx install recall-kg` installs `recall` CLI
 - INST-02: Claude plugin install: registers skills + MCP server in ~/.claude/settings.json
 - SKILL-01: `/recall-setup` skill — guides config, first init
@@ -161,4 +161,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-21 — Phase 30 complete: MCP-01–02 validated (FastMCP stdio server, 6 read-only tools, recall mcp serve wired).*
+*Last updated: 2026-04-21 — Phase 31 complete: UI-01–04 validated (FastAPI + React adapted to v3.0 SQLite schema, TS clean, 6-type graph).*
