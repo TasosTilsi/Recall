@@ -5,20 +5,18 @@ import type { GraphEdge, GraphNode } from '@/types/api';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DetailPanel, type PanelItem } from '@/components/panels/DetailPanel';
 import { ArrowUpDown } from 'lucide-react';
 
-type SortKey = 'fact' | 'from' | 'to';
+type SortKey = 'relationship' | 'from' | 'to';
 type SortDir = 'asc' | 'desc';
 
 export default function Relations() {
-  const { scope, setLastUpdated } = useAppContext();
+  const { setLastUpdated } = useAppContext();
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [nodeMap, setNodeMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [panelItem, setPanelItem] = useState<PanelItem | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>('fact');
+  const [sortKey, setSortKey] = useState<SortKey>('relationship');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   useEffect(() => {
@@ -26,7 +24,7 @@ export default function Relations() {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await fetchGraph(scope);
+        const data = await fetchGraph();
         if (!cancelled) {
           const map: Record<string, string> = {};
           (data.nodes as GraphNode[]).forEach(n => { map[n.id] = n.label; });
@@ -40,7 +38,7 @@ export default function Relations() {
     load();
     const iv = setInterval(load, 30_000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [scope, setLastUpdated]);
+  }, [setLastUpdated]);
 
   const resolveName = (uuid: string) =>
     nodeMap[uuid] || uuid.slice(0, 8) + '…';
@@ -54,11 +52,12 @@ export default function Relations() {
     return [...edges].sort((a, b) => {
       let av = '';
       let bv = '';
-      if (sortKey === 'fact') { av = a.name || ''; bv = b.name || ''; }
-      else if (sortKey === 'from') { av = resolveName(a.source); bv = resolveName(b.source); }
-      else if (sortKey === 'to') { av = resolveName(a.target); bv = resolveName(b.target); }
+      if (sortKey === 'relationship') { av = a.relationship || ''; bv = b.relationship || ''; }
+      else if (sortKey === 'from') { av = resolveName(a.from_id); bv = resolveName(b.from_id); }
+      else if (sortKey === 'to') { av = resolveName(a.to_id); bv = resolveName(b.to_id); }
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodeMap, sortKey, sortDir]);
 
   if (loading) return (
@@ -76,7 +75,7 @@ export default function Relations() {
   if (edges.length === 0) return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0f172a' }}>
       <h2 className="text-base font-semibold text-white">No relations found.</h2>
-      <p className="text-slate-400 text-sm">No relationships match the current scope.</p>
+      <p className="text-slate-400 text-sm">Run <code className="text-blue-400">recall index</code> to populate the graph.</p>
     </div>
   );
 
@@ -94,71 +93,59 @@ export default function Relations() {
             <TableRow style={{ backgroundColor: '#131b2e' }}>
               <TableHead
                 className="text-xs font-mono tracking-widest text-slate-500 uppercase cursor-pointer w-[38%]"
-                onClick={() => toggleSort('fact')}
+                onClick={() => toggleSort('relationship')}
               >
-                <div className="flex items-center gap-1">Fact <ArrowUpDown size={10} /></div>
+                <div className="flex items-center gap-1">Relationship <ArrowUpDown size={10} /></div>
               </TableHead>
               <TableHead
-                className="text-xs font-mono tracking-widest text-slate-500 uppercase cursor-pointer w-[17%]"
+                className="text-xs font-mono tracking-widest text-slate-500 uppercase cursor-pointer w-[28%]"
                 onClick={() => toggleSort('from')}
               >
                 <div className="flex items-center gap-1">From <ArrowUpDown size={10} /></div>
               </TableHead>
               <TableHead
-                className="text-xs font-mono tracking-widest text-slate-500 uppercase cursor-pointer w-[17%]"
+                className="text-xs font-mono tracking-widest text-slate-500 uppercase cursor-pointer w-[28%]"
                 onClick={() => toggleSort('to')}
               >
                 <div className="flex items-center gap-1">To <ArrowUpDown size={10} /></div>
               </TableHead>
-              <TableHead className="text-xs font-mono tracking-widest text-slate-500 uppercase w-[12%]">
-                Valid From
-              </TableHead>
-              <TableHead className="text-xs font-mono tracking-widest text-slate-500 uppercase w-[12%]">
-                Valid Until
-              </TableHead>
-              <TableHead className="text-xs font-mono tracking-widest text-slate-500 uppercase w-[8%]">
+              <TableHead className="text-xs font-mono tracking-widest text-slate-500 uppercase w-[6%]">
                 Status
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.map((edge, i) => {
-              const fromName = resolveName(edge.source);
-              const toName = resolveName(edge.target);
-              const isResolved = nodeMap[edge.source] && nodeMap[edge.target];
+              const fromName = resolveName(edge.from_id);
+              const toName = resolveName(edge.to_id);
+              const fromResolved = !!nodeMap[edge.from_id];
+              const toResolved = !!nodeMap[edge.to_id];
               return (
                 <TableRow
                   key={edge.id}
-                  className="cursor-pointer border-0 group"
+                  className="border-0"
                   style={{ backgroundColor: i % 2 === 0 ? '#0b1326' : '#0f172a' }}
-                  onClick={() => setPanelItem({ itemType: 'edge', itemId: edge.id, label: edge.name || 'Edge' })}
                 >
-                  <TableCell className="text-sm text-slate-200 py-3 pr-4 group-hover:text-white transition-colors">
-                    <span className="line-clamp-2 leading-relaxed">{edge.name || '—'}</span>
+                  <TableCell className="text-sm text-slate-200 py-3 pr-4">
+                    <span className="line-clamp-2 leading-relaxed">{edge.relationship || '—'}</span>
                   </TableCell>
                   <TableCell className="py-3 pr-4">
                     <span
-                      className="text-xs font-medium truncate block max-w-[140px]"
-                      style={{ color: isResolved ? '#7bd0ff' : '#64748b' }}
-                      title={edge.source}
+                      className="text-xs font-medium truncate block max-w-[180px]"
+                      style={{ color: fromResolved ? '#7bd0ff' : '#64748b' }}
+                      title={edge.from_id}
                     >
                       {fromName}
                     </span>
                   </TableCell>
                   <TableCell className="py-3 pr-4">
                     <span
-                      className="text-xs font-medium truncate block max-w-[140px]"
-                      style={{ color: isResolved ? '#7bd0ff' : '#64748b' }}
-                      title={edge.target}
+                      className="text-xs font-medium truncate block max-w-[180px]"
+                      style={{ color: toResolved ? '#7bd0ff' : '#64748b' }}
+                      title={edge.to_id}
                     >
                       {toName}
                     </span>
-                  </TableCell>
-                  <TableCell className="py-3 pr-4">
-                    <span className="text-xs font-mono text-slate-500">—</span>
-                  </TableCell>
-                  <TableCell className="py-3 pr-4">
-                    <span className="text-xs font-mono text-slate-500">—</span>
                   </TableCell>
                   <TableCell className="py-3">
                     <Badge
@@ -174,8 +161,6 @@ export default function Relations() {
           </TableBody>
         </Table>
       </div>
-
-      {panelItem && <DetailPanel item={panelItem} onClose={() => setPanelItem(null)} />}
     </div>
   );
 }

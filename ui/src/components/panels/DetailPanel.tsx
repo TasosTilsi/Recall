@@ -32,9 +32,9 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
     setCurrentItem(item);
   }, [item]);
 
-  // Fetch data when currentItem changes
+  // Fetch data only for entity items (edge and episode detail no longer available in v3.0)
   useEffect(() => {
-    if (!currentItem) return;
+    if (!currentItem || currentItem.itemType !== 'entity') return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
@@ -55,12 +55,6 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
     load();
     return () => { cancelled = true; };
   }, [currentItem]);
-
-  // In-panel navigation: append to breadcrumb
-  const navigateInPlace = useCallback((next: PanelItem) => {
-    setBreadcrumb(prev => [...prev, next]);
-    setCurrentItem(next);
-  }, []);
 
   // Breadcrumb ancestor click: navigate back
   const navigateToBreadcrumb = useCallback((index: number) => {
@@ -122,25 +116,25 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
       {/* Panel content */}
       <ScrollArea className="flex-1">
         <div className="p-4">
-          {loading && (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-3/4 bg-slate-700" />
-              <Skeleton className="h-4 w-1/2 bg-slate-700" />
-              <Skeleton className="h-24 bg-slate-700" />
-              <Skeleton className="h-4 w-full bg-slate-700" />
-              <Skeleton className="h-4 w-full bg-slate-700" />
-            </div>
+          {currentItem?.itemType === 'entity' && (
+            <>
+              {loading && (
+                <div className="space-y-3">
+                  <Skeleton className="h-6 w-3/4 bg-slate-700" />
+                  <Skeleton className="h-4 w-1/2 bg-slate-700" />
+                  <Skeleton className="h-24 bg-slate-700" />
+                  <Skeleton className="h-4 w-full bg-slate-700" />
+                  <Skeleton className="h-4 w-full bg-slate-700" />
+                </div>
+              )}
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {!loading && !error && data && (
+                <EntityPanel entity={data} />
+              )}
+            </>
           )}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          {!loading && !error && data && currentItem?.itemType === 'entity' && (
-            <EntityPanel entity={data} />
-          )}
-          {!loading && !error && data && currentItem?.itemType === 'edge' && (
-            <EdgePanel edge={data as import('@/types/api').DetailEdge} onNavigate={navigateInPlace} />
-          )}
-          {!loading && !error && data && currentItem?.itemType === 'episode' && (
-            <EpisodePanel episode={data as import('@/types/api').DetailEpisode} onNavigate={navigateInPlace} />
-          )}
+          {currentItem?.itemType === 'edge' && <EdgePanel />}
+          {currentItem?.itemType === 'episode' && <EpisodePanel />}
         </div>
       </ScrollArea>
     </div>

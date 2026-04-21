@@ -7,19 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DetailPanel, type PanelItem } from '@/components/panels/DetailPanel';
-import { ENTITY_TYPE_COLORS, RETENTION_COLORS } from '@/lib/colors';
-import { ArrowUpDown, Check, ChevronsUpDown } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Button } from '@/components/ui/button';
+import { ENTITY_TYPE_COLORS } from '@/lib/colors';
+import { ArrowUpDown } from 'lucide-react';
 
-type SortKey = 'label' | 'type' | 'created_at';
+type SortKey = 'label' | 'type';
 type SortDir = 'asc' | 'desc';
 
-const STATUSES = ['Pinned', 'Normal', 'Stale', 'Archived'] as const;
-
 export default function Entities() {
-  const { scope, setLastUpdated } = useAppContext();
+  const { setLastUpdated } = useAppContext();
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,23 +22,15 @@ export default function Entities() {
   const [sortKey, setSortKey] = useState<SortKey>('label');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [panelItem, setPanelItem] = useState<PanelItem | null>(null);
-  const [retentionFilter, setRetentionFilter] = useState<string[]>([]);
-  const [retentionOpen, setRetentionOpen] = useState(false);
-
-  const toggleStatus = (status: string) => {
-    setRetentionFilter(prev =>
-      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
-    );
-  };
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
         setLoading(true);
-        const data = await fetchGraph(scope);
+        const data = await fetchGraph();
         if (!cancelled) {
-          setNodes(data.nodes.filter(n => n.type !== 'Episodic'));
+          setNodes(data.nodes);
           setLastUpdated(new Date());
           setLoading(false);
         }
@@ -52,25 +39,19 @@ export default function Entities() {
     load();
     const iv = setInterval(load, 30_000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [scope, setLastUpdated]);
+  }, [setLastUpdated]);
 
   const entityTypes = useMemo(() => ['all', ...Array.from(new Set(nodes.map(n => n.type)))], [nodes]);
 
   const filtered = useMemo(() => {
     let result = typeFilter === 'all' ? nodes : nodes.filter(n => n.type === typeFilter);
-    // Retention filter: empty = show all except Archived (default behavior)
-    if (retentionFilter.length === 0) {
-      result = result.filter(n => (n.retention_status ?? 'Normal') !== 'Archived');
-    } else {
-      result = result.filter(n => retentionFilter.includes(n.retention_status ?? 'Normal'));
-    }
     result = [...result].sort((a, b) => {
-      const av = a[sortKey === 'created_at' ? 'id' : sortKey] ?? '';
-      const bv = b[sortKey === 'created_at' ? 'id' : sortKey] ?? '';
+      const av = a[sortKey] ?? '';
+      const bv = b[sortKey] ?? '';
       return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
     });
     return result;
-  }, [nodes, typeFilter, retentionFilter, sortKey, sortDir]);
+  }, [nodes, typeFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -92,7 +73,7 @@ export default function Entities() {
   if (nodes.length === 0) return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ backgroundColor: '#0b1326' }}>
       <h2 className="text-base font-semibold text-white">No entities found.</h2>
-      <p className="text-slate-400 text-sm">No entities match the current scope and filters.</p>
+      <p className="text-slate-400 text-sm">Run <code className="text-blue-400">recall index</code> to populate entities.</p>
     </div>
   );
 
@@ -111,31 +92,6 @@ export default function Entities() {
           </SelectContent>
         </Select>
 
-        <Popover open={retentionOpen} onOpenChange={setRetentionOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" role="combobox" aria-expanded={retentionOpen}
-              className="h-8 w-40 text-xs bg-[#131b2e] text-slate-300 hover:bg-[#171f33] justify-between px-3">
-              {retentionFilter.length === 0 ? 'All Statuses' : `${retentionFilter.length} Selected`}
-              <ChevronsUpDown className="ml-auto h-3 w-3 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-40 p-0 bg-[#131b2e] border-none shadow-2xl">
-            <Command className="bg-transparent">
-              <CommandList>
-                <CommandGroup>
-                  {STATUSES.map(status => (
-                    <CommandItem key={status} onSelect={() => toggleStatus(status)}
-                      className="text-xs text-slate-200 cursor-pointer hover:bg-[#171f33] focus:bg-[#171f33]">
-                      <Check className={`mr-2 h-3 w-3 ${retentionFilter.includes(status) ? 'opacity-100' : 'opacity-0'}`} />
-                      {status}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-
         <span className="text-xs text-slate-400 ml-auto">{filtered.length} entities</span>
       </div>
 
@@ -150,8 +106,7 @@ export default function Entities() {
               <TableHead className="text-xs text-slate-400 cursor-pointer" onClick={() => toggleSort('type')}>
                 <div className="flex items-center gap-1">Type <ArrowUpDown size={10} /></div>
               </TableHead>
-              <TableHead className="text-xs text-slate-400">Status</TableHead>
-              <TableHead className="text-xs text-slate-400">Scope</TableHead>
+              <TableHead className="text-xs text-slate-400">Commit SHA</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -165,23 +120,14 @@ export default function Entities() {
                 <TableCell className="text-sm text-slate-200 font-medium py-4">{node.label}</TableCell>
                 <TableCell>
                   <Badge className="text-xs" style={{
-                    backgroundColor: `${ENTITY_TYPE_COLORS[node.type] ?? '#94a3b8'}22`,
-                    color: ENTITY_TYPE_COLORS[node.type] ?? '#94a3b8',
+                    backgroundColor: `${ENTITY_TYPE_COLORS[node.type] ?? '#888888'}22`,
+                    color: ENTITY_TYPE_COLORS[node.type] ?? '#888888',
                     border: 'none',
                   }}>
                     {node.type}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <Badge className="text-xs" style={{
-                    backgroundColor: `${RETENTION_COLORS[node.retention_status ?? 'Normal']}22`,
-                    color: RETENTION_COLORS[node.retention_status ?? 'Normal'],
-                    border: 'none',
-                  }}>
-                    {node.retention_status ?? 'Normal'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-xs text-slate-400">{node.scope}</TableCell>
+                <TableCell className="text-xs text-slate-400 font-mono">{node.commit_sha ? node.commit_sha.slice(0, 8) : '—'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
