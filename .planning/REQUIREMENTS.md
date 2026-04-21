@@ -58,8 +58,8 @@
 ### INST — Installation
 
 - [ ] **INST-01**: `pipx install recall-kg` (or `pip install -e .`) installs the `recall` CLI globally and makes `recall --help` work
-- [ ] **INST-02**: The repository includes a `claude-plugin.json` manifest (or equivalent) that, when installed as a Claude plugin, registers the two skills and the MCP server (`recall mcp serve`) in `~/.claude/settings.json`
-- [ ] **INST-03**: Plugin install creates `~/.recall/` directory structure if it does not exist; it does not overwrite an existing `config.toml`
+- [x] **INST-02**: The repository includes a `claude-plugin.json` manifest (or equivalent) that, when installed as a Claude plugin, registers the two skills and the MCP server (`recall mcp serve`) in `~/.claude/settings.json`
+- [x] **INST-03**: Plugin install creates `~/.recall/` directory structure if it does not exist; it does not overwrite an existing `config.toml`
 
 ### SKILL — Claude Skills
 
@@ -125,7 +125,7 @@
 | UI-03 | Phase 31 | Complete |
 | UI-04 | Phase 31 | Complete |
 | INST-01 | Phase 33 | Pending |
-| INST-02 | Phase 32 | Pending |
-| INST-03 | Phase 32 | Pending |
+| INST-02 | Phase 32 | Complete |
+| INST-03 | Phase 32 | Complete |
 | SKILL-01 | Phase 32 | Pending |
 | SKILL-02 | Phase 32 | Pending |

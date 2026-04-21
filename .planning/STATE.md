@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 31-02-PLAN.md
-last_updated: "2026-04-21T20:01:59.395Z"
+status: executing
+stopped_at: Completed 32-claude-plugin-skills-32-01-PLAN.md
+last_updated: "2026-04-21T20:18:37.841Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 9
   completed_phases: 7
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 17
   percent: 20
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 31 — ui-adaptation
+**Current focus:** Phase 32 — claude-plugin-skills
 
 ## Current Position
 
-Phase: 32
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 32 (claude-plugin-skills) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
 Last activity: 2026-04-21
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -77,6 +77,7 @@ Major architectural pivot:
 - [Phase 31]: All UI route handlers synchronous (def not async def) — sqlite3 blocking, no async benefit
 - [Phase 31]: create_app() does not call db.init_db() — UI server read-only; init is indexer responsibility
 - [Phase 31]: DetailPanel.tsx updated alongside EntityPanel — fetchDetail signature changed to single entityId arg; old call site would fail at runtime
+- [Phase 32-claude-plugin-skills]: install_mcp_global uses idempotent read/merge/write pattern for ~/.claude/settings.json
 
 ### Pending Todos
 
@@ -90,5 +91,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 31-02-PLAN.md
+Stopped at: Completed 32-claude-plugin-skills-32-01-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)
