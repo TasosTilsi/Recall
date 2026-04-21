@@ -90,3 +90,119 @@ class DatabaseManager:
             conn.commit()
 
         log.info("database ready", path=str(db_path))
+
+    # ------------------------------------------------------------------
+    # Query helpers — used by MCP tools and CLI search
+    # ------------------------------------------------------------------
+
+    def _row_to_entity(self, row: sqlite3.Row) -> dict:
+        """Convert a sqlite3.Row from entities table to a plain dict."""
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "type": row["type"],
+            "content": row["content"],
+            "tags": row["tags"],
+            "source_commit": row["commit_sha"],
+            "created_at": row["created_at"],
+        }
+
+    def search_fts(self, query: str, limit: int = 20) -> list[dict]:
+        """Full-text search over entity names and content via FTS5.
+
+        Returns a list of entity dicts with an additional ``rank`` field.
+        """
+        sql = """
+            SELECT e.id, e.name, e.type, e.content, e.tags, e.commit_sha, e.created_at,
+                   fts.rank AS rank
+            FROM entities_fts fts
+            JOIN entities e ON e.rowid = fts.rowid
+            WHERE entities_fts MATCH ?
+            ORDER BY fts.rank
+            LIMIT ?
+        """
+        with self.connect() as conn:
+            rows = conn.execute(sql, (query, limit)).fetchall()
+        results = []
+        for row in rows:
+            d = dict(row)
+            d["source_commit"] = d.pop("commit_sha", None)
+            results.append(d)
+        return results
+
+    def get_entity_by_id(self, entity_id: str) -> dict | None:
+        """Fetch a single entity by its UUID (primary key)."""
+        sql = "SELECT * FROM entities WHERE id = ? LIMIT 1"
+        with self.connect() as conn:
+            row = conn.execute(sql, (entity_id,)).fetchone()
+        if row is None:
+            return None
+        return self._row_to_entity(row)
+
+    def get_entity_by_name(self, name: str) -> dict | None:
+        """Fetch a single entity by exact name match."""
+        sql = "SELECT * FROM entities WHERE name = ? LIMIT 1"
+        with self.connect() as conn:
+            row = conn.execute(sql, (name,)).fetchone()
+        if row is None:
+            return None
+        return self._row_to_entity(row)
+
+    def get_backlinks(self, entity_id: str) -> list[dict]:
+        """Return direct backlinks for the given entity (both directions).
+
+        Looks up rows where ``from_id`` OR ``to_id`` equals entity_id so that
+        the caller sees all relationships the entity participates in.
+        """
+        sql = """
+            SELECT from_id AS source_id,
+                   to_id   AS target_id,
+                   relationship AS label,
+                   '' AS inverse_label,
+                   context,
+                   '' AS commit_sha
+            FROM backlinks
+            WHERE from_id = ? OR to_id = ?
+        """
+        with self.connect() as conn:
+            rows = conn.execute(sql, (entity_id, entity_id)).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_backlinks_recursive(self, entity_id: str, hops: int) -> list[dict]:
+        """BFS traversal of backlinks up to ``hops`` depth.
+
+        Iteratively expands the frontier using ``get_backlinks()``. A visited
+        set prevents cycles. Returns deduplicated list of backlink dicts.
+        """
+        visited: set[str] = {entity_id}
+        frontier: set[str] = {entity_id}
+        all_links: list[dict] = []
+        seen_links: set[tuple] = set()
+
+        for _ in range(max(1, hops)):
+            next_frontier: set[str] = set()
+            for eid in frontier:
+                for link in self.get_backlinks(eid):
+                    key = (link["source_id"], link["target_id"], link["label"])
+                    if key not in seen_links:
+                        seen_links.add(key)
+                        all_links.append(link)
+                    for nid in (link["source_id"], link["target_id"]):
+                        if nid not in visited:
+                            visited.add(nid)
+                            next_frontier.add(nid)
+            frontier = next_frontier
+            if not frontier:
+                break
+
+        return all_links
+
+    def get_entities_by_type(self, entity_type: str, limit: int = 20) -> list[dict]:
+        """Return entities filtered by type.
+
+        Valid types: decision, bug_fix, pattern, file, concept, tech_debt.
+        """
+        sql = "SELECT * FROM entities WHERE type = ? ORDER BY created_at DESC LIMIT ?"
+        with self.connect() as conn:
+            rows = conn.execute(sql, (entity_type, limit)).fetchall()
+        return [self._row_to_entity(row) for row in rows]
