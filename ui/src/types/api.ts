@@ -1,20 +1,26 @@
-// Retention badge type
-export type RetentionStatus = 'Pinned' | 'Normal' | 'Stale' | 'Archived';
+// v3.0 API types — six canonical entity types, no episodes, no retention
+
+export type CanonicalEntityType =
+  | 'decision'
+  | 'bug_fix'
+  | 'pattern'
+  | 'file'
+  | 'concept'
+  | 'tech_debt';
 
 // GraphData — /api/graph response
 export interface GraphNode {
   id: string;
   label: string;
-  type: string;
-  scope: string;
-  retention_status?: RetentionStatus;
+  type: CanonicalEntityType | string;
+  commit_sha: string;
 }
 
 export interface GraphEdge {
   id: string;
-  source: string;
-  target: string;
-  name: string;
+  from_id: string;
+  to_id: string;
+  relationship: string;
 }
 
 export interface GraphData {
@@ -23,114 +29,56 @@ export interface GraphData {
 }
 
 // DashboardData — /api/dashboard response
-export interface DashboardCounts {
-  entities: number;
-  edges: number;
-  episodes: number;
-  deltas: {
-    entities_7d: number;
-    edges_7d: number;
-    episodes_7d: number;
-  };
-}
-
-export interface TimeSeriesPoint {
-  day: string;
-  entity_count: number;
-  edge_count: number;
-  episode_count: number;
-}
-
 export interface TopEntity {
-  uuid: string;
+  id: string;
   name: string;
-  edge_count: number;
+  type: string;
+  backlink_count: number;
 }
 
-export interface RetentionSummary {
-  pinned: number;
-  normal: number;
-  stale: number;
-  archived: number;
-}
-
-export interface EpisodeSummary {
-  uuid: string;
-  name: string;
-  source_description: string;
-  created_at: string;
-  source: string;
-  content?: string;
+export interface RecentCommit {
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
 }
 
 export interface DashboardData {
-  counts: DashboardCounts;
-  time_series: TimeSeriesPoint[];
-  top_entities: TopEntity[];
-  sources: Record<string, number>;
+  total_entities: number;
+  total_commits: number;
   entity_types: Record<string, number>;
-  retention: RetentionSummary;
-  recent_episodes: EpisodeSummary[];
+  top_entities: TopEntity[];
+  recent_commits: RecentCommit[];
 }
 
-// Detail panel types — /api/detail/:type/:id response
-export interface EntityRelationship {
-  source: string;
-  target: string;
-  label: string;
-  fact: string;
+// DetailEntityV3 — /api/detail/entity/{id} response
+export interface Backlink {
+  from_id: string;
+  from_name: string;
+  to_id: string;
+  relationship: string;
+  context: string;
 }
 
-export interface DetailEntity {
-  uuid: string;
+export interface DetailEntityV3 {
+  id: string;
   name: string;
-  tags: string[];
-  summary: string;
-  created_at: string;
-  last_accessed_at?: string;
-  access_count?: number;
-  pinned?: boolean;
-  retention_status?: RetentionStatus;
-  relationships?: EntityRelationship[];
-}
-
-export interface DetailEpisode {
-  uuid: string;
-  name: string;
-  source_description: string;
+  type: CanonicalEntityType | string;
   content: string;
+  tags: string[];
+  commit_sha: string;
   created_at: string;
-  source: string;
-  entities: { uuid: string; name: string; tags: string[] }[];
+  backlinks: Backlink[];
 }
-
-export interface DetailEdge {
-  source: string;
-  target: string;
-  label: string;
-  fact: string;
-}
-
-export type DetailRecord = DetailEntity | DetailEpisode | DetailEdge;
 
 // SearchResults — /api/search response
 export interface SearchEntityResult {
   id: string;
-  label: string;
+  name: string;
   type: string;
-  summary: string;
-}
-
-export interface SearchRelationResult {
-  id: string;
-  source: string;
-  target: string;
-  fact: string;
-  label: string;
+  content_snippet: string;
 }
 
 export interface SearchResults {
   entities: SearchEntityResult[];
-  relations: SearchRelationResult[];
-  episodes: EpisodeSummary[];
 }
