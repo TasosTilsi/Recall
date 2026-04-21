@@ -1,13 +1,18 @@
 """recall mcp install — zero-config MCP server registration for Claude Code.
 
-Writes the stdio server entry to ~/.claude.json so Claude Code auto-starts
-the recall MCP server. Also installs SKILL.md to ~/.claude/skills/recall/
-to teach Claude how to use recall autonomously.
+Writes the stdio server entry to ~/.claude/settings.json so Claude Code
+auto-starts the recall MCP server. Also installs SKILL.md and recall-setup.md
+to ~/.claude/skills/recall/ to teach Claude how to use recall autonomously.
 """
 import json
 import shutil
 import sys
 from pathlib import Path
+
+# Load recall-setup skill content from the canonical source file.
+# This keeps skill content in one place (the .md file) rather than duplicating it.
+_SKILLS_DIR = Path(__file__).parent.parent / "cli" / "skills"
+RECALL_SETUP_SKILL_CONTENT: str = (_SKILLS_DIR / "recall_setup.md").read_text()
 
 # SKILL.md content — embedded here so it can be installed without external files.
 # Written to ~/.claude/skills/recall/SKILL.md (user-scope: all projects).
@@ -182,29 +187,35 @@ def _install_project_hooks(recall_cmd: str, force: bool = False) -> bool:
 
 
 def install_mcp_server(force: bool = False) -> dict:
-    """Write recall MCP server config to ~/.claude.json and install SKILL.md.
+    """Write recall MCP server config to ~/.claude/settings.json and install skills.
 
     This enables zero-config Claude Code integration:
-    1. Adds 'recall' entry to mcpServers in ~/.claude.json
+    1. Adds 'recall' entry to mcpServers in ~/.claude/settings.json
     2. Writes SKILL.md to ~/.claude/skills/recall/SKILL.md
-    3. Writes Stop hook to .claude/settings.json in the current directory
+    3. Writes recall-setup.md to ~/.claude/skills/recall/recall-setup.md
+    4. Writes Stop hook to .claude/settings.json in the current directory
 
     Args:
         force: Overwrite existing entries even if already present
 
     Returns:
-        Dict with 'claude_json_updated', 'skill_md_installed', and
-        'hooks_installed' boolean results
+        Dict with 'claude_json_updated', 'skill_md_installed',
+        'recall_setup_skill_installed', and 'hooks_installed' boolean results
     """
-    results = {"claude_json_updated": False, "skill_md_installed": False, "hooks_installed": False}
+    results = {
+        "claude_json_updated": False,
+        "skill_md_installed": False,
+        "recall_setup_skill_installed": False,
+        "hooks_installed": False,
+    }
     command, extra_args = _find_recall_executable()
 
-    # --- 1. Write to ~/.claude.json ---
-    claude_json_path = Path.home() / ".claude.json"
+    # --- 1. Write to ~/.claude/settings.json ---
+    settings_path = Path.home() / ".claude" / "settings.json"
     config = {}
-    if claude_json_path.exists():
+    if settings_path.exists():
         try:
-            config = json.loads(claude_json_path.read_text())
+            config = json.loads(settings_path.read_text())
         except (json.JSONDecodeError, IOError):
             config = {}  # Treat as empty if malformed
 
@@ -214,12 +225,11 @@ def install_mcp_server(force: bool = False) -> dict:
     already_present = "recall" in config["mcpServers"]
     if not already_present or force:
         config["mcpServers"]["recall"] = {
-            "type": "stdio",
             "command": command,
             "args": extra_args + ["mcp", "serve"],
-            "env": {}
         }
-        claude_json_path.write_text(json.dumps(config, indent=2))
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(json.dumps(config, indent=2))
         results["claude_json_updated"] = True
 
     # --- 2. Install SKILL.md ---
@@ -231,7 +241,15 @@ def install_mcp_server(force: bool = False) -> dict:
         skill_path.write_text(SKILL_MD_CONTENT)
         results["skill_md_installed"] = True
 
-    # --- 3. Install Stop hook into .claude/settings.json (current project) ---
+    # --- 3. Install recall-setup.md (do NOT overwrite existing user config) ---
+    recall_setup_path = skill_dir / "recall-setup.md"
+
+    if not recall_setup_path.exists() or force:
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        recall_setup_path.write_text(RECALL_SETUP_SKILL_CONTENT)
+        results["recall_setup_skill_installed"] = True
+
+    # --- 4. Install Stop hook into .claude/settings.json (current project) ---
     results["hooks_installed"] = _install_project_hooks(command, force=force)
 
     return results
