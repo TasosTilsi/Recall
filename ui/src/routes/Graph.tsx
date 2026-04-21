@@ -1,23 +1,22 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useAppContext } from '@/context/AppContext';
 import { fetchGraph } from '@/api/client';
 import type { GraphData } from '@/types/api';
+import { ENTITY_TYPE_COLORS } from '@/lib/colors';
 import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { GraphLegend } from '@/components/graph/GraphLegend';
 import { DetailPanel, type PanelItem } from '@/components/panels/DetailPanel';
-import { Toggle } from '@/components/ui/toggle';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import Sigma from 'sigma';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
+const ALL_TYPES = Object.keys(ENTITY_TYPE_COLORS);
+
 export default function GraphView() {
-  const { scope, setLastUpdated } = useAppContext();
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showEpisodes, setShowEpisodes] = useState(false);
-  const [colorMode, setColorMode] = useState<'type' | 'scope'>('type');
+  // selectedTypes: empty array = show all; non-empty = show only these types
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedNode, setSelectedNode] = useState<PanelItem | null>(null);
   const rendererRef = useRef<Sigma | null>(null);
 
@@ -26,10 +25,9 @@ export default function GraphView() {
     const load = async () => {
       try {
         setLoading(true);
-        const result = await fetchGraph(scope);
+        const result = await fetchGraph();
         if (!cancelled) {
           setData(result);
-          setLastUpdated(new Date());
           setLoading(false);
         }
       } catch {
@@ -42,7 +40,13 @@ export default function GraphView() {
     load();
     const interval = setInterval(load, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [scope, setLastUpdated]);
+  }, []);
+
+  const toggleType = useCallback((type: string) => {
+    setSelectedTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  }, []);
 
   const handleNodeClick = useCallback((nodeData: { id: string; label: string; type: string }) => {
     setSelectedNode({ itemType: 'entity', itemId: nodeData.id, label: nodeData.label });
@@ -73,26 +77,37 @@ export default function GraphView() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative" style={{ backgroundColor: '#0b1326' }}>
-      {/* Graph toolbar */}
+      {/* Graph toolbar — entity-type multi-select filter */}
       <div
-        className="flex items-center gap-3 px-4 py-2 flex-shrink-0 z-10"
+        className="flex items-center gap-2 px-4 py-2 flex-shrink-0 z-10 flex-wrap"
         style={{ backgroundColor: '#171f33' }}
       >
-        <Toggle
-          pressed={showEpisodes}
-          onPressedChange={setShowEpisodes}
-          className="text-xs h-7 px-3 data-[state=on]:bg-blue-500 data-[state=on]:text-white"
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-1">Filter:</span>
+        {ALL_TYPES.map(type => {
+          const active = selectedTypes.length === 0 || selectedTypes.includes(type);
+          const color = ENTITY_TYPE_COLORS[type];
+          return (
+            <button
+              key={type}
+              onClick={() => toggleType(type)}
+              className="flex items-center gap-1.5 text-xs h-7 px-2.5 rounded transition-all"
+              style={{
+                backgroundColor: active ? `${color}22` : 'transparent',
+                color: active ? color : '#475569',
+                border: `1px solid ${active ? color : '#334155'}`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? color : '#475569' }} />
+              {type.replace('_', ' ')}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setSelectedTypes([])}
+          className="text-xs h-7 px-2 text-slate-500 hover:text-slate-300 transition-colors ml-1"
         >
-          Show episodes
-        </Toggle>
-        <ToggleGroup
-          type="single"
-          value={colorMode}
-          onValueChange={(v) => v && setColorMode(v as 'type' | 'scope')}
-        >
-          <ToggleGroupItem value="type" className="text-xs h-7 px-2">By type</ToggleGroupItem>
-          <ToggleGroupItem value="scope" className="text-xs h-7 px-2">By scope</ToggleGroupItem>
-        </ToggleGroup>
+          Clear
+        </button>
         <span className="text-xs text-slate-400 ml-auto">
           {data?.nodes.length ?? 0} nodes · {data?.edges.length ?? 0} edges
         </span>
@@ -106,12 +121,11 @@ export default function GraphView() {
         <GraphCanvas
           nodes={data?.nodes ?? []}
           edges={data?.edges ?? []}
-          showEpisodes={showEpisodes}
-          colorMode={colorMode}
+          selectedTypes={selectedTypes}
           onNodeClick={handleNodeClick}
           onRendererReady={handleRendererReady}
         />
-        <GraphLegend colorMode={colorMode} />
+        <GraphLegend />
         {/* Zoom controls */}
         <div className="absolute bottom-4 right-4 z-10 flex flex-col rounded-lg overflow-hidden"
              style={{ backgroundColor: 'rgba(34,42,61,0.88)', backdropFilter: 'blur(12px)' }}>
