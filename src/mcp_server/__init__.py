@@ -1,4 +1,4 @@
-"""MCP server for recall-kg.
+"""MCP server package — v3.0 read-only stdio server."""
+from src.mcp_server.server import serve
 
-Stub — implemented in Phase 30.
-"""
+__all__ = ["serve"]
