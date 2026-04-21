@@ -5,8 +5,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbS
 import { Skeleton } from '@/components/ui/skeleton';
 import { X } from 'lucide-react';
 import { fetchDetail } from '@/api/client';
-import { useAppContext } from '@/context/AppContext';
-import type { DetailRecord } from '@/types/api';
+import type { DetailEntityV3 } from '@/types/api';
 import { EntityPanel } from './EntityPanel';
 import { EdgePanel } from './EdgePanel';
 import { EpisodePanel } from './EpisodePanel';
@@ -20,10 +19,9 @@ interface DetailPanelProps {
 }
 
 export function DetailPanel({ item, onClose }: DetailPanelProps) {
-  const { scope } = useAppContext();
   const [breadcrumb, setBreadcrumb] = useState<PanelItem[]>([]);
   const [currentItem, setCurrentItem] = useState<PanelItem | null>(null);
-  const [data, setData] = useState<DetailRecord | null>(null);
+  const [data, setData] = useState<DetailEntityV3 | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +40,7 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchDetail(currentItem.itemType, currentItem.itemId, scope);
+        const result = await fetchDetail(currentItem.itemId);
         if (!cancelled) {
           setData(result);
           setLoading(false);
@@ -56,7 +54,7 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
     };
     load();
     return () => { cancelled = true; };
-  }, [currentItem, scope]);
+  }, [currentItem]);
 
   // In-panel navigation: append to breadcrumb
   const navigateInPlace = useCallback((next: PanelItem) => {
@@ -135,7 +133,7 @@ export function DetailPanel({ item, onClose }: DetailPanelProps) {
           )}
           {error && <p className="text-red-400 text-sm">{error}</p>}
           {!loading && !error && data && currentItem?.itemType === 'entity' && (
-            <EntityPanel entity={data as import('@/types/api').DetailEntity} onNavigate={navigateInPlace} />
+            <EntityPanel entity={data} />
           )}
           {!loading && !error && data && currentItem?.itemType === 'edge' && (
             <EdgePanel edge={data as import('@/types/api').DetailEdge} onNavigate={navigateInPlace} />
