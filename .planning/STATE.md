@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 29-cli-commands-02-PLAN.md
-last_updated: "2026-04-21T09:04:59.087Z"
+status: executing
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-04-21T09:17:47.601Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 9
   completed_phases: 5
   total_plans: 20
-  completed_plans: 11
+  completed_plans: 12
   percent: 20
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 29 — cli-commands
+**Current focus:** Phase 30 — mcp-server
 
 ## Current Position
 
-Phase: 30
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 30 (mcp-server) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-21
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -70,6 +70,9 @@ Major architectural pivot:
 - [Phase 29-cli-commands]: search_cmd implements FTS5/semantic/backlinks directly against SQLite — GraphService not present in v3.0 layout
 - [Phase 29-cli-commands]: context_settings allow_interspersed_args=True required on search Typer sub-app for natural arg+option ordering
 - [Phase 29-cli-commands]: tomllib (stdlib) for TOML read + tomli-w for write — toml library not installed; added tomli-w to pyproject.toml
+- [Phase 30-mcp-server]: Query helpers added to DatabaseManager directly (not separate layer) — tools.py calls db directly
+- [Phase 30-mcp-server]: Schema column aliases in get_backlinks() SQL map from_id/to_id/relationship to documented interface names
+- [Phase 30-mcp-server]: BFS backlink traversal in Python with visited-set (not recursive CTE) — cycle-safe, testable
 
 ### Pending Todos
 
@@ -83,5 +86,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 29-cli-commands-02-PLAN.md
+Stopped at: Completed 30-01-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)

@@ -45,8 +45,8 @@
 
 ### MCP — Read-Only Server
 
-- [ ] **MCP-01**: `recall mcp serve` starts a stdio MCP server with six read-only tools: `search_knowledge` (FTS query), `get_entity` (by id or name), `get_backlinks` (traverse one or more hops), `get_decisions` (filter type=decision), `get_bugs` (filter type=bug_fix), `get_patterns` (filter type=pattern)
-- [ ] **MCP-02**: The MCP server never writes to stdout outside the MCP protocol — all logging goes to stderr; tool responses are JSON
+- [x] **MCP-01**: `recall mcp serve` starts a stdio MCP server with six read-only tools: `search_knowledge` (FTS query), `get_entity` (by id or name), `get_backlinks` (traverse one or more hops), `get_decisions` (filter type=decision), `get_bugs` (filter type=bug_fix), `get_patterns` (filter type=pattern)
+- [x] **MCP-02**: The MCP server never writes to stdout outside the MCP protocol — all logging goes to stderr; tool responses are JSON
 
 ### UI — Graph Explorer
 
@@ -118,8 +118,8 @@
 | CLI-01 | Phase 29 | Complete |
 | CLI-02 | Phase 29 | Complete |
 | CLI-03 | Phase 29 | Complete |
-| MCP-01 | Phase 30 | Pending |
-| MCP-02 | Phase 30 | Pending |
+| MCP-01 | Phase 30 | Complete |
+| MCP-02 | Phase 30 | Complete |
 | UI-01 | Phase 31 | Pending |
 | UI-02 | Phase 31 | Pending |
 | UI-03 | Phase 31 | Pending |
