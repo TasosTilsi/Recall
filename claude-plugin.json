@@ -1,0 +1,27 @@
+{
+  "name": "recall",
+  "version": "3.0.0",
+  "description": "Engineering knowledge graph for coding projects. Indexes git history and surfaces decisions, patterns, and context.",
+  "mcpServers": {
+    "recall": {
+      "command": "recall",
+      "args": ["mcp", "serve"]
+    }
+  },
+  "skills": [
+    {
+      "name": "recall-setup",
+      "command": "/recall-setup",
+      "description": "Interactive walkthrough: choose LLM provider, enter credentials, write ~/.recall/config.toml, verify with recall health"
+    },
+    {
+      "name": "recall-index",
+      "command": "/recall-index",
+      "description": "Run recall sync (or recall init if no DB exists), report commits processed and entity type breakdown"
+    }
+  ],
+  "install": {
+    "command": "recall",
+    "args": ["install"]
+  }
+}
