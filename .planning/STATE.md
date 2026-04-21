@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 30-02-PLAN.md
-last_updated: "2026-04-21T09:23:30.967Z"
+status: executing
+stopped_at: Completed 31-01-PLAN.md
+last_updated: "2026-04-21T09:31:58.021Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 14
   percent: 20
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 **Core value:** A comprehensive engineering knowledge graph built from git history — every decision, bug fix, and pattern made searchable and interconnected with bidirectional backlinks.
-**Current focus:** Phase 30 — mcp-server
+**Current focus:** Phase 31 — ui-adaptation
 
 ## Current Position
 
-Phase: 31
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 31 (ui-adaptation) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-21
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -74,6 +74,8 @@ Major architectural pivot:
 - [Phase 30-mcp-server]: Schema column aliases in get_backlinks() SQL map from_id/to_id/relationship to documented interface names
 - [Phase 30-mcp-server]: BFS backlink traversal in Python with visited-set (not recursive CTE) — cycle-safe, testable
 - [Phase 30-mcp-server]: serve() import deferred inside mcp CLI command body — prevents FastMCP logging side effects at recall startup time
+- [Phase 31]: All UI route handlers synchronous (def not async def) — sqlite3 blocking, no async benefit
+- [Phase 31]: create_app() does not call db.init_db() — UI server read-only; init is indexer responsibility
 
 ### Pending Todos
 
@@ -87,5 +89,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 30-02-PLAN.md
+Stopped at: Completed 31-01-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)

@@ -50,10 +50,10 @@
 
 ### UI — Graph Explorer
 
-- [ ] **UI-01**: The existing shadcn/Sigma.js UI is adapted to query the new SQLite-backed REST API; all references to graphiti-core data shapes (episodes, edge_count, retention_status) are removed
-- [ ] **UI-02**: Graph view renders entities as nodes and backlinks as directed edges; node color encodes entity type using the six-type palette
-- [ ] **UI-03**: Entity type filter (multi-select) in the graph toolbar narrows visible nodes to selected types
-- [ ] **UI-04**: Clicking any node opens a detail panel showing: entity name, type, tags, source commit, content, and all backlinks with relationship labels and context snippets
+- [x] **UI-01**: The existing shadcn/Sigma.js UI is adapted to query the new SQLite-backed REST API; all references to graphiti-core data shapes (episodes, edge_count, retention_status) are removed
+- [x] **UI-02**: Graph view renders entities as nodes and backlinks as directed edges; node color encodes entity type using the six-type palette
+- [x] **UI-03**: Entity type filter (multi-select) in the graph toolbar narrows visible nodes to selected types
+- [x] **UI-04**: Clicking any node opens a detail panel showing: entity name, type, tags, source commit, content, and all backlinks with relationship labels and context snippets
 
 ### INST — Installation
 
@@ -120,10 +120,10 @@
 | CLI-03 | Phase 29 | Complete |
 | MCP-01 | Phase 30 | Complete |
 | MCP-02 | Phase 30 | Complete |
-| UI-01 | Phase 31 | Pending |
-| UI-02 | Phase 31 | Pending |
-| UI-03 | Phase 31 | Pending |
-| UI-04 | Phase 31 | Pending |
+| UI-01 | Phase 31 | Complete |
+| UI-02 | Phase 31 | Complete |
+| UI-03 | Phase 31 | Complete |
+| UI-04 | Phase 31 | Complete |
 | INST-01 | Phase 33 | Pending |
 | INST-02 | Phase 32 | Pending |
 | INST-03 | Phase 32 | Pending |

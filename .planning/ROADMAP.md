@@ -152,7 +152,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
   3. Selecting one or more types in the entity type filter hides all nodes of unselected types from the graph view
   4. Clicking any node opens a detail panel showing: name, type, tags, source commit sha, content, and all backlinks with relationship label and context snippet
 **Plans**: 2 plans
-- [ ] 31-01-PLAN.md — Rewrite FastAPI backend routes for v3.0 SQLite API
+- [x] 31-01-PLAN.md — Rewrite FastAPI backend routes for v3.0 SQLite API
 - [ ] 31-02-PLAN.md — Update frontend types, colors, graph filter, and detail panel
 **UI hint**: yes
 
@@ -196,7 +196,7 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 | 28. Git Extractor + Indexer | 2/3 | Complete    | 2026-04-19 |
 | 29. CLI Commands | 2/2 | Complete    | 2026-04-21 |
 | 30. MCP Server | 2/2 | Complete    | 2026-04-21 |
-| 31. UI Adaptation | 0/? | Not started | - |
+| 31. UI Adaptation | 1/2 | In Progress|  |
 | 32. Claude Plugin + Skills | 0/? | Not started | - |
 | 33. Integration + Packaging | 0/? | Not started | - |
 
