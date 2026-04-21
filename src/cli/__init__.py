@@ -1,4 +1,4 @@
-"""CLI entrypoint for recall-kg — six public commands: init, sync, search, health, config, ui."""
+"""CLI entrypoint for recall-kg — six operational commands (init, sync, search, health, config, ui) plus one setup command (install)."""
 from __future__ import annotations
 
 import logging
@@ -28,6 +28,7 @@ from src.cli.commands.health import health_command  # noqa: E402
 from src.cli.commands.config_cmd import app as config_app  # noqa: E402
 from src.cli.commands.ui import ui_command  # noqa: E402
 from src.cli.commands import mcp as mcp_commands  # noqa: E402
+from src.cli.commands.install_cmd import install_command  # noqa: E402
 
 # --- Register commands in canonical order ---
 app.command(name="init", help="Index git history from scratch (full reindex)")(init_command)
@@ -37,6 +38,7 @@ app.command(name="health", help="Check LLM provider and database status")(health
 app.add_typer(config_app, name="config", help="View and modify configuration")
 app.command(name="ui", help="Launch the graph explorer UI")(ui_command)
 app.add_typer(mcp_commands.app, name="mcp")
+app.command(name="install", help="Install recall as a Claude plugin")(install_command)
 
 
 @app.callback()
