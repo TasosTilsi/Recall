@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 30-01-PLAN.md
-last_updated: "2026-04-21T09:17:47.601Z"
+status: verifying
+stopped_at: Completed 30-02-PLAN.md
+last_updated: "2026-04-21T09:20:31.564Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
-  completed_plans: 12
+  completed_plans: 13
   percent: 20
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 
 Phase: 30 (mcp-server) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-21
 
 Progress: [__________] 20% (8/20 plans complete)
@@ -73,6 +73,7 @@ Major architectural pivot:
 - [Phase 30-mcp-server]: Query helpers added to DatabaseManager directly (not separate layer) — tools.py calls db directly
 - [Phase 30-mcp-server]: Schema column aliases in get_backlinks() SQL map from_id/to_id/relationship to documented interface names
 - [Phase 30-mcp-server]: BFS backlink traversal in Python with visited-set (not recursive CTE) — cycle-safe, testable
+- [Phase 30-mcp-server]: serve() import deferred inside mcp CLI command body — prevents FastMCP logging side effects at recall startup time
 
 ### Pending Todos
 
@@ -86,5 +87,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 30-01-PLAN.md
+Stopped at: Completed 30-02-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)
