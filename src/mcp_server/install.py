@@ -13,6 +13,7 @@ from pathlib import Path
 # This keeps skill content in one place (the .md file) rather than duplicating it.
 _SKILLS_DIR = Path(__file__).parent.parent / "cli" / "skills"
 RECALL_SETUP_SKILL_CONTENT: str = (_SKILLS_DIR / "recall_setup.md").read_text()
+RECALL_INDEX_SKILL_CONTENT: str = (_SKILLS_DIR / "recall_index.md").read_text()
 
 # SKILL.md content — embedded here so it can be installed without external files.
 # Written to ~/.claude/skills/recall/SKILL.md (user-scope: all projects).
@@ -193,19 +194,22 @@ def install_mcp_server(force: bool = False) -> dict:
     1. Adds 'recall' entry to mcpServers in ~/.claude/settings.json
     2. Writes SKILL.md to ~/.claude/skills/recall/SKILL.md
     3. Writes recall-setup.md to ~/.claude/skills/recall/recall-setup.md
-    4. Writes Stop hook to .claude/settings.json in the current directory
+    4. Writes recall-index.md to ~/.claude/skills/recall/recall-index.md
+    5. Writes Stop hook to .claude/settings.json in the current directory
 
     Args:
         force: Overwrite existing entries even if already present
 
     Returns:
         Dict with 'claude_json_updated', 'skill_md_installed',
-        'recall_setup_skill_installed', and 'hooks_installed' boolean results
+        'recall_setup_skill_installed', 'recall_index_skill_installed',
+        and 'hooks_installed' boolean results
     """
     results = {
         "claude_json_updated": False,
         "skill_md_installed": False,
         "recall_setup_skill_installed": False,
+        "recall_index_skill_installed": False,
         "hooks_installed": False,
     }
     command, extra_args = _find_recall_executable()
@@ -248,6 +252,13 @@ def install_mcp_server(force: bool = False) -> dict:
         skill_dir.mkdir(parents=True, exist_ok=True)
         recall_setup_path.write_text(RECALL_SETUP_SKILL_CONTENT)
         results["recall_setup_skill_installed"] = True
+
+    # --- 3b. Install recall-index.md ---
+    recall_index_skill_path = skill_dir / "recall-index.md"
+    if not recall_index_skill_path.exists() or force:
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        recall_index_skill_path.write_text(RECALL_INDEX_SKILL_CONTENT)
+        results["recall_index_skill_installed"] = True
 
     # --- 4. Install Stop hook into .claude/settings.json (current project) ---
     results["hooks_installed"] = _install_project_hooks(command, force=force)
