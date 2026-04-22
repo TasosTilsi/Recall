@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 32-claude-plugin-skills-32-01-PLAN.md
-last_updated: "2026-04-21T20:18:37.841Z"
-last_activity: 2026-04-21
+stopped_at: Completed 32-03-PLAN.md
+last_updated: "2026-04-22T21:20:03.348Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 9
-  completed_phases: 7
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 14
   percent: 20
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-14 for v3.0 milestone)
 ## Current Position
 
 Phase: 32 (claude-plugin-skills) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
-Last activity: 2026-04-21
+Last activity: 2026-04-22
 
 Progress: [__________] 20% (8/20 plans complete)
 
@@ -78,6 +78,8 @@ Major architectural pivot:
 - [Phase 31]: create_app() does not call db.init_db() — UI server read-only; init is indexer responsibility
 - [Phase 31]: DetailPanel.tsx updated alongside EntityPanel — fetchDetail signature changed to single entityId arg; old call site would fail at runtime
 - [Phase 32-claude-plugin-skills]: install_mcp_global uses idempotent read/merge/write pattern for ~/.claude/settings.json
+- [Phase 32]: RECALL_INDEX_SKILL_CONTENT loaded from source .md file at import time (same pattern as RECALL_SETUP_SKILL_CONTENT — single source of truth)
+- [Phase 32]: recall-index.md installed in section 3b between recall-setup and hooks — minimal diff to existing install_mcp_server() structure
 
 ### Pending Todos
 
@@ -91,5 +93,5 @@ Major architectural pivot:
 ## Session Continuity
 
 Last activity: 2026-04-19 — Phase 28 Plan 02 complete (extract_batch LLM engine implemented)
-Stopped at: Completed 32-claude-plugin-skills-32-01-PLAN.md
+Stopped at: Completed 32-03-PLAN.md
 Resume with: `/gsd:execute-phase 28` for Phase 28 Plan 03 (indexer wiring)

@@ -64,7 +64,7 @@
 ### SKILL — Claude Skills
 
 - [ ] **SKILL-01**: `/recall-setup` skill guides the user through: choosing an LLM provider, entering credentials, writing `~/.recall/config.toml`, running `recall health` to verify, and optionally running `recall init` on the current repo
-- [ ] **SKILL-02**: `/recall-index` skill runs `recall sync` on the current repo (or `recall init` if no DB exists), reports how many commits were processed, and summarizes what types of entities were extracted
+- [x] **SKILL-02**: `/recall-index` skill runs `recall sync` on the current repo (or `recall init` if no DB exists), reports how many commits were processed, and summarizes what types of entities were extracted
 
 ---
 
@@ -128,4 +128,4 @@
 | INST-02 | Phase 32 | Complete |
 | INST-03 | Phase 32 | Complete |
 | SKILL-01 | Phase 32 | Pending |
-| SKILL-02 | Phase 32 | Pending |
+| SKILL-02 | Phase 32 | Complete |
