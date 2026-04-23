@@ -98,8 +98,20 @@ Run:
 recall health
 ```
 
-- If health passes → report success: "recall is configured and healthy. You can now run /recall-index to index your git history."
-- If health fails → show the error output, diagnose (common issues: Ollama not running, claude CLI not found), and offer to fix.
+- If health passes → proceed to Step 5.
+- If health fails → show the error output, diagnose (common issues: Ollama not running, claude CLI not found), and offer to fix before continuing.
+
+## Step 5: Optionally index the current repo
+
+Ask the user: "Would you like to index the current repository's git history now? This runs `recall init` and may take a few minutes for large repos."
+
+- If **yes** → run:
+  ```bash
+  recall init 2>&1
+  ```
+  Report the result: commits indexed, any errors. Then confirm: "Indexing complete. recall will now inject relevant context at the start of each Claude session."
+
+- If **no** → confirm: "recall is configured and healthy. Run /recall-index any time to index a repository."
 
 ## Important
 
