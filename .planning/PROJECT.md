@@ -87,9 +87,9 @@ UI: `recall ui` — shadcn/ui table + Sigma.js WebGL graph, retention filter, no
 - UI-03: Filter by entity type ✓ Validated in Phase 31
 - UI-04: Entity detail panel with backlinks + commit context ✓ Validated in Phase 31
 - INST-01: `pipx install recall-kg` installs `recall` CLI
-- INST-02: Claude plugin install: registers skills + MCP server in ~/.claude/settings.json
-- SKILL-01: `/recall-setup` skill — guides config, first init
-- SKILL-02: `/recall-index` skill — triggers sync (or init if no DB)
+- INST-02: Claude plugin install: registers skills + MCP server in ~/.claude/settings.json ✓ Validated in Phase 32
+- SKILL-01: `/recall-setup` skill — guides config, first init ✓ Validated in Phase 32
+- SKILL-02: `/recall-index` skill — triggers sync (or init if no DB) ✓ Validated in Phase 32
 
 ### Out of Scope
 
@@ -161,4 +161,4 @@ LLM: Ollama (gemma2:9b / nomic-embed-text) or any OpenAI-compatible provider via
 | Batch extraction: 10 commits per `claude -p` call | 10× fewer LLM calls vs per-commit extraction; single call returns entities/relationships for whole batch | ✓ Locked — v2.0 Phase 20 |
 
 ---
-*Last updated: 2026-04-21 — Phase 31 complete: UI-01–04 validated (FastAPI + React adapted to v3.0 SQLite schema, TS clean, 6-type graph).*
+*Last updated: 2026-04-23 — Phase 32 complete: INST-02, SKILL-01, SKILL-02 validated (claude-plugin.json manifest, `recall install` command, /recall-setup and /recall-index skills).*
