@@ -5,7 +5,8 @@
 - [x] **v1.0 MVP** — Phases 1–8.9 (shipped 2026-03-01) — see [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] **v2.0 Rebuild** — Phases 12–24 (completed 2026-04-07): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Gap closure: Phases 22–24.
-- [ ] **v3.0 Engineering Knowledge Graph** — Phases 25–33 (in progress): major pivot — remove graphiti-core/LadybugDB/hooks/queue/retention; rebuild on SQLite + FTS5 + backlinks; single LLM provider; Claude plugin + two skills; clean 6-command CLI surface.
+- [x] **v3.0 Engineering Knowledge Graph** — Phases 25–33 (completed 2026-04-23): major pivot — remove graphiti-core/LadybugDB/hooks/queue/retention; rebuild on SQLite + FTS5 + backlinks; single LLM provider; Claude plugin + two skills; clean 6-command CLI surface.
+- [ ] **v3.1 Multi-Repo & High-Level Synthesis** — Phases 34–38 (in progress): Evolve into a multi-repo knowledge engine; high-level business logic (workflows, rules) and unified "World View" UI.
 
 ## Phases
 
@@ -60,18 +61,29 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 
 </details>
 
-<details open>
-<summary>v3.0 Engineering Knowledge Graph (Phases 25–33) — IN PROGRESS</summary>
+<details>
+<summary>✅ v3.0 Engineering Knowledge Graph (Phases 25–33) — SHIPPED 2026-04-23</summary>
 
-- [ ] **Phase 25: Teardown** - Remove all legacy components and restructure to the new module layout
-- [x] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table (1/1 plans complete)
-- [ ] **Phase 27: LLM Provider** - Single-provider LLM client with claude/ollama/openai support and health reporting
-- [ ] **Phase 28: Git Extractor + Indexer** - Batch LLM extraction from git history with init and sync modes
-- [ ] **Phase 29: CLI Commands** - Six-command CLI surface wired to the new stack
-- [ ] **Phase 30: MCP Server** - Read-only stdio MCP server with six knowledge tools
-- [ ] **Phase 31: UI Adaptation** - Update graph explorer to the new SQLite-backed API and six entity types
-- [ ] **Phase 32: Claude Plugin + Skills** - Plugin manifest, skill definitions, and installation mechanism
-- [ ] **Phase 33: Integration + Packaging** - pipx packaging, end-to-end smoke test, and final polish
+- [x] **Phase 25: Teardown** - Remove all legacy components and restructure to the new module layout
+- [x] **Phase 26: DB Schema** - SQLite schema with FTS5, backlinks table, and optional embeddings table
+- [x] **Phase 27: LLM Provider** - Single-provider LLM client with claude/ollama/openai support and health reporting
+- [x] **Phase 28: Git Extractor + Indexer** - Batch LLM extraction from git history with init and sync modes
+- [x] **Phase 29: CLI Commands** - Six-command CLI surface wired to the new stack
+- [x] **Phase 30: MCP Server** - Read-only stdio MCP server with six knowledge tools
+- [x] **Phase 31: UI Adaptation** - Update graph explorer to the new SQLite-backed API and six entity types
+- [x] **Phase 32: Claude Plugin + Skills** - Plugin manifest, skill definitions, and installation mechanism
+- [x] **Phase 33: Integration + Packaging** - pipx packaging, end-to-end smoke test, and final polish
+
+</details>
+
+<details open>
+<summary>v3.1 Multi-Repo & High-Level Synthesis (Phases 34–38) — IN PROGRESS</summary>
+
+- [ ] **Phase 34: API & Extraction Uplift** - Direct Anthropic API, new entity types (workflow, business_rule)
+- [ ] **Phase 35: Synthesis Engine** - "Project DNA" summaries and `summaries` table implementation
+- [ ] **Phase 36: Workspace Engine** - Sibling repo detection and cross-repo bridge node discovery
+- [ ] **Phase 37: World View UI** - Visualization of multiple repositories and their interconnections
+- [ ] **Phase 38: Final Polish** - Documentation updates and performance tuning
 
 </details>
 

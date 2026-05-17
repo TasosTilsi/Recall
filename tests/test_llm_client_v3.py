@@ -42,13 +42,35 @@ def test_make_llm_client_openai():
 
 
 @pytest.mark.asyncio
-async def test_chat_claude_binary_not_found():
-    """Test 4: claude provider, shutil.which returns None → LLMError."""
+async def test_chat_claude_no_api_key():
+    """Test 4: claude provider, no API key → LLMError."""
     cfg = _make_config("claude")
     client = make_llm_client(cfg)
-    with patch("src.llm.client.shutil.which", return_value=None):
-        with pytest.raises(LLMError, match="claude binary not found"):
-            await client.chat([{"role": "user", "content": "hi"}])
+    with pytest.raises(LLMError, match="requires api_key"):
+        await client.chat([{"role": "user", "content": "hi"}])
+
+
+@pytest.mark.asyncio
+async def test_chat_claude_api_call():
+    """Test 4.1: claude provider, direct API call mock."""
+    cfg = _make_config("claude", api_key="sk-ant-test")
+    client = make_llm_client(cfg)
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "content": [{"text": "Hello from Claude"}]
+    }
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.post = AsyncMock(return_value=mock_resp)
+
+    with patch("src.llm.client.httpx.AsyncClient", return_value=mock_client):
+        resp = await client.chat([{"role": "user", "content": "hi"}])
+        assert resp.content == "Hello from Claude"
+        assert resp.provider == "claude"
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
-import { fetchDashboard } from '@/api/client';
-import type { DashboardData } from '@/types/api';
+import { fetchDashboard, fetchSummary } from '@/api/client';
+import type { DashboardData, SummaryData } from '@/types/api';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,6 +27,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 export default function Dashboard() {
   const { setLastUpdated } = useAppContext();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,9 +36,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const result = await fetchDashboard();
+        const [dashResult, summaryResult] = await Promise.all([
+          fetchDashboard(),
+          fetchSummary(),
+        ]);
         if (!cancelled) {
-          setData(result);
+          setData(dashResult);
+          setSummary(summaryResult);
           setLastUpdated(new Date());
           setLoading(false);
         }
@@ -126,6 +131,21 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      {/* Project DNA Summary */}
+      <Card className="p-4 mb-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>
+        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+          Project DNA
+        </h2>
+        {summary ? (
+          <div className="text-sm text-slate-300 prose prose-invert max-w-none prose-sm leading-relaxed whitespace-pre-wrap">
+            {summary.content}
+          </div>
+        ) : (
+          <p className="text-slate-500 text-sm">No summary available.</p>
+        )}
+      </Card>
 
       {/* Recent Commits */}
       <Card className="p-4" style={{ backgroundColor: '#222a3d', border: 'none' }}>

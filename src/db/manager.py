@@ -200,9 +200,36 @@ class DatabaseManager:
     def get_entities_by_type(self, entity_type: str, limit: int = 20) -> list[dict]:
         """Return entities filtered by type.
 
-        Valid types: decision, bug_fix, pattern, file, concept, tech_debt.
+        Valid types: decision, bug_fix, pattern, file, concept, tech_debt, workflow, business_rule.
         """
         sql = "SELECT * FROM entities WHERE type = ? ORDER BY created_at DESC LIMIT ?"
         with self.connect() as conn:
             rows = conn.execute(sql, (entity_type, limit)).fetchall()
         return [self._row_to_entity(row) for row in rows]
+
+    def get_latest_summary(self) -> dict | None:
+        """Fetch the most recent Project DNA summary."""
+        sql = "SELECT * FROM summaries ORDER BY created_at DESC LIMIT 1"
+        with self.connect() as conn:
+            row = conn.execute(sql).fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def scan_workspace(self) -> list[Path]:
+        """Scan sibling directories for other .recall/ databases.
+
+        Returns a list of paths to sibling recall databases.
+        """
+        root = _find_project_root(Path.cwd())
+        if not root:
+            return []
+
+        workspace_root = root.parent
+        siblings = []
+        for d in workspace_root.iterdir():
+            if d.is_dir() and d != root:
+                db_path = d / ".recall" / "recall.db"
+                if db_path.exists():
+                    siblings.append(db_path)
+        return siblings

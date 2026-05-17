@@ -86,24 +86,51 @@ class LLMClient:
             raise LLMError(f"Unknown embeddings provider: {emb.provider}")
 
     async def _chat_claude(self, messages: list[dict]) -> LLMResponse:
-        if shutil.which("claude") is None:
-            raise LLMError("claude binary not found — install Claude Code CLI")
+        url = self._config.llm.url or "https://api.anthropic.com/v1/messages"
+        api_key = self._config.llm.api_key
+        if not api_key:
+            raise LLMError("claude provider requires api_key in [llm] config")
 
-        prompt = "\n\n".join(f"{m['role'].upper()}: {m['content']}" for m in messages)
-        cmd = ["claude", "-p", prompt, "--output-format", "json", "--model", self._config.llm.model]
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
 
-        proc = await asyncio.create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
-        except asyncio.TimeoutError:
-            proc.kill()
-            raise LLMError("claude -p timed out after 120s")
+        # Anthropic 'messages' API doesn't use a 'system' role in the messages list.
+        # It has a top-level 'system' field.
+        system_prompt = ""
+        user_messages = []
+        for m in messages:
+            if m["role"] == "system":
+                system_prompt = m["content"]
+            else:
+                user_messages.append(m)
 
-        if proc.returncode != 0:
-            raise LLMError(f"claude -p failed (exit {proc.returncode}): {stderr.decode()}")
+        payload = {
+            "model": self._config.llm.model,
+            "messages": user_messages,
+            "max_tokens": 4096,
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
 
-        result = json.loads(stdout.decode())["result"]
-        return LLMResponse(content=result, provider="claude", model=self._config.llm.model)
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                    timeout=60.0,
+                )
+            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                raise LLMError(f"anthropic unreachable at {url}: {e}") from e
+
+        if resp.status_code != 200:
+            raise LLMError(f"anthropic error {resp.status_code} at {url}: {resp.text}")
+
+        content = resp.json()["content"][0]["text"]
+        return LLMResponse(content=content, provider="claude", model=self._config.llm.model)
 
     async def _chat_ollama(self, messages: list[dict]) -> LLMResponse:
         url = self._config.llm.url or "http://localhost:11434"

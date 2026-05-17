@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS commits (
 DDL_ENTITIES = """
 CREATE TABLE IF NOT EXISTS entities (
     id          TEXT PRIMARY KEY,
-    type        TEXT NOT NULL CHECK(type IN ('decision','bug_fix','pattern','file','concept','tech_debt')),
+    type        TEXT NOT NULL CHECK(type IN ('decision','bug_fix','pattern','file','concept','tech_debt','workflow','business_rule')),
     name        TEXT NOT NULL,
     content     TEXT NOT NULL DEFAULT '',
     commit_sha  TEXT REFERENCES commits(sha),
@@ -99,6 +99,15 @@ CREATE TABLE IF NOT EXISTS embeddings (
 )
 """
 
+DDL_SUMMARIES = """
+CREATE TABLE IF NOT EXISTS summaries (
+    id          TEXT PRIMARY KEY,
+    content     TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    commit_sha  TEXT REFERENCES commits(sha)
+)
+"""
+
 # Ordered list for init_db to execute
 CORE_DDL = [
     DDL_COMMITS,
@@ -110,4 +119,5 @@ CORE_DDL = [
     DDL_FTS_DELETE_TRIGGER,
     DDL_FTS_UPDATE_TRIGGER,
     DDL_BACKLINKS_INVERSE_TRIGGER,
+    DDL_SUMMARIES,
 ]

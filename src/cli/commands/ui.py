@@ -24,12 +24,7 @@ def ui_command(
         from pathlib import Path
         from src.ui_server.app import create_app
 
-        project_root = Path.cwd()
-        app = create_app(
-            scope_label=f"project ({project_root.name})",
-            scope="project",
-            project_root=project_root,
-        )
+        app = create_app()
 
         url = f"http://{host}:{port}"
         console.print(f"Starting Recall UI at [link={url}]{url}[/link]")

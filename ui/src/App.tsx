@@ -7,7 +7,7 @@ import Dashboard from '@/routes/Dashboard';
 import GraphView from '@/routes/Graph';
 import Entities from '@/routes/Entities';
 import Relations from '@/routes/Relations';
-import Episodes from '@/routes/Episodes';
+import WorldView from '@/routes/WorldView';
 import Search from '@/routes/Search';
 import { useState, useCallback } from 'react';
 
@@ -32,7 +32,7 @@ function Shell() {
             <Route path="/graph" element={<GraphView />} />
             <Route path="/entities" element={<Entities />} />
             <Route path="/relations" element={<Relations />} />
-            <Route path="/episodes" element={<Episodes />} />
+            <Route path="/world-view" element={<WorldView />} />
             <Route path="/search" element={<Search />} />
           </Routes>
         </main>

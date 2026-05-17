@@ -66,11 +66,19 @@
 - [ ] **SKILL-01**: `/recall-setup` skill guides the user through: choosing an LLM provider, entering credentials, writing `~/.recall/config.toml`, running `recall health` to verify, and optionally running `recall init` on the current repo
 - [x] **SKILL-02**: `/recall-index` skill runs `recall sync` on the current repo (or `recall init` if no DB exists), reports how many commits were processed, and summarizes what types of entities were extracted
 
+### v3.1 Multi-Repo & Synthesis
+
+- [ ] **MR-01**: Sibling repository detection: Automatically identify other `.recall/` databases in the same parent directory.
+- [ ] **MR-02**: Semantic Bridge Nodes: Identify and link entities across repositories using embedding similarity and LLM verification.
+- [ ] **SYN-01**: Business logic extraction: New entity types `workflow` and `business_rule` captured during indexing.
+- [ ] **SYN-02**: Project DNA: Automatic generation of a high-level project summary stored in a new `summaries` table.
+- [ ] **API-01**: Native Anthropic SDK: Replace Claude CLI with direct API calls via `httpx`.
+- [ ] **UI-05**: World View visualization: Interactive map of interconnected repositories.
+
 ---
 
 ## Future Requirements (deferred)
 
-- Multi-repo aggregation — single graph spanning multiple repos
 - PR/issue body extraction — pull decisions from PR descriptions and issue comments
 - Branch awareness — tag entities with branch name at extraction time
 - Team sharing — shared SQLite via git LFS or sync service

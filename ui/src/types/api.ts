@@ -6,7 +6,9 @@ export type CanonicalEntityType =
   | 'pattern'
   | 'file'
   | 'concept'
-  | 'tech_debt';
+  | 'tech_debt'
+  | 'workflow'
+  | 'business_rule';
 
 // GraphData — /api/graph response
 export interface GraphNode {
@@ -81,4 +83,34 @@ export interface SearchEntityResult {
 
 export interface SearchResults {
   entities: SearchEntityResult[];
+}
+
+// SummaryData — /api/summary response
+export interface SummaryData {
+  id: string;
+  content: string;
+  created_at: string;
+  commit_sha: string;
+}
+
+// WorldViewData — /api/world-view response
+export interface BridgeNodeOccurrence {
+  repo: string;
+  id: string;
+  type: string;
+}
+
+export interface BridgeNode {
+  name: string;
+  occurrences: BridgeNodeOccurrence[];
+}
+
+export interface Repository {
+  name: string;
+  path: string;
+}
+
+export interface WorldViewData {
+  repositories: Repository[];
+  bridge_nodes: BridgeNode[];
 }
