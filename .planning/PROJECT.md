@@ -18,6 +18,7 @@ A local developer memory system running as `recall` (alias `rc`) — knowledge g
 - **Direct API Integration**: Move from Claude CLI subprocesses to direct Anthropic/OpenAI/Ollama API calls for better performance and reliability.
 - **"World View" UI**: A new visualization mode in the graph explorer showing how multiple repositories relate to each other through shared concepts and patterns.
 - **Enhanced Extraction**: New entity types for `workflow` and `business_rule` to capture domain logic alongside technical debt and decisions.
+- **Claude Skills**: Guided `/recall-setup` and `/recall-index` skills integrated into the Claude CLI.
 
 ## Previous State
 
