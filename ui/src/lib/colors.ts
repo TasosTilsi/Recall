@@ -6,6 +6,8 @@ export const ENTITY_TYPE_COLORS: Record<string, string> = {
   file:      '#6ee7b7',  // mint
   concept:   '#fbbf24',  // amber
   tech_debt: '#f97316',  // orange
+  workflow:  '#ec4899',  // pink
+  business_rule: '#10b981', // emerald
 };
 
 export function getEntityColor(type: string): string {

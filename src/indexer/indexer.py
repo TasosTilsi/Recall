@@ -17,6 +17,7 @@ from src.config import Config, load_config
 from src.db.manager import DatabaseManager
 from src.extractor.engine import extract_batch
 from src.extractor.git_walker import CommitRecord, batch_commits, walk_commits
+from src.indexer.synthesis import run_synthesis
 
 logger = structlog.get_logger()
 
@@ -147,6 +148,9 @@ def run_init(repo_root: Path, config: Optional[Config] = None) -> dict:
             # HEAD is the last commit in oldest-first order
             _write_last_sha(conn, commits[-1].sha)
 
+    logger.info("running_high_level_synthesis")
+    run_synthesis(config)
+
     logger.info(
         "init_complete",
         commits_processed=commits_processed,
@@ -211,6 +215,9 @@ def run_sync(repo_root: Path, config: Optional[Config] = None) -> dict:
 
         # Record the most recent processed commit as the new cursor
         _write_last_sha(conn, new_commits[-1].sha)
+
+    logger.info("running_high_level_synthesis")
+    run_synthesis(config)
 
     logger.info(
         "sync_complete",

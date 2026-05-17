@@ -44,6 +44,7 @@ def create_app(
     config = load_config()
     db = DatabaseManager(config)
     app.state.db = db
+    app.state.config = config
 
     # CORS — only for local Vite dev workflow
     if dev_mode:

@@ -4,6 +4,7 @@ INVARIANT: All DB access is read-only SELECT. No INSERT/UPDATE/DELETE allowed he
 """
 import logging
 from fastapi import APIRouter, HTTPException, Request
+from src.indexer.workspace import WorkspaceManager
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -187,3 +188,24 @@ def search(q: str = "", request: Request = None):
         for r in rows
     ]
     return {"entities": entities}
+
+
+# ── /api/summary ─────────────────────────────────────────────────────────────
+
+@router.get("/summary")
+def get_summary(request: Request):
+    """Return the latest Project DNA summary."""
+    db = _db(request)
+    summary = db.get_latest_summary()
+    if not summary:
+        return {"content": "No summary available yet. Run `recall sync` to generate one."}
+    return summary
+
+
+# ── /api/world-view ──────────────────────────────────────────────────────────
+
+@router.get("/world-view")
+def get_world_view(request: Request):
+    """Return workspace-level multi-repo connectivity data."""
+    wm = WorkspaceManager(request.app.state.config)
+    return wm.get_world_view()

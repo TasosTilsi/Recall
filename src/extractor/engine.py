@@ -5,19 +5,18 @@ Provides:
 """
 from __future__ import annotations
 
+import asyncio
 import json
-import shutil
-import subprocess
 from typing import List
 
 import structlog
 
+from src.config import load_config
 from src.extractor.git_walker import CommitRecord
 from src.extractor.prompt import VALID_ENTITY_TYPES, EntityRecord, build_batch_prompt
+from src.llm.client import LLMClient, LLMError
 
 logger = structlog.get_logger(__name__)
-
-LLM_TIMEOUT_SECONDS = 60
 
 
 def extract_batch(batch: list[CommitRecord]) -> list[EntityRecord]:
@@ -28,53 +27,52 @@ def extract_batch(batch: list[CommitRecord]) -> list[EntityRecord]:
 
     Returns:
         List of EntityRecord dicts with normalized names and valid types.
-        Returns an empty list on JSON parse errors or subprocess failures.
+        Returns an empty list on JSON parse errors or API failures.
 
     Raises:
         ValueError: If batch is empty.
-        RuntimeError: If the claude CLI binary is not found on PATH.
     """
     if not batch:
         raise ValueError("batch must not be empty")
 
+    # This is a synchronous wrapper around the async LLM client for now,
+    # as the indexer currently expects synchronous execution.
+    try:
+        return asyncio.run(_async_extract_batch(batch))
+    except Exception as e:
+        logger.error("engine.extract_batch failed", error=str(e))
+        return []
+
+
+async def _async_extract_batch(batch: list[CommitRecord]) -> list[EntityRecord]:
     prompt = build_batch_prompt(batch)
-
-    claude_bin = shutil.which("claude")
-    if claude_bin is None:
-        raise RuntimeError(
-            "LLM provider 'claude' not available — install claude CLI"
-        )
+    config = load_config()
+    client = LLMClient(config)
 
     try:
-        result = subprocess.run(
-            [claude_bin, "-p", prompt],
-            capture_output=True,
-            text=True,
-            timeout=LLM_TIMEOUT_SECONDS,
-            check=True,
-        )
-    except subprocess.CalledProcessError as exc:
-        logger.error(
-            "engine.extract_batch subprocess failed",
-            return_code=exc.returncode,
-            batch_size=len(batch),
-        )
-        return []
-    except subprocess.TimeoutExpired:
-        logger.error(
-            "engine.extract_batch subprocess timed out",
-            timeout_seconds=LLM_TIMEOUT_SECONDS,
-            batch_size=len(batch),
-        )
+        resp = await client.chat([
+            {"role": "system", "content": "You are a code knowledge extractor. Return raw JSON ONLY."},
+            {"role": "user", "content": prompt}
+        ])
+    except LLMError as exc:
+        logger.error("engine.extract_batch API failed", error=str(exc))
         return []
 
     try:
-        data = json.loads(result.stdout)
+        # LLMs sometimes wrap JSON in markdown blocks
+        content = resp.content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+
+        data = json.loads(content)
     except json.JSONDecodeError:
         logger.warning(
             "engine.extract_batch malformed JSON from LLM",
             batch_size=len(batch),
-            response_preview=result.stdout[:200],
+            response_preview=resp.content[:200],
         )
         return []
 

@@ -16,7 +16,7 @@ _VALID_EMBED_PROVIDERS = {"ollama", "openai"}
 @dataclass(frozen=True)
 class LLMConfig:
     provider: str = "claude"
-    model: str = "claude-haiku-4-5-20251001"
+    model: str = "claude-3-5-sonnet-20241022"
     url: str = ""
     api_key: str = ""
 
@@ -70,7 +70,7 @@ def load_config(config_path: Path | None = None) -> Config:
 
     llm = LLMConfig(
         provider=provider,
-        model=llm_section.get("model", "claude-haiku-4-5-20251001"),
+        model=llm_section.get("model", "claude-3-5-sonnet-20241022"),
         url=url,
         api_key=llm_section.get("api_key", ""),
     )

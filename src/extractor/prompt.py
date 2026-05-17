@@ -19,7 +19,7 @@ from src.extractor.git_walker import CommitRecord
 # ---------------------------------------------------------------------------
 
 VALID_ENTITY_TYPES: frozenset[str] = frozenset(
-    {"decision", "bug_fix", "pattern", "file", "concept", "tech_debt"}
+    {"decision", "bug_fix", "pattern", "file", "concept", "tech_debt", "workflow", "business_rule"}
 )
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ class ExtractionResult(TypedDict):
 EXTRACTION_SCHEMA: dict = {
     "entities": [
         {
-            "type": "<one of: decision | bug_fix | pattern | file | concept | tech_debt>",
+            "type": "<one of: decision | bug_fix | pattern | file | concept | tech_debt | workflow | business_rule>",
             "name": "<lowercase, trimmed entity name>",
             "content": "<concise description of the entity>",
             "commit_sha": "<7-char short sha of the commit this entity comes from>",
@@ -72,10 +72,12 @@ ONLY valid JSON with this exact structure:
 {schema}
 
 Rules:
-- Entity types must be EXACTLY one of: decision, bug_fix, pattern, file, concept, tech_debt
+- Entity types must be EXACTLY one of: decision, bug_fix, pattern, file, concept, tech_debt, workflow, business_rule
 - Entity names must be lowercase and trimmed (no leading/trailing whitespace)
 - Do not include any prose, markdown, or code fences — return raw JSON only
 - Each entity must be tied to the commit_sha it originates from
+- `workflow` represents a high-level sequence of steps or a business process (e.g., 'user-registration-flow').
+- `business_rule` represents a specific logic or constraint required by the business (e.g., 'max-retry-attempts-3').
 
 Commits to analyze:
 """.format(schema=_SCHEMA_JSON)

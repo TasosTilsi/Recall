@@ -1,4 +1,4 @@
-import type { GraphData, DashboardData, DetailEntityV3, SearchResults } from '../types/api';
+import type { GraphData, DashboardData, DetailEntityV3, SearchResults, SummaryData, WorldViewData } from '../types/api';
 
 const API_BASE = '/api';
 
@@ -24,4 +24,16 @@ export async function fetchSearch(q: string): Promise<SearchResults> {
   const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}`);
   if (!res.ok) throw new Error(`Search API error: ${res.status}`);
   return res.json() as Promise<SearchResults>;
+}
+
+export async function fetchSummary(): Promise<SummaryData> {
+  const res = await fetch(`${API_BASE}/summary`);
+  if (!res.ok) throw new Error(`Summary API error: ${res.status}`);
+  return res.json() as Promise<SummaryData>;
+}
+
+export async function fetchWorldView(): Promise<WorldViewData> {
+  const res = await fetch(`${API_BASE}/world-view`);
+  if (!res.ok) throw new Error(`WorldView API error: ${res.status}`);
+  return res.json() as Promise<WorldViewData>;
 }
