@@ -8,17 +8,16 @@ A local developer memory system running as `recall` (alias `rc`) — knowledge g
 
 **Context continuity without repetition** — Claude remembers your preferences, decisions, and project architecture across all sessions without you stating them again, while sensitive data stays out of git through strict security filtering.
 
-## Current Milestone: v3.1 Multi-Repo & High-Level Synthesis
+## Current Milestone: v3.2 Contextual Intelligence & Interactive Discovery
 
-**Goal:** Evolve recall into a multi-repo knowledge engine that synthesizes high-level business logic (workflows, rules) and connects disparate projects into a unified "World View".
+**Goal:** Deepen the knowledge graph with external context (PRs, Issues) and provide interactive discovery tools like RAG-powered chat and recursive hierarchical synthesis.
 
 **Target features:**
-- **Multi-Repo Connectivity**: Automatically detect and connect sibling repositories via semantic "Bridge Nodes".
-- **High-Level Synthesis**: Automatic generation of "Project DNA" summaries, extracting business workflows, rules, and external integrations.
-- **Direct API Integration**: Move from Claude CLI subprocesses to direct Anthropic/OpenAI/Ollama API calls for better performance and reliability.
-- **"World View" UI**: A new visualization mode in the graph explorer showing how multiple repositories relate to each other through shared concepts and patterns.
-- **Enhanced Extraction**: New entity types for `workflow` and `business_rule` to capture domain logic alongside technical debt and decisions.
-- **Claude Skills**: Guided `/recall-setup` and `/recall-index` skills integrated into the Claude CLI.
+- **Rich Context Integration**: Fetch and index PR descriptions and Issue comments to capture the "why" behind code changes.
+- **Hierarchical Synthesis**: Recursive module-level synthesis that builds a structured manifest of project components.
+- **Ask Recall (RAG Chat)**: A cross-repo chat interface for natural language querying of the knowledge graph.
+- **Interactive World Map**: A WebGL-powered visual graph showing inter-repository connections.
+- **Extraction Optimization**: Refined prompts and expanded provider support for higher-fidelity knowledge extraction.
 
 ## Previous State
 

@@ -66,18 +66,24 @@ _SCHEMA_JSON = json.dumps(EXTRACTION_SCHEMA, indent=2)
 _DIFF_PER_COMMIT = 800  # chars to include per commit diff in the prompt
 
 _SYSTEM_HEADER = """\
-You are a code knowledge extractor. Analyze the following git commits and return \
-ONLY valid JSON with this exact structure:
+You are a Principal Software Engineer and Knowledge Architect. Your task is to extract high-fidelity technical and domain knowledge from the provided git commits.
+
+Analyze the commits and return ONLY a valid JSON object with the following structure:
 
 {schema}
 
-Rules:
-- Entity types must be EXACTLY one of: decision, bug_fix, pattern, file, concept, tech_debt, workflow, business_rule
-- Entity names must be lowercase and trimmed (no leading/trailing whitespace)
-- Do not include any prose, markdown, or code fences — return raw JSON only
-- Each entity must be tied to the commit_sha it originates from
-- `workflow` represents a high-level sequence of steps or a business process (e.g., 'user-registration-flow').
-- `business_rule` represents a specific logic or constraint required by the business (e.g., 'max-retry-attempts-3').
+Strict Extraction Rules:
+1. **Entity Fidelity**: Ensure names are concise but descriptive. Use kebab-case for multi-word names (e.g., 'auth-middleware-refactor').
+2. **Normalization**: All names MUST be lowercase and trimmed of whitespace.
+3. **Typing**: Use EXACTLY one of the allowed types.
+   - `workflow`: High-level business processes or complex multi-step sequences.
+   - `business_rule`: Logic mandated by domain requirements (e.g., 'refund-policy-30-days').
+   - `decision`: Architectural choices, 'why' instead of 'what', trade-offs.
+   - `bug_fix`: Root causes and resolutions of defects.
+   - `pattern`: Reusable solutions or coding conventions introduced.
+   - `tech_debt`: Known shortcuts, deferred work, or 'why this is hard to change'.
+4. **Contextual Richness**: In the `content` field, explain the 'why' and the 'how', not just the 'what'.
+5. **No Prose**: Do not include markdown code fences, headers, or any text outside the JSON object.
 
 Commits to analyze:
 """.format(schema=_SCHEMA_JSON)
@@ -103,6 +109,7 @@ def build_batch_prompt(batch: list[CommitRecord]) -> str:
         block = (
             f"--- Commit {record.short_sha} by {record.author} ---\n"
             f"Message: {record.message}\n"
+            f"External Context (PR/Issue): {record.external_context}\n"
             f"Diff (truncated):\n"
             f"{record.diff[:_DIFF_PER_COMMIT]}"
         )

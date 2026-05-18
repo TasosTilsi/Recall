@@ -68,12 +68,21 @@
 
 ### v3.1 Multi-Repo & Synthesis
 
-- [ ] **MR-01**: Sibling repository detection: Automatically identify other `.recall/` databases in the same parent directory.
-- [ ] **MR-02**: Semantic Bridge Nodes: Identify and link entities across repositories using embedding similarity and LLM verification.
-- [ ] **SYN-01**: Business logic extraction: New entity types `workflow` and `business_rule` captured during indexing.
-- [ ] **SYN-02**: Project DNA: Automatic generation of a high-level project summary stored in a new `summaries` table.
-- [ ] **API-01**: Native Anthropic SDK: Replace Claude CLI with direct API calls via `httpx`.
-- [ ] **UI-05**: World View visualization: Interactive map of interconnected repositories.
+- [x] **MR-01**: Sibling repository detection: Automatically identify other `.recall/` databases in the same parent directory.
+- [x] **MR-02**: Semantic Bridge Nodes: Identify and link entities across repositories using embedding similarity and LLM verification.
+- [x] **SYN-01**: Business logic extraction: New entity types `workflow` and `business_rule` captured during indexing.
+- [x] **SYN-02**: Project DNA: Automatic generation of a high-level project summary stored in a new `summaries` table.
+- [x] **API-01**: Native Anthropic SDK: Replace Claude CLI with direct API calls via `httpx`.
+- [x] **UI-05**: World View visualization: Interactive map of interconnected repositories.
+
+### v3.2 Context & Discovery
+
+- [ ] **CTX-01**: PR/Issue indexing: Mechanism to associate external discussion threads with commits.
+- [ ] **SYN-03**: Hierarchical Synthesis: Recursive module-level summaries with parent/child relationships.
+- [ ] **CHAT-01**: RAG API: Hybrid search-powered chat endpoint for cross-repo knowledge retrieval.
+- [ ] **CHAT-02**: Ask Recall UI: Integrated chat interface for conversational graph exploration.
+- [ ] **UI-06**: Interactive World Map: WebGL visualization of cross-repo interconnections.
+- [ ] **OPT-01**: Prompt Optimization: Versioned and tunable extraction prompts for higher fidelity.
 
 ---
 

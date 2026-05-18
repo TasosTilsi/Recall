@@ -37,3 +37,13 @@ export async function fetchWorldView(): Promise<WorldViewData> {
   if (!res.ok) throw new Error(`WorldView API error: ${res.status}`);
   return res.json() as Promise<WorldViewData>;
 }
+
+export async function chat(query: string): Promise<{ response: string; sources: any[] }> {
+  const res = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`Chat API error: ${res.status}`);
+  return res.json() as Promise<{ response: string; sources: any[] }>;
+}

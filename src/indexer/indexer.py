@@ -6,6 +6,7 @@ Entry points:
 """
 from __future__ import annotations
 
+import asyncio
 import sqlite3
 import uuid
 from pathlib import Path
@@ -17,6 +18,7 @@ from src.config import Config, load_config
 from src.db.manager import DatabaseManager
 from src.extractor.engine import extract_batch
 from src.extractor.git_walker import CommitRecord, batch_commits, walk_commits
+from src.extractor.connector import fetch_github_pr, extract_pr_number
 from src.indexer.synthesis import run_synthesis
 
 logger = structlog.get_logger()
@@ -46,6 +48,31 @@ def _write_last_sha(conn: sqlite3.Connection, sha: str) -> None:
     conn.commit()
 
 
+async def _enrich_commits(commits: list[CommitRecord], config: Config, repo_root: Path):
+    """Fetch external context (PRs, Issues) for commits if integrations are configured."""
+    if not config.integrations.github_token:
+        return
+
+    import git
+    try:
+        repo = git.Repo(repo_root, search_parent_directories=True)
+        remotes = [r.url for r in repo.remotes]
+        repo_url = remotes[0] if remotes else ""
+    except Exception:
+        repo_url = ""
+
+    if not repo_url or "github.com" not in repo_url:
+        return
+
+    for commit in commits:
+        pr_number = extract_pr_number(commit.message)
+        if pr_number:
+            logger.info("enriching_commit", sha=commit.short_sha, pr=pr_number)
+            context = await fetch_github_pr(repo_url, pr_number, config)
+            if context:
+                commit.external_context = context
+
+
 def _insert_entities(conn: sqlite3.Connection, entities: list[dict]) -> int:
     """Insert entity records idempotently. Returns count of rows actually inserted.
 
@@ -60,9 +87,9 @@ def _insert_entities(conn: sqlite3.Connection, entities: list[dict]) -> int:
         # Ensure parent commit row exists to satisfy FK constraint
         if commit_sha and commit_sha not in seen_shas:
             conn.execute(
-                "INSERT OR IGNORE INTO commits (sha, message, author, date, files_changed)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (commit_sha, "", "", "", "[]"),
+                "INSERT OR IGNORE INTO commits (sha, message, author, date, files_changed, external_context)"
+                " VALUES (?, ?, ?, ?, ?, ?)",
+                (commit_sha, "", "", "", "[]", ""),
             )
             seen_shas.add(commit_sha)
 
@@ -121,10 +148,26 @@ def run_init(repo_root: Path, config: Optional[Config] = None) -> dict:
         Dict with keys 'commits_processed' and 'entities_inserted'.
     """
     config = config or load_config()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(_async_run_init(repo_root, config))
+    else:
+        # This is a bit of a hack for tests where we might already be in a loop
+        # and calling run_sync which calls run_init.
+        # In real CLI usage, this won't happen as we're at the top level.
+        import nest_asyncio
+        nest_asyncio.apply()
+        return asyncio.run(_async_run_init(repo_root, config))
+
+
+async def _async_run_init(repo_root: Path, config: Config) -> dict:
     db = _get_db(repo_root, config)
     db.init_db()
 
     commits = walk_commits(repo_root)
+    await _enrich_commits(commits, config, repo_root)
+
     batch_size = getattr(getattr(config, "indexer", None), "batch_size", 10)
     batches = batch_commits(commits, batch_size)
     total = len(commits)
@@ -173,6 +216,17 @@ def run_sync(repo_root: Path, config: Optional[Config] = None) -> dict:
         Dict with keys 'commits_processed' and 'entities_inserted'.
     """
     config = config or load_config()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(_async_run_sync(repo_root, config))
+    else:
+        import nest_asyncio
+        nest_asyncio.apply()
+        return asyncio.run(_async_run_sync(repo_root, config))
+
+
+async def _async_run_sync(repo_root: Path, config: Config) -> dict:
     db = _get_db(repo_root, config)
 
     # No DB yet — run a full init transparently
@@ -192,6 +246,8 @@ def run_sync(repo_root: Path, config: Optional[Config] = None) -> dict:
     else:
         # No cursor yet — process everything
         new_commits = all_commits
+
+    await _enrich_commits(new_commits, config, repo_root)
 
     if len(new_commits) == 0:
         print("0 commits to process")

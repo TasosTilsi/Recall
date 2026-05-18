@@ -29,21 +29,24 @@ Summary (Markdown format):
 """
 
 def run_synthesis(config: Optional[Config] = None) -> Optional[str]:
-    """Gather top entities and generate a high-level project summary.
-
-    Returns the summary string or None if it fails.
-    """
+    """Gather top entities and generate hierarchical summaries (project + modules)."""
     config = config or load_config()
     db = DatabaseManager(config)
 
-    # Check if DB exists
     if not db.get_db_path().exists():
         return None
 
-    # Fetch top entities (prioritize workflows, decisions, business rules)
+    # 1. Project-level synthesis
+    project_summary_id = _run_project_synthesis(db, config)
+
+    # 2. Module-level synthesis (recursive-like discovery)
+    _run_module_synthesis(db, config, project_summary_id)
+
+    return project_summary_id
+
+def _run_project_synthesis(db: DatabaseManager, config: Config) -> Optional[str]:
     entities = []
     with db.connect() as conn:
-        # Get up to 50 significant entities
         rows = conn.execute("""
             SELECT type, name, content FROM entities
             ORDER BY CASE
@@ -60,16 +63,53 @@ def run_synthesis(config: Optional[Config] = None) -> Optional[str]:
         return None
 
     entities_blob = "\n".join([f"- [{e['type']}] {e['name']}: {e['content']}" for e in entities])
-
     try:
         summary = asyncio.run(_async_synthesize(entities_blob, config))
         if summary:
-            _store_summary(db, summary)
-            return summary
+            return _store_summary(db, summary, scope="project")
     except Exception as e:
-        logger.error("synthesis.run_synthesis failed", error=str(e))
-
+        logger.error("synthesis.project_failed", error=str(e))
     return None
+
+def _run_module_synthesis(db: DatabaseManager, config: Config, parent_id: Optional[str]):
+    """Identify key modules/components and synthesize summaries for them."""
+    with db.connect() as conn:
+        # Find 'file' entities that look like directories or core modules
+        # This is a heuristic: files with more than 5 connections
+        rows = conn.execute("""
+            SELECT e.id, e.name, COUNT(b.from_id) as conn_count
+            FROM entities e
+            JOIN backlinks b ON b.to_id = e.id
+            WHERE e.type = 'file'
+            GROUP BY e.id
+            HAVING conn_count > 5
+            LIMIT 5
+        """).fetchall()
+        modules = [dict(row) for row in rows]
+
+    for mod in modules:
+        logger.info("synthesizing_module", name=mod["name"])
+        # Fetch entities related to this module
+        with db.connect() as conn:
+            rows = conn.execute("""
+                SELECT e.type, e.name, e.content
+                FROM entities e
+                JOIN backlinks b ON b.from_id = e.id
+                WHERE b.to_id = ?
+                LIMIT 20
+            """, (mod["id"],)).fetchall()
+            mod_entities = [dict(row) for row in rows]
+
+        if not mod_entities:
+            continue
+
+        entities_blob = f"Module: {mod['name']}\n" + "\n".join([f"- [{e['type']}] {e['name']}: {e['content']}" for e in mod_entities])
+        try:
+            summary = asyncio.run(_async_synthesize(entities_blob, config))
+            if summary:
+                _store_summary(db, summary, scope="module", parent_id=parent_id)
+        except Exception as e:
+            logger.error("synthesis.module_failed", name=mod["name"], error=str(e))
 
 async def _async_synthesize(entities_blob: str, config: Config) -> Optional[str]:
     client = LLMClient(config)
@@ -85,7 +125,7 @@ async def _async_synthesize(entities_blob: str, config: Config) -> Optional[str]
         logger.error("synthesis LLM call failed", error=str(e))
         return None
 
-def _store_summary(db: DatabaseManager, content: str) -> None:
+def _store_summary(db: DatabaseManager, content: str, scope: str = "project", parent_id: Optional[str] = None) -> str:
     summary_id = str(uuid.uuid4())
     with db.connect() as conn:
         # Get the latest commit_sha for reference
@@ -93,8 +133,9 @@ def _store_summary(db: DatabaseManager, content: str) -> None:
         last_sha = last_sha_row["value"] if last_sha_row else None
 
         conn.execute(
-            "INSERT INTO summaries (id, content, commit_sha) VALUES (?, ?, ?)",
-            (summary_id, content, last_sha)
+            "INSERT INTO summaries (id, content, commit_sha, scope, parent_id) VALUES (?, ?, ?, ?, ?)",
+            (summary_id, content, last_sha, scope, parent_id)
         )
         conn.commit()
-    logger.info("synthesis.summary_stored", id=summary_id)
+    logger.info("synthesis.summary_stored", id=summary_id, scope=scope)
+    return summary_id

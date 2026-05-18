@@ -30,6 +30,7 @@ class CommitRecord:
     date: datetime
     message: str
     diff: str
+    external_context: str = ""
 
 
 def fetch_diff(commit: git.Commit, repo: git.Repo) -> str:
@@ -76,6 +77,7 @@ def walk_commits(repo_root: Path) -> list[CommitRecord]:
                 date=commit.authored_datetime,
                 message=commit.message.strip(),
                 diff=diff,
+                external_context="", # populated later if integration configured
             )
         )
 

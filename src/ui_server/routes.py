@@ -209,3 +209,43 @@ def get_world_view(request: Request):
     """Return workspace-level multi-repo connectivity data."""
     wm = WorkspaceManager(request.app.state.config)
     return wm.get_world_view()
+
+
+# ── /api/chat ────────────────────────────────────────────────────────────────
+
+@router.post("/chat")
+async def chat(request: Request):
+    """Hybrid RAG chat across repositories."""
+    body = await request.json()
+    query = body.get("query", "")
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+
+    from src.llm.client import make_llm_client
+    config = request.app.state.config
+    client = make_llm_client(config)
+    db = _db(request)
+
+    # 1. Search for relevant entities (RAG)
+    entities = db.search_fts(query, limit=10)
+    context_blob = "\n".join([f"[{e['type']}] {e['name']}: {e['content']}" for e in entities])
+
+    # 2. Call LLM
+    prompt = f"""
+    You are Recall AI. Answer the user's question based on the provided knowledge graph context.
+
+    Context:
+    {context_blob}
+
+    Question: {query}
+    """
+
+    try:
+        resp = await client.chat([
+            {"role": "system", "content": "You are a helpful technical assistant."},
+            {"role": "user", "content": prompt}
+        ])
+        return {"response": resp.content, "sources": entities}
+    except Exception as e:
+        logger.error("chat_failed", error=str(e))
+        raise HTTPException(status_code=500, detail="Chat engine failure")

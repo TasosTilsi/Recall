@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS commits (
     message     TEXT NOT NULL,
     author      TEXT NOT NULL,
     date        TEXT NOT NULL,
-    files_changed TEXT NOT NULL DEFAULT '[]'
+    files_changed TEXT NOT NULL DEFAULT '[]',
+    external_context TEXT NOT NULL DEFAULT ''
 )
 """
 
@@ -104,7 +105,9 @@ CREATE TABLE IF NOT EXISTS summaries (
     id          TEXT PRIMARY KEY,
     content     TEXT NOT NULL,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-    commit_sha  TEXT REFERENCES commits(sha)
+    commit_sha  TEXT REFERENCES commits(sha),
+    parent_id   TEXT REFERENCES summaries(id),
+    scope       TEXT NOT NULL DEFAULT 'project'
 )
 """
 

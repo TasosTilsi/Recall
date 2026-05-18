@@ -8,6 +8,7 @@ import GraphView from '@/routes/Graph';
 import Entities from '@/routes/Entities';
 import Relations from '@/routes/Relations';
 import WorldView from '@/routes/WorldView';
+import AskRecall from '@/routes/AskRecall';
 import Search from '@/routes/Search';
 import { useState, useCallback } from 'react';
 
@@ -29,6 +30,7 @@ function Shell() {
         <main className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/chat" element={<AskRecall />} />
             <Route path="/graph" element={<GraphView />} />
             <Route path="/entities" element={<Entities />} />
             <Route path="/relations" element={<Relations />} />

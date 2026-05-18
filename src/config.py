@@ -35,16 +35,25 @@ class DBConfig:
 
 
 @dataclass(frozen=True)
+class IntegrationConfig:
+    github_token: str = ""
+    gitlab_token: str = ""
+
+
+@dataclass(frozen=True)
 class Config:
     llm: LLMConfig = None  # type: ignore[assignment]
     embeddings: EmbeddingsConfig | None = None
     db: DBConfig = None  # type: ignore[assignment]
+    integrations: IntegrationConfig = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.llm is None:
             object.__setattr__(self, "llm", LLMConfig())
         if self.db is None:
             object.__setattr__(self, "db", DBConfig())
+        if self.integrations is None:
+            object.__setattr__(self, "integrations", IntegrationConfig())
 
 
 def load_config(config_path: Path | None = None) -> Config:
@@ -88,4 +97,10 @@ def load_config(config_path: Path | None = None) -> Config:
     db_section = data.get("db", {})
     db = DBConfig(path=db_section.get("path", ".recall/recall.db"))
 
-    return Config(llm=llm, embeddings=embeddings, db=db)
+    integ_section = data.get("integrations", {})
+    integrations = IntegrationConfig(
+        github_token=integ_section.get("github_token", ""),
+        gitlab_token=integ_section.get("gitlab_token", ""),
+    )
+
+    return Config(llm=llm, embeddings=embeddings, db=db, integrations=integrations)

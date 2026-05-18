@@ -6,7 +6,8 @@
 - [x] **v1.1 Advanced Features** — Phases 9–11.1 (shipped 2026-03-09) — see [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] **v2.0 Rebuild** — Phases 12–24 (completed 2026-04-07): replace KuzuDB with maintained embedded backend, multi-provider LLM, 4-hook Claude Code memory system with Option C context injection and incremental git indexing, CLI rename to `recall` with 9-command consolidated surface, shadcn/ui graph UI redesign. Gap closure: Phases 22–24.
 - [x] **v3.0 Engineering Knowledge Graph** — Phases 25–33 (completed 2026-04-23): major pivot — remove graphiti-core/LadybugDB/hooks/queue/retention; rebuild on SQLite + FTS5 + backlinks; single LLM provider; Claude plugin + two skills; clean 6-command CLI surface.
-- [ ] **v3.1 Multi-Repo & High-Level Synthesis** — Phases 34–38 (in progress): Evolve into a multi-repo knowledge engine; high-level business logic (workflows, rules) and unified "World View" UI.
+- [x] **v3.1 Multi-Repo & High-Level Synthesis** — Phases 34–38 (completed 2026-05-17): Evolve into a multi-repo knowledge engine; high-level business logic (workflows, rules) and unified "World View" UI.
+- [ ] **v3.2 Contextual Intelligence & Interactive Discovery** — Phases 39–43 (in progress): Deep context (PRs, Issues), RAG Chat, and interactive graph explorations.
 
 ## Phases
 
@@ -76,14 +77,25 @@ See [milestones/v2.0-ROADMAP.md](milestones/v2.0-ROADMAP.md) for full phase deta
 
 </details>
 
-<details open>
-<summary>v3.1 Multi-Repo & High-Level Synthesis (Phases 34–38) — IN PROGRESS</summary>
+<details>
+<summary>✅ v3.1 Multi-Repo & High-Level Synthesis (Phases 34–38) — SHIPPED 2026-05-17</summary>
 
-- [ ] **Phase 34: API & Extraction Uplift** - Direct Anthropic API, new entity types (workflow, business_rule)
-- [ ] **Phase 35: Synthesis Engine** - "Project DNA" summaries and `summaries` table implementation
-- [ ] **Phase 36: Workspace Engine** - Sibling repo detection and cross-repo bridge node discovery
-- [ ] **Phase 37: World View UI** - Visualization of multiple repositories and their interconnections
-- [ ] **Phase 38: Final Polish** - Documentation updates and performance tuning
+- [x] **Phase 34: API & Extraction Uplift** - Direct Anthropic API, new entity types (workflow, business_rule)
+- [x] **Phase 35: Synthesis Engine** - "Project DNA" summaries and `summaries` table implementation
+- [x] **Phase 36: Workspace Engine** - Sibling repo detection and cross-repo bridge node discovery
+- [x] **Phase 37: World View UI** - Visualization of multiple repositories and their interconnections
+- [x] **Phase 38: Final Polish** - Documentation updates and performance tuning
+
+</details>
+
+<details open>
+<summary>v3.2 Contextual Intelligence & Interactive Discovery (Phases 39–43) — IN PROGRESS</summary>
+
+- [ ] **Phase 39: Rich Context Integration** - GitHub/GitLab API connectors for PRs/Issues
+- [ ] **Phase 40: Hierarchical Synthesis** - Recursive module-level synthesis logic and API
+- [ ] **Phase 41: Interactive World Map** - WebGL visualization for cross-repo discovery
+- [ ] **Phase 42: Ask Recall (RAG Chat)** - Hybrid search-powered conversational interface
+- [ ] **Phase 43: Extraction & Model Optimization** - Prompt engineering and multi-model support
 
 </details>
 

@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Network, Database, GitBranch, Globe } from 'lucide-react';
+import { LayoutDashboard, Network, Database, GitBranch, Globe, MessageSquare } from 'lucide-react';
 
 const TABS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { label: 'Ask Recall', path: '/chat', icon: MessageSquare },
   { label: 'Graph', path: '/graph', icon: Network },
   { label: 'Entities', path: '/entities', icon: Database },
   { label: 'Relations', path: '/relations', icon: GitBranch },
